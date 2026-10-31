@@ -211,6 +211,26 @@
         </aside>
 
         <div class="results">
+          <div class="box chat">
+            <div class="box-head">
+              <h2>대화로 설정하기</h2>
+              <button class="btn small ghost" id="chat-clear">대화 지우기</button>
+            </div>
+            <div class="chat-log" id="chat-log">
+              <div class="chat-empty">하고 싶은 걸 말로 적어보세요. 설정을 바꾸고 실행한 뒤 결과를 풀어서 설명해드려요.</div>
+            </div>
+            <div class="chips" id="chat-chips">
+              <button>삼성전자 5분봉 거래량 돌파 전략 돌려줘</button>
+              <button>지금 결과 해석해줘</button>
+              <button>손절이랑 트레일링 넣으면 나아질까? 비교해줘</button>
+              <button>이 종목에 맞는 전략 추천해줘</button>
+            </div>
+            <div class="chat-input">
+              <textarea id="chat-input" rows="1" placeholder="예: SK하이닉스 1시간봉으로 RSI 25/75, 손절 3% 넣어서 돌려줘"></textarea>
+              <button class="btn primary" id="chat-send">보내기</button>
+            </div>
+          </div>
+
           <div class="metrics" id="bt-metrics">
             <div class="empty">왼쪽에서 종목과 전략을 고르고 <b>백테스트 실행</b>을 누르세요.</div>
           </div>
@@ -254,6 +274,21 @@
     <div class="row-btns">
       <button class="btn primary" id="proxy-save">저장하고 연결 확인</button>
       <span class="muted small" id="proxy-status"></span>
+    </div>
+    <hr />
+    <h2>대화 도우미 (백테스트 탭)</h2>
+    <p class="hint">중계 서버에 Claude API 키를 넣으면 백테스트 탭에서 대화로 설정하고 추천을 받을 수 있어요. 방법은 README의 <b>대화 도우미 연결하기</b>를 참고하세요. 연결 전에는 간단한 명령만 알아들어요.</p>
+    <div class="two">
+      <label class="field">모델
+        <select id="chat-model">
+          <option value="claude-sonnet-5-5">Claude Sonnet (추천)</option>
+          <option value="claude-haiku-5-5">Claude Haiku (빠르고 저렴)</option>
+          <option value="claude-opus-5-5">Claude Opus (가장 똑똑함)</option>
+        </select>
+      </label>
+      <label class="field">대화 비밀번호
+        <input id="chat-pass" type="password" placeholder="CHAT_PASSWORD 값" autocomplete="off" />
+      </label>
     </div>
   </dialog>
 

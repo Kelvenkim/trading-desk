@@ -13,6 +13,7 @@
   - 관심종목 목록: 별표로 추가
 - **포트폴리오**: 보유 종목 평가액, 손익, 수익률, 비중. 보유 내역은 **내 브라우저에만 저장**되고 GitHub에는 올라가지 않음
 - **백테스트**: 이동평균 크로스 / RSI 역추세 / 볼린저 박스권 / 거래량 돌파(급등 포착) 전략, 손절·익절·트레일링·당일청산, 수수료·세금·슬리피지 반영, 매매 시점 차트와 자산 곡선, 거래 내역 CSV 저장
+- **대화로 설정하기**: 백테스트 탭에서 "SK하이닉스 1시간봉 RSI 25/75, 손절 3% 넣어서 돌려줘", "손절 넣으면 나아질까? 비교해줘" 처럼 말로 설정·실행하고 결과 해석과 추천을 받음 (Claude API 연결 필요, 연결 전에는 간단한 명령만 인식)
 - **Pine Script 내보내기**: 백테스트한 전략과 설정을 TradingView용 코드로 바로 변환
 
 ## 구조
@@ -27,7 +28,7 @@ assets/backtest.js             백테스트 엔진, 지표, 전략, Pine Script 
 assets/style.css               스타일 (한국식: 상승 빨강 / 하락 파랑)
 watchlist.json                 기본 관심종목  ← 여기 넣은 종목은 중계 서버 없이도 보임
 scripts/fetch_data.py          시세 수집 → data/ 에 JSON 저장, 검색용 종목 목록 생성
-worker/worker.js               시세 중계 서버 (Cloudflare Workers)
+worker/worker.js               중계 서버 (Cloudflare Workers): 시세 중계 + 대화 도우미용 Claude API 연결
 .github/workflows/update-data.yml   평일 장중 30분마다 자동 갱신
 data/                          수집된 시세 (자동 생성)
 ```
@@ -44,7 +45,23 @@ data/                          수집된 시세 (자동 생성)
 6. 사이트 오른쪽 위 **⚙** → 주소 붙여넣기 → **저장하고 연결 확인**
 
 "연결됐어요" 가 뜨면 끝이에요. 무료 플랜은 하루 10만 번 요청까지라 개인 사용에는 충분해요.
-다른 사람이 내 중계 서버를 쓰지 못하게 하려면 `worker.js` 위쪽 `ALLOWED_ORIGINS`에 `"https://<내아이디>.github.io"`를 넣으세요.
+중계 서버는 `worker.js` 위쪽 `ALLOWED_ORIGINS`에 적힌 사이트(`https://kelvenkim.github.io`, 로컬 테스트용 `http://localhost:8000`)에서만 쓸 수 있어요. 다른 주소에서 쓰려면 거기에 추가하세요.
+
+## 대화 도우미 연결하기 (선택)
+
+백테스트 탭의 대화창이 Claude와 대화하려면 **Claude API 키**가 필요해요. claude.ai 구독과는 별개로, API는 쓴 만큼 요금이 나가요(요금은 https://www.anthropic.com/pricing 참고). 키는 중계 서버에 비밀값으로만 넣고, 사이트 코드나 GitHub에는 절대 넣지 마세요.
+
+1. https://platform.claude.com 에 로그인 → **Billing**에서 크레딧 충전 → **API Keys** → **Create Key** → 만들어진 키 복사 (`sk-ant-`로 시작, 다시 볼 수 없으니 바로 다음 단계로)
+2. Cloudflare 대시보드 → 만든 Worker → **Edit code** → `worker/worker.js` 최신 내용으로 전부 바꿔 붙여넣기 → **Deploy**
+3. Worker 화면 **Settings** → **Variables and Secrets** → **Add**
+   - Type **Secret**, Name `ANTHROPIC_API_KEY`, Value 에 1번 키 → 저장
+   - 한 번 더 **Add**: Type **Secret**, Name `CHAT_PASSWORD`, Value 에 내가 정한 비밀번호 → 저장 (남이 내 키로 대화하는 것을 막아줘요)
+   - **Deploy** (저장 후 배포 버튼이 나오면 눌러주세요)
+4. 사이트 오른쪽 위 **⚙** → **대화 도우미**에서 모델 고르고 **대화 비밀번호**에 3번 비밀번호 입력
+5. 백테스트 탭 대화창에서 "삼성전자 5분봉 거래량 돌파 전략 돌려줘" 처럼 말해보기
+
+중계 서버 주소를 브라우저에서 열었을 때 `Trading Desk proxy OK · chat ready` 가 보이면 키가 제대로 들어간 거예요.
+연결 전에는 대화창이 **간단 모드**로 동작해서 "종목 + 봉 + 전략 + 손절 N + N년 + 실행" 같은 짧은 명령만 알아들어요.
 
 ## GitHub에 올리기
 
