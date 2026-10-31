@@ -12,7 +12,7 @@ const ChartView = (() => {
   };
   const MA = [[5, "#e7ecf5"], [20, "#f2b84b"], [60, "#7aa2ff"], [120, "#c792ea"]];
   const IND_KEY = "tradingdesk.indicators";
-  const DEFAULT_IND = { ma: true, bb: false, vol: true, rsi: false, macd: false, spo: false };
+  const DEFAULT_IND = { ma: true, bb: false, vol: true, rsi: false, macd: false, spo: false, vwap: false };
 
   let chart, candle, vol, legendEl, markersApi;
   let bars = [], idxByTime = new Map(), sym = "", ivId = "1d", fmt = (v) => String(v);
@@ -110,6 +110,16 @@ const ChartView = (() => {
         .forEach(([arr, c]) => { const s = chart.addSeries(LC.LineSeries, { ...lineOpts(c), lineStyle: 0 }); s.setData(line(arr)); main.push(s); });
     }
 
+    if (ind.vwap) {
+      // 분봉: 당일 VWAP(굵게) + 주간 VWAP, 일봉 이상: 20봉 이동 VWAP
+      const daily = ["1d", "1w", "1M"].includes(ivId);
+      const parts = daily ? [["rolling", 20, "#4fd1a5", 2, "VWAP 20"]] : [["session", 0, "#4fd1a5", 2, "VWAP"], ["week", 0, "rgba(79,209,165,.45)", 1, "주간 VWAP"]];
+      parts.forEach(([k, nn, col, w, lb]) => {
+        const s2 = chart.addSeries(LC.LineSeries, { ...lineOpts(col, w), lineType: 0 });
+        const arr = BT.vwapCalc(bars, k, nn).vwap;
+        s2.setData(line(arr)); s2._label = lb; s2._calc = arr; main.push(s2);
+      });
+    }
     let pane = 1;
     if (ind.rsi) {
       const r = BT.rsi(closes, 14);

@@ -87,6 +87,39 @@ const BT = (() => {
   };
   const shift1 = (a) => a.map((_, i) => (i === 0 ? NaN : a[i - 1]));
 
+  // ---------- VWAP ----------
+  // ISO 주 번호 키 (주간 VWAP 초기화용)
+  const weekKey = (ms) => { const d = new Date(ms + 9 * 3600e3); const dow = (d.getUTCDay() + 6) % 7; return new Date(d.getTime() - dow * 86400000).toISOString().slice(0, 10); };
+  /**
+   * kind: "session"(매일 초기화) | "week"(매주 초기화) | "rolling"(최근 n봉)
+   * 반환: { vwap, sd } — sd는 VWAP 기준 거래량 가중 표준편차 (밴드용)
+   */
+  function vwapCalc(b, kind = "session", n = 20) {
+    const N = b.length, vw = new Array(N).fill(NaN), sd = new Array(N).fill(NaN);
+    const tp = b.map((x) => (x.h + x.l + x.c) / 3), vol = b.map((x) => (x.v > 0 ? x.v : 0));
+    if (kind === "rolling") {
+      let spv = 0, sv = 0, sp2v = 0, sp = 0;
+      for (let i = 0; i < N; i++) {
+        spv += tp[i] * vol[i]; sv += vol[i]; sp2v += tp[i] * tp[i] * vol[i]; sp += tp[i];
+        if (i >= n) { spv -= tp[i - n] * vol[i - n]; sv -= vol[i - n]; sp2v -= tp[i - n] * tp[i - n] * vol[i - n]; sp -= tp[i - n]; }
+        if (i >= n - 1) {
+          vw[i] = sv > 0 ? spv / sv : sp / n;
+          sd[i] = sv > 0 ? Math.sqrt(Math.max(0, sp2v / sv - vw[i] * vw[i])) : 0;
+        }
+      }
+      return { vwap: vw, sd };
+    }
+    let key = null, spv = 0, sv = 0, sp2v = 0, sp = 0, cnt = 0;
+    for (let i = 0; i < N; i++) {
+      const k = kind === "week" ? weekKey(b[i].ms) : (b[i].day || String(b[i].t));
+      if (k !== key) { key = k; spv = sv = sp2v = sp = 0; cnt = 0; }
+      spv += tp[i] * vol[i]; sv += vol[i]; sp2v += tp[i] * tp[i] * vol[i]; sp += tp[i]; cnt++;
+      vw[i] = sv > 0 ? spv / sv : sp / cnt;
+      sd[i] = sv > 0 ? Math.sqrt(Math.max(0, sp2v / sv - vw[i] * vw[i])) : 0;
+    }
+    return { vwap: vw, sd };
+  }
+
   // John Ehlers SuperSmoother (2극 버터워스 필터)
   const superSmoother = (a, len) => {
     const out = new Array(a.length).fill(NaN);
@@ -132,6 +165,9 @@ const BT = (() => {
     spo_up: { label: "SPO 과매수 밴드", args: ["n", "m"], def: { n: 10, m: 40 } },
     spo_low: { label: "SPO 과매도 밴드", args: ["n", "m"], def: { n: 10, m: 40 } },
     ss: { label: "SuperSmoother", args: ["n"], def: { n: 20 } },
+    vwap: { label: "VWAP (당일)", args: [] },
+    vwap_w: { label: "VWAP (주간)", args: [] },
+    vwap_n: { label: "VWAP (N봉 이동)", args: ["n"], def: { n: 20 } },
     num: { label: "숫자", args: ["v"], def: { v: 0 } },
   };
   const OPS = { ">": "보다 크면", "<": "보다 작으면", ">=": "이상이면", "<=": "이하면", cross_up: "을 위로 뚫으면", cross_down: "을 아래로 뚫으면" };
@@ -171,6 +207,9 @@ const BT = (() => {
         out = s.ind === "spo" ? r.osc : s.ind === "spo_up" ? r.upper : r.lower; break;
       }
       case "ss": out = superSmoother(c, n); break;
+      case "vwap": out = vwapCalc(b, "session").vwap; break;
+      case "vwap_w": out = vwapCalc(b, "week").vwap; break;
+      case "vwap_n": out = vwapCalc(b, "rolling", n).vwap; break;
       case "num": out = new Array(b.length).fill(+s.v || 0); break;
       default: out = new Array(b.length).fill(NaN);
     }
@@ -315,6 +354,50 @@ const BT = (() => {
         return { entry, exit, lines: [{ name: `SS${p.fast}`, data: r.fast, color: "#f2b84b" }, { name: `SS${p.slow}`, data: r.slow, color: "#7aa2ff" }] };
       },
     },
+    vwap: {
+      name: "VWAP 추세 전환",
+      desc: "거래량 가중 평균가(VWAP)를 기준으로 추세가 바뀔 때 사고팔아요. 교차: 종가가 VWAP 위로 올라서면 매수, 아래로 내려가면 매도. 기울기: VWAP이 오르기 시작하면 매수, 내리기 시작하면 매도. 당일 VWAP은 분봉 단타용, 주간은 1시간봉, N봉 이동은 일봉에 맞아요.",
+      params: [
+        { key: "kind", label: "VWAP 종류", type: "select", options: ["당일", "주간", "N봉 이동"], def: "당일" },
+        { key: "n", label: "N봉 (이동일 때)", def: 20, min: 2, max: 500 },
+        { key: "mode", label: "전환 신호", type: "select", options: ["교차", "기울기"], def: "교차" },
+        { key: "buf", label: "여유폭 %", def: 0, min: 0, max: 5, step: 0.05 },
+        { key: "confirm", label: "확인 봉 수", def: 1, min: 1, max: 10 },
+        { key: "slopeN", label: "기울기 비교 봉", def: 3, min: 1, max: 50 },
+        { key: "trend", label: "큰 추세 필터", type: "select", options: ["없음", "이동 VWAP 위에서만 매수"], def: "없음" },
+        { key: "trendN", label: "필터 N봉", def: 100, min: 5, max: 1000 },
+        { key: "noLate", label: "장 막판 진입 금지 (봉)", def: 0, min: 0, max: 30 },
+      ],
+      signals(b, p) {
+        const kind = p.kind === "주간" ? "week" : p.kind === "N봉 이동" ? "rolling" : "session";
+        const { vwap: v } = vwapCalc(b, kind, p.n), n = b.length, c = b.map((x) => x.c);
+        const up = (i) => c[i] > v[i] * (1 + p.buf / 100), dn = (i) => c[i] < v[i] * (1 - p.buf / 100);
+        const tf = p.trend !== "없음" ? vwapCalc(b, "rolling", p.trendN).vwap : null;
+        // 장 막판 N봉 안에는 새로 진입하지 않음 (당일 청산 단타에서 바로 청산되는 진입 방지)
+        const late = new Array(n).fill(false);
+        if (p.noLate > 0) {
+          let cntBack = 0;
+          for (let i = n - 1; i >= 0; i--) { if (i === n - 1 || (b[i].day || b[i].t) !== (b[i + 1].day || b[i + 1].t)) cntBack = 0; late[i] = cntBack < p.noLate; cntBack++; }
+        }
+        const entry = new Array(n).fill(false), exit = new Array(n).fill(false);
+        let runUp = 0, runDn = 0;
+        for (let i = 1; i < n; i++) {
+          if (isNaN(v[i])) continue;
+          let bull, bear;
+          if (p.mode === "기울기") {
+            const k = Math.max(1, p.slopeN), prev = v[i - k];
+            bull = isFinite(prev) && v[i] > prev * (1 + p.buf / 100); bear = isFinite(prev) && v[i] < prev * (1 - p.buf / 100);
+          } else { bull = up(i); bear = dn(i); }
+          runUp = bull ? runUp + 1 : 0; runDn = bear ? runDn + 1 : 0;
+          // 같은 상태가 confirm 봉 이어진 첫 순간에만 신호 (전환 시점)
+          if (runUp === p.confirm && !late[i] && (!tf || (isFinite(tf[i]) && c[i] > tf[i]))) entry[i] = true;
+          if (runDn === p.confirm) exit[i] = true;
+        }
+        const lines = [{ name: `VWAP(${p.kind})`, data: v, color: "#4fd1a5" }];
+        if (tf) lines.push({ name: `VWAP ${p.trendN}봉`, data: tf, color: "#c792ea" });
+        return { entry, exit, lines };
+      },
+    },
     custom: {
       name: "직접 만들기 (조건 조합)",
       desc: "지표와 조건을 직접 골라 매수·매도 규칙을 만들어요. 각 묶음 안에서 '모두(AND)' 또는 '하나라도(OR)' 만족하면 신호.",
@@ -327,7 +410,7 @@ const BT = (() => {
         const seen = new Set();
         for (const g of [rules.entry, rules.exit]) for (const r of (g && g.rules) || []) for (const s of [r.a, r.b]) {
           // 가격 단위 지표만 차트에 표시
-          if (["sma", "ema", "bb_up", "bb_mid", "bb_low", "hh", "ll"].includes(s.ind)) {
+          if (["sma", "ema", "bb_up", "bb_mid", "bb_low", "hh", "ll", "ss", "vwap", "vwap_w", "vwap_n"].includes(s.ind)) {
             const key = describeSpec(s);
             if (seen.has(key)) continue;
             seen.add(key);
@@ -641,6 +724,9 @@ const BT = (() => {
       case "spo_up": return `spoBand(${+s.n || 10}, ${+s.m || 40})`;
       case "spo_low": return `(-spoBand(${+s.n || 10}, ${+s.m || 40}))`;
       case "ss": return `ss(close, ${n})`;
+      case "vwap": return "ta.vwap(hlc3)";
+      case "vwap_w": return `ta.vwap(hlc3, timeframe.change("W"))`;
+      case "vwap_n": return `(math.sum(hlc3 * volume, ${n}) / math.sum(volume, ${n}))`;
       case "num": return String(+s.v || 0);
     }
     return "na";
@@ -726,6 +812,16 @@ const BT = (() => {
         const lo = p.strength === "강한 신호만" ? "-band" : "-th", hi = p.strength === "강한 신호만" ? "band" : "th";
         entry = `ta.crossover(osc, ${lo})`; exit = p.exitAt === "과매수 반락" ? `ta.crossunder(osc, ${hi})` : "ta.crossover(osc, 0)";
       }
+    } else if (strategyId === "vwap") {
+      const vx = p.kind === "주간" ? `ta.vwap(hlc3, timeframe.change("W"))` : p.kind === "N봉 이동" ? `math.sum(hlc3 * volume, ${p.n}) / math.sum(volume, ${p.n})` : "ta.vwap(hlc3)";
+      L.push(`vw = ${vx}`, `plot(vw, "VWAP", color.teal, 2)`, `buf = input.float(${p.buf}, "여유폭 %") / 100`, `conf = input.int(${p.confirm}, "확인 봉 수")`);
+      if (p.mode === "기울기") L.push(`bullNow = vw > vw[${p.slopeN}] * (1 + buf)`, `bearNow = vw < vw[${p.slopeN}] * (1 - buf)`);
+      else L.push(`bullNow = close > vw * (1 + buf)`, `bearNow = close < vw * (1 - buf)`);
+      L.push(`upRun = ta.barssince(not bullNow)`, `dnRun = ta.barssince(not bearNow)`);
+      let filt = "";
+      if (p.trend !== "없음") { L.push(`tvw = math.sum(hlc3 * volume, ${p.trendN}) / math.sum(volume, ${p.trendN})`, `plot(tvw, "추세 VWAP", color.purple)`); filt = " and close > tvw"; }
+      entry = `upRun == conf${filt}`; exit = "dnRun == conf";
+      if (p.noLate > 0) L.push(`// 참고: 장 막판 ${p.noLate}봉 진입 금지는 Pine에서 생략했어요.`);
     } else if (strategyId === "custom") {
       entry = pineRules(p.rules && p.rules.entry); exit = pineRules(p.rules && p.rules.exit);
     }
@@ -767,7 +863,7 @@ const BT = (() => {
 
   return {
     STRATEGIES, IND, OPS, DEFAULTS, run, pine, stats, describeSpec, tickSize, roundTick,
-    sma, ema, rsi, stdev, atr, superSmoother, spoCalc,
+    sma, ema, rsi, stdev, atr, superSmoother, spoCalc, vwapCalc,
   };
 })();
 if (typeof module !== "undefined") module.exports = BT;
