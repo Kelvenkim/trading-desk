@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trading Desk</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+  <link rel="stylesheet" href="assets/style.css" />
+  <script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo">▲▼</span>
+      <span>Trading Desk</span>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="market">현황</button>
+      <button class="tab" data-tab="portfolio">포트폴리오</button>
+      <button class="tab" data-tab="backtest">백테스트</button>
+    </nav>
+    <div class="updated" id="updated">불러오는 중…</div>
+  </header>
+
+  <div id="banner" class="banner hidden"></div>
+
+  <main>
+    <!-- ================= 현황 ================= -->
+    <section id="tab-market" class="panel active">
+      <div id="cards" class="cards"></div>
+
+      <div class="box chart-box">
+        <div class="box-head">
+          <div>
+            <div class="title" id="chart-title">종목을 선택하세요</div>
+            <div class="sub" id="chart-sub"></div>
+          </div>
+          <div class="seg" id="interval-seg">
+            <button data-iv="1d" class="on">일봉</button>
+            <button data-iv="5m">5분봉</button>
+          </div>
+        </div>
+        <div id="market-chart" class="chart"></div>
+        <div class="legend">
+          <span><i style="background:#f5b642"></i>MA20</span>
+          <span><i style="background:#7aa2ff"></i>MA60</span>
+          <span><i style="background:#c792ea"></i>MA120</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 포트폴리오 ================= -->
+    <section id="tab-portfolio" class="panel">
+      <div class="summary" id="pf-summary"></div>
+
+      <div class="grid-2">
+        <div class="box">
+          <div class="box-head"><div class="title">보유 종목</div></div>
+          <div class="table-wrap">
+            <table class="tbl" id="pf-table">
+              <thead><tr>
+                <th>종목</th><th class="r">수량</th><th class="r">평단</th><th class="r">현재가</th>
+                <th class="r">평가액</th><th class="r">손익</th><th class="r">수익률</th><th class="r">비중</th><th></th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="hint">보유 내역은 이 브라우저에만 저장되고 GitHub에는 올라가지 않아요. 다른 기기로 옮길 땐 내보내기/가져오기를 쓰세요.</p>
+        </div>
+
+        <div class="box">
+          <div class="box-head"><div class="title">종목 추가 / 수정</div></div>
+          <form id="pf-form" class="form">
+            <label>종목
+              <input id="pf-symbol" list="symbol-list" placeholder="예: 005930.KS" required />
+              <datalist id="symbol-list"></datalist>
+            </label>
+            <label>수량 <input id="pf-qty" type="number" step="any" min="0" required /></label>
+            <label>평균 단가 <input id="pf-avg" type="number" step="any" min="0" required /></label>
+            <button class="btn primary" type="submit">저장</button>
+          </form>
+          <hr />
+          <form id="cash-form" class="form">
+            <label>예수금 (원) <input id="pf-cash" type="number" step="any" min="0" /></label>
+            <button class="btn" type="submit">예수금 저장</button>
+          </form>
+          <hr />
+          <div class="row-btns">
+            <button class="btn" id="pf-export">내보내기</button>
+            <label class="btn file-btn">가져오기<input type="file" id="pf-import" accept=".json" hidden /></label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 백테스트 ================= -->
+    <section id="tab-backtest" class="panel">
+      <div class="bt-layout">
+        <aside class="box controls">
+          <div class="group">
+            <div class="group-title">데이터</div>
+            <label>종목
+              <select id="bt-symbol"></select>
+            </label>
+            <label>봉 주기
+              <select id="bt-interval">
+                <option value="1d">일봉 (최근 10년)</option>
+                <option value="5m">5분봉 (최근 60일)</option>
+              </select>
+            </label>
+            <div class="two">
+              <label>시작일 <input type="date" id="bt-start" /></label>
+              <label>종료일 <input type="date" id="bt-end" /></label>
+            </div>
+            <label class="btn file-btn small">CSV 불러오기 (TradingView 내보내기 등)
+              <input type="file" id="bt-csv" accept=".csv,.txt" hidden />
+            </label>
+            <div class="sub" id="bt-csv-name"></div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">전략</div>
+            <select id="bt-strategy"></select>
+            <p class="desc" id="bt-desc"></p>
+            <div id="bt-params" class="params"></div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">리스크 관리 <span class="muted">(0 = 사용 안 함)</span></div>
+            <div class="params">
+              <label>손절 % <input type="number" id="bt-sl" value="0" step="0.1" min="0" /></label>
+              <label>익절 % <input type="number" id="bt-tp" value="0" step="0.1" min="0" /></label>
+              <label>트레일링 % <input type="number" id="bt-trail" value="0" step="0.1" min="0" /></label>
+              <label>최대 보유 봉 <input type="number" id="bt-hold" value="0" step="1" min="0" /></label>
+            </div>
+            <label class="check"><input type="checkbox" id="bt-dayclose" /> 장 마감 전 청산 (분봉 단타)</label>
+          </div>
+
+          <div class="group">
+            <div class="group-title">비용</div>
+            <div class="params">
+              <label>초기 자금 <input type="number" id="bt-capital" value="10000000" step="100000" min="0" /></label>
+              <label>매수 수수료 % <input type="number" id="bt-buyfee" value="0.015" step="0.001" min="0" /></label>
+              <label>매도 수수료+세금 % <input type="number" id="bt-sellfee" value="0.215" step="0.001" min="0" /></label>
+              <label>슬리피지 % <input type="number" id="bt-slip" value="0.05" step="0.01" min="0" /></label>
+            </div>
+          </div>
+
+          <button class="btn primary wide" id="bt-run">백테스트 실행</button>
+        </aside>
+
+        <div class="results">
+          <div class="metrics" id="bt-metrics">
+            <div class="empty">왼쪽에서 종목과 전략을 고르고 <b>백테스트 실행</b>을 누르세요.</div>
+          </div>
+
+          <div class="box">
+            <div class="box-head"><div class="title">가격 · 매매 시점</div><div class="sub" id="bt-range"></div></div>
+            <div id="bt-price" class="chart"></div>
+          </div>
+
+          <div class="box">
+            <div class="box-head">
+              <div class="title">자산 곡선</div>
+              <div class="legend inline">
+                <span><i style="background:#f5b642"></i>전략</span>
+                <span><i style="background:#8b8fa3"></i>보유만 했을 때</span>
+              </div>
+            </div>
+            <div id="bt-equity" class="chart short"></div>
+          </div>
+
+          <div class="box">
+            <div class="box-head">
+              <div class="title">거래 내역</div>
+              <div class="row-btns">
+                <button class="btn small" id="bt-trades-csv">CSV 저장</button>
+                <button class="btn small" id="bt-pine">Pine Script 보기</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="tbl" id="bt-trades">
+                <thead><tr><th>#</th><th>진입</th><th class="r">진입가</th><th>청산</th><th class="r">청산가</th><th class="r">보유</th><th class="r">수익률</th><th>사유</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="pine-dialog">
+    <div class="box-head">
+      <div class="title">TradingView Pine Script</div>
+      <div class="row-btns">
+        <button class="btn small" id="pine-copy">복사</button>
+        <button class="btn small" id="pine-close">닫기</button>
+      </div>
+    </div>
+    <p class="hint">TradingView 하단 Pine 에디터에 붙여넣고 <b>차트에 추가</b>를 누르면 전략 테스터에서 같은 전략을 확인할 수 있어요. 체결 방식 차이로 수치는 조금 다를 수 있어요.</p>
+    <pre id="pine-code"></pre>
+  </dialog>
+
+  <footer class="foot">개인 학습·연구용 도구입니다. 과거 수익률이 미래 수익을 보장하지 않습니다.</footer>
+
+  <script src="assets/backtest.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
