@@ -237,7 +237,9 @@ const BTUI = (() => {
     o.dayKey = intraday ? (i) => bars[i].day : null;
     if (!intraday) o.dayClose = false;
     o.tick = o.tick && kr; o.limit = o.limit && kr;
-    o.etf = !!sym && Data.info(sym).market === "ETF";
+    o.etf = !!sym && (Data.info(sym).market === "ETF" || /^(KODEX|TIGER|KBSTAR|ACE|SOL|HANARO|ARIRANG|KOSEF|RISE|PLUS)\b/.test(Data.info(sym).name));
+    // 국내 ETF는 매도 시 증권거래세가 없음 → 매도 비용에서 세금(0.20%)만 뺌
+    if (o.etf && kr && o.sellFee >= 0.2) { o.sellFee = +(o.sellFee - 0.2).toFixed(4); o.etfTaxFree = true; }
     return o;
   }
 
@@ -358,6 +360,66 @@ const BTUI = (() => {
     } finally { btn.disabled = false; btn.textContent = "백테스트 실행"; }
   }
 
+  // ================= 내 목표 기준 =================
+  const GOAL_KEY = "tradingdesk.goal";
+  const GOAL_DEF = { winMin: 50, winMax: "", payoff: 1.5, trades: 100, mdd: -20, worstDay: -3 };
+  const goal = () => ({ ...GOAL_DEF, ...store.get(GOAL_KEY, {}) });
+  function goalChecks(st) {
+    const g = goal(), max = g.winMax === "" || g.winMax == null ? 100 : +g.winMax;
+    const f2 = (v) => (isFinite(v) ? v.toFixed(2) : "∞");
+    return [
+      { label: "승률", need: `${g.winMin}~${max === 100 ? "" : max}%`, value: st.trades ? st.winRate.toFixed(1) + "%" : "—", pass: st.trades > 0 && st.winRate >= +g.winMin && st.winRate <= max },
+      { label: "손익비 (평균 수익÷평균 손실)", need: `${g.payoff} 이상`, value: f2(st.payoff), pass: st.payoff >= +g.payoff },
+      { label: "거래당 기대값", need: "0보다 큼", value: fmtPct(st.expectancy), pass: st.expectancy > 0 },
+      { label: "거래 수", need: `${g.trades}회 이상`, value: st.trades + "회", pass: st.trades >= +g.trades },
+      { label: "최대 낙폭", need: `${g.mdd}% 이내`, value: fmtPct(st.mdd), pass: st.mdd >= +g.mdd },
+      { label: "하루 최대 손실", need: `${g.worstDay}% 이내`, value: fmtPct(st.worstDay), pass: st.worstDay >= +g.worstDay },
+    ];
+  }
+  const goalPassTrain = (t) => {
+    const g = goal(), max = g.winMax === "" || g.winMax == null ? 100 : +g.winMax;
+    return t.trades > 0 && t.win >= +g.winMin && t.win <= max && t.payoff >= +g.payoff && t.mdd >= +g.mdd && t.exp > 0;
+  };
+  function renderGoal(st) {
+    const cs = goalChecks(st), passN = cs.filter((c) => c.pass).length;
+    $("#goal-chips").innerHTML = `<div class="goal-score ${passN === cs.length ? "up" : ""}">${passN} / ${cs.length} 통과</div>` +
+      cs.map((c) => `<div class="goal-chip ${c.pass ? "pass" : "fail"}"><span class="gi">${c.pass ? "✓" : "✕"}</span>
+        <span class="gl">${esc(c.label)}</span><b>${esc(c.value)}</b><span class="gn">기준 ${esc(c.need)}</span></div>`).join("");
+  }
+  function initGoal() {
+    const fill = () => { const g = goal(); Object.keys(GOAL_DEF).forEach((k) => ($("#g-" + k).value = g[k])); };
+    fill();
+    $("#goal-edit").addEventListener("click", () => { const f = $("#goal-form"); f.hidden = !f.hidden; $("#goal-edit").textContent = f.hidden ? "기준 바꾸기" : "닫기"; });
+    $("#goal-form").addEventListener("change", () => {
+      const g = {};
+      Object.keys(GOAL_DEF).forEach((k) => { const v = $("#g-" + k).value; g[k] = k === "winMax" && v === "" ? "" : +v; });
+      store.set(GOAL_KEY, g);
+      const st = S.last && (S.last.kind === "basket" ? S.last.stats : S.last.res.stats);
+      if (st) renderGoal(st);
+      if (S.opt.result) renderOpt();
+    });
+  }
+
+  // ================= 일별 손익 =================
+  function renderDaily(st) {
+    const d = st.dailyRets || [];
+    const card = (k, v, c = "") => `<div class="ds"><span>${k}</span><b class="${c}">${v}</b></div>`;
+    $("#bt-daystats").innerHTML = d.length
+      ? card("거래한 날", `${st.activeDays}일 / ${st.days}일`) + card("플러스인 날", st.posDays.toFixed(1) + "%", st.posDays >= 50 ? "up" : "down") +
+        card("하루 평균", fmtPct(st.avgDay), cls(st.avgDay)) + card("가장 좋은 날", fmtPct(st.bestDay), "up") + card("가장 나쁜 날", fmtPct(st.worstDay), "down")
+      : `<span class="muted small">포지션을 들고 있던 날이 없어요.</span>`;
+    if (!d.length) { $("#bt-histo").innerHTML = ""; return; }
+    // 분포: 0을 가운데로 대칭 구간
+    const lim = Math.max(0.5, Math.ceil(Math.max(...d.map(Math.abs)) * 2) / 2), steps = 20, w = (2 * lim) / steps;
+    const bins = new Array(steps).fill(0);
+    d.forEach((v) => { bins[Math.min(steps - 1, Math.max(0, Math.floor((v + lim) / w)))]++; });
+    const mx = Math.max(...bins);
+    $("#bt-histo").innerHTML = `<div class="hbars">${bins.map((c, i) => {
+      const lo = -lim + i * w, hi = lo + w, pos = lo >= 0;
+      return `<div class="hb" title="${lo.toFixed(2)}% ~ ${hi.toFixed(2)}%: ${c}일"><i style="height:${(c / mx) * 100}%;background:${pos ? UP : DOWN}"></i></div>`;
+    }).join("")}</div><div class="haxis"><span>${(-lim).toFixed(1)}%</span><span>0</span><span>+${lim.toFixed(1)}%</span></div>`;
+  }
+
   // ================= 결과 화면 =================
   function initCharts() {
     const pc = LC.createChart($("#bt-price"), LC_OPTS()), ec = LC.createChart($("#bt-equity"), LC_OPTS()), dc = LC.createChart($("#bt-dd"), LC_OPTS());
@@ -398,7 +460,9 @@ const BTUI = (() => {
       card("거래 수", String(st.trades)),
       card("승률", st.trades ? st.winRate.toFixed(1) + "%" : "—"),
       card("평균 수익 / 손실", `${fmtPct(st.avgWin, 1)} / ${fmtPct(st.avgLoss, 1)}`),
-      card("손익비 (PF)", !isFinite(st.profitFactor) ? "∞" : st.profitFactor.toFixed(2)),
+      card("손익비 (평균 수익÷손실)", !isFinite(st.payoff) ? "∞" : st.payoff.toFixed(2)),
+      card("총이익÷총손실 (PF)", !isFinite(st.profitFactor) ? "∞" : st.profitFactor.toFixed(2)),
+      card("플러스인 날", st.activeDays ? st.posDays.toFixed(1) + "%" : "—"),
       card("거래당 기대값", fmtPct(st.expectancy), cls(st.expectancy)),
       card("최대 연속 손실", st.maxLoseStreak + "회"),
       card("평균 보유", st.avgHold.toFixed(1) + "봉"),
@@ -407,6 +471,8 @@ const BTUI = (() => {
   }
   function warnings(st, kind) {
     const w = [];
+    const L = S.last;
+    if (L && ((L.opt && L.opt.etfTaxFree) || (L.list && L.list.some((x) => x.opt.etfTaxFree)))) w.push("ETF는 매도 시 증권거래세가 없어서 매도 비용에서 세금 0.20%를 빼고 계산했어요.");
     if (st.trades < 20) w.push(`거래가 ${st.trades}회뿐이라 우연히 나온 결과일 수 있어요.`);
     if (st.blocked) w.push(`상·하한가 때문에 ${st.blocked}번 체결하지 못했어요.`);
     if (st.capped) w.push(`거래량 한도 때문에 ${st.capped}번 주문을 줄여서 체결했어요.`);
@@ -480,6 +546,7 @@ const BTUI = (() => {
     const bh = bars.map((b) => (opt.capital * b.c) / bars[0].o);
     renderEquity(bars.map((b) => b.t), r.equity, bh, bench, opt.capital, st.drawdown);
     renderMonthly(st.monthly);
+    renderGoal(st); renderDaily(st);
     renderTrades(r.trades, r.open, (_, i) => label(i), () => sym);
   }
 
@@ -503,6 +570,7 @@ const BTUI = (() => {
     renderBasketTable("ret", -1);
     renderEquity(run.port.t, run.port.total, run.bh.total, run.bench, run.opt.capital, st.drawdown);
     renderMonthly(st.monthly);
+    renderGoal(st); renderDaily(st);
     renderTrades(run.trades, null, (t, i) => t.label(i), (t) => t.sym);
   }
   function renderBasketTable(key, dir) {
@@ -587,8 +655,11 @@ const BTUI = (() => {
     const ret = eq[to - 1] / startVal - 1;
     const ann = years >= 0.25 && eq[to - 1] > 0 ? Math.pow(eq[to - 1] / startVal, 1 / years) - 1 : ret;
     const tr = trades || [];
-    const gw = tr.filter((t) => t.pnl > 0).reduce((a, t) => a + t.pnl, 0), gl = -tr.filter((t) => t.pnl <= 0).reduce((a, t) => a + t.pnl, 0);
+    const W = tr.filter((t) => t.pnl > 0), Lo = tr.filter((t) => t.pnl <= 0);
+    const gw = W.reduce((a, t) => a + t.pnl, 0), gl = -Lo.reduce((a, t) => a + t.pnl, 0);
+    const aw = W.length ? W.reduce((a, t) => a + t.ret, 0) / W.length : 0, al = Lo.length ? Lo.reduce((a, t) => a + t.ret, 0) / Lo.length : 0;
     return {
+      payoff: al < 0 ? aw / -al : aw > 0 ? 99 : 0, exp: tr.length ? tr.reduce((a, t) => a + t.ret, 0) / tr.length : 0,
       ret: ret * 100, mdd: mdd * 100, sharpe: sd > 0 ? (mean / sd) * Math.sqrt(n / years) : 0,
       calmar: mdd < 0 ? ann / -mdd : ann > 0 ? 99 : 0, pf: gl > 0 ? gw / gl : gw > 0 ? 99 : 0,
       trades: tr.length, win: tr.length ? (tr.filter((t) => t.pnl > 0).length / tr.length) * 100 : 0,
@@ -624,13 +695,14 @@ const BTUI = (() => {
       if (spec.train_pct) $("#opt-train").value = spec.train_pct;
       if (spec.objective) $("#opt-objective").value = spec.objective;
       if (spec.min_trades != null) $("#opt-mintrades").value = spec.min_trades;
+      if (spec.goal_filter != null) $("#opt-goal").checked = !!spec.goal_filter;
     }
     const ranges = $$("#opt-ranges tbody tr").map(readRangeRow).filter((r) => r.on);
     if (!ranges.length) throw new Error("탐색할 항목을 하나 이상 체크하세요.");
     const { total } = countCombos();
     if (total > 3000) throw new Error("조합이 3,000개를 넘어요. 범위를 줄이거나 간격을 넓혀주세요.");
     const trainPct = Math.min(90, Math.max(30, +$("#opt-train").value || 70)) / 100;
-    const objective = $("#opt-objective").value, minTrades = +$("#opt-mintrades").value || 0;
+    const objective = $("#opt-objective").value, minTrades = +$("#opt-mintrades").value || 0, useGoal = $("#opt-goal").checked;
     const sid = $("#bt-strategy").value, baseP = readParams(), baseO = readOpt();
 
     S.opt.running = true; S.opt.stop = false;
@@ -676,7 +748,7 @@ const BTUI = (() => {
         await new Promise((r) => setTimeout(r, 0));
       }
       bar.style.width = "100%";
-      S.opt.result = { ranges, rows, current, objective, minTrades, trainPct, splitMs, stopped: S.opt.stop, mode: S.mode };
+      S.opt.result = { ranges, rows, current, objective, minTrades, useGoal, trainPct, splitMs, stopped: S.opt.stop, mode: S.mode };
       renderOpt();
       return S.opt.result;
     } finally {
@@ -686,14 +758,16 @@ const BTUI = (() => {
     }
   }
 
-  const objLabel = { sharpe: "샤프", calmar: "수익÷MDD", ret: "총수익", pf: "손익비" };
-  const fmtObj = (k, v) => (v == null || !isFinite(v) ? "—" : k === "ret" ? fmtPct(v) : v.toFixed(2));
+  const objLabel = { sharpe: "샤프", calmar: "수익÷MDD", ret: "총수익", pf: "PF", exp: "기대값" };
+  const fmtObj = (k, v) => (v == null || !isFinite(v) ? "—" : k === "ret" || k === "exp" ? fmtPct(v) : v.toFixed(2));
   function renderOpt() {
     const R = S.opt.result;
     if (!R) return;
-    const ok = R.rows.filter((r) => r.train && r.test && r.train.trades >= R.minTrades);
+    R.useGoal = $("#opt-goal").checked;
+    const ok = R.rows.filter((r) => r.train && r.test && r.train.trades >= R.minTrades && (!R.useGoal || goalPassTrain(r.train)));
     ok.sort((a, b) => b.train[R.objective] - a.train[R.objective]);
     const best = ok[0];
+    const goalTest = ok.filter((r) => goalPassTrain(r.test)).length;
     const rho = spearman(ok.map((r) => r.train[R.objective]), ok.map((r) => r.test[R.objective]));
     const posTest = ok.length ? ok.filter((r) => r.test.ret > 0).length / ok.length * 100 : 0;
     const verdict = !ok.length ? "조건에 맞는 조합이 없어요. 최소 거래 수를 낮추거나 기간을 늘려보세요."
@@ -709,6 +783,7 @@ const BTUI = (() => {
       card("학습 1위 검증 수익", best ? fmtPct(best.test.ret) : "—", best ? cls(best.test.ret) : "") +
       card("학습·검증 순위 상관", isFinite(rho) ? rho.toFixed(2) : "—", rho >= 0.4 ? "up" : rho < 0.1 ? "down" : "") +
       card("검증에서 플러스인 조합", posTest.toFixed(0) + "%") +
+      card("검증에서도 목표 기준 통과", ok.length ? `${goalTest}개 (${(goalTest / ok.length * 100).toFixed(0)}%)` : "—") +
       card("지금 설정 학습 → 검증 수익", R.current.train && R.current.test ? `${fmtPct(R.current.train.ret, 1)} → ${fmtPct(R.current.test.ret, 1)}` : "—") +
       `<div class="stat wide-note"><div class="k">한 줄 판단</div><div class="v small-v">${esc(verdict)}</div></div>`;
     $("#opt-out").hidden = false;
@@ -720,13 +795,14 @@ const BTUI = (() => {
     // 상위 표
     const names = R.ranges.map((r) => rangeDefs().find((d) => d.key === r.key)?.label || r.key);
     const head = `<thead><tr><th>#</th>${names.map((n) => `<th class="r">${esc(n)}</th>`).join("")}
-      <th class="r">학습 ${objLabel[R.objective]}</th><th class="r">학습 수익</th><th class="r">학습 MDD</th><th class="r">학습 거래</th>
-      <th class="r">검증 ${objLabel[R.objective]}</th><th class="r">검증 수익</th><th class="r">검증 MDD</th><th class="r">검증 거래</th></tr></thead>`;
+      <th class="r">학습 ${objLabel[R.objective]}</th><th class="r">학습 수익</th><th class="r">학습 승률</th><th class="r">학습 손익비</th><th class="r">학습 MDD</th><th class="r">학습 거래</th>
+      <th class="r">검증 ${objLabel[R.objective]}</th><th class="r">검증 수익</th><th class="r">검증 승률</th><th class="r">검증 손익비</th><th class="r">검증 MDD</th><th class="r">검증 거래</th></tr></thead>`;
+    const pf2 = (v) => (v >= 99 ? "∞" : v.toFixed(2));
     const row = (r, i, extraCls = "") => `<tr data-i="${i}" class="${extraCls}"><td>${i < 0 ? "지금" : i + 1}</td>${r.vals.map((v) => `<td class="r">${v}</td>`).join("")}
-      <td class="r"><b>${fmtObj(R.objective, r.train[R.objective])}</b></td><td class="r ${cls(r.train.ret)}">${fmtPct(r.train.ret, 1)}</td><td class="r">${fmtPct(r.train.mdd, 1)}</td><td class="r">${r.train.trades}</td>
-      <td class="r"><b>${fmtObj(R.objective, r.test[R.objective])}</b></td><td class="r ${cls(r.test.ret)}">${fmtPct(r.test.ret, 1)}</td><td class="r">${fmtPct(r.test.mdd, 1)}</td><td class="r">${r.test.trades}</td></tr>`;
+      <td class="r"><b>${fmtObj(R.objective, r.train[R.objective])}</b></td><td class="r ${cls(r.train.ret)}">${fmtPct(r.train.ret, 1)}</td><td class="r">${r.train.win.toFixed(0)}%</td><td class="r">${pf2(r.train.payoff)}</td><td class="r">${fmtPct(r.train.mdd, 1)}</td><td class="r">${r.train.trades}</td>
+      <td class="r"><b>${fmtObj(R.objective, r.test[R.objective])}</b></td><td class="r ${cls(r.test.ret)}">${fmtPct(r.test.ret, 1)}</td><td class="r ${goalPassTrain(r.test) ? "up" : ""}">${r.test.win.toFixed(0)}%</td><td class="r">${pf2(r.test.payoff)}</td><td class="r">${fmtPct(r.test.mdd, 1)}</td><td class="r">${r.test.trades}</td></tr>`;
     const cur = R.current.train && R.current.test ? row({ vals: R.ranges.map((r) => (r.risk ? readOpt()[r.key] : readParams()[r.key])), ...R.current }, -1, "current") : "";
-    $("#opt-table").innerHTML = head + `<tbody>${cur}${ok.slice(0, 20).map((r, i) => row(r, i)).join("") || `<tr class="empty-row"><td colspan="${9 + names.length}">조건에 맞는 조합이 없어요.</td></tr>`}</tbody>`;
+    $("#opt-table").innerHTML = head + `<tbody>${cur}${ok.slice(0, 20).map((r, i) => row(r, i)).join("") || `<tr class="empty-row"><td colspan="${13 + names.length}">조건에 맞는 조합이 없어요.${R.useGoal ? " 목표 기준 필터를 끄거나 기준을 낮춰보세요." : ""}</td></tr>`}</tbody>`;
     S.opt.top = ok.slice(0, 20);
   }
   function renderHeat(R) {
@@ -840,6 +916,8 @@ const BTUI = (() => {
       sharpe: r2(s.sharpe), sortino: r2(s.sortino), calmar: r2(s.calmar), trades: s.trades, win_rate_pct: r2(s.winRate),
       avg_win_pct: r2(s.avgWin), avg_loss_pct: r2(s.avgLoss), profit_factor: r2(s.profitFactor), expectancy_pct: r2(s.expectancy),
       max_losing_streak: s.maxLoseStreak, avg_hold_bars: r2(s.avgHold), exposure_pct: r2(s.exposure),
+      payoff_ratio: r2(s.payoff), positive_days_pct: r2(s.posDays), worst_day_pct: r2(s.worstDay), best_day_pct: r2(s.bestDay),
+      goal: goalChecks(s).map((c) => `${c.pass ? "통과" : "미달"}: ${c.label} ${c.value} (기준 ${c.need})`),
     };
     if (L.bench) out.kospi200_pct = r2((L.bench[L.bench.length - 1] - 1) * 100);
     if (L.kind === "basket") {
@@ -850,10 +928,11 @@ const BTUI = (() => {
   }
   function optSummary(R) {
     if (!R) return null;
-    const ok = R.rows.filter((r) => r.train && r.test && r.train.trades >= R.minTrades).sort((a, b) => b.train[R.objective] - a.train[R.objective]);
+    const ok = R.rows.filter((r) => r.train && r.test && r.train.trades >= R.minTrades && (!R.useGoal || goalPassTrain(r.train))).sort((a, b) => b.train[R.objective] - a.train[R.objective]);
     const rho = spearman(ok.map((r) => r.train[R.objective]), ok.map((r) => r.test[R.objective]));
     const pick = (r) => ({ values: Object.fromEntries(R.ranges.map((g, j) => [g.key, r.vals[j]])), train: r.train, test: r.test });
-    return { objective: R.objective, train_pct: R.trainPct * 100, combos: R.rows.length, valid: ok.length,
+    return { objective: R.objective, goal_filter: !!R.useGoal, train_pct: R.trainPct * 100, combos: R.rows.length, valid: ok.length,
+      test_goal_pass: ok.filter((r) => goalPassTrain(r.test)).length,
       rank_corr_train_test: isFinite(rho) ? Math.round(rho * 100) / 100 : null,
       share_test_positive_pct: ok.length ? Math.round(ok.filter((r) => r.test.ret > 0).length / ok.length * 100) : 0,
       current: R.current, top5: ok.slice(0, 5).map(pick) };
@@ -927,6 +1006,9 @@ ${strategies}
 
 엔진: 신호는 봉 종가로 판단하고 다음 봉 시가에 체결. direction long/short/both(신호마다 뒤집기). sizing all/fixed(size_pct)/risk(risk_pct, atr_mult). pyramid_n>1이면 비중을 나눠 down(물타기)/up(불타기)/signal 방식으로 추가. tp1_pct에 닿으면 tp1_frac%만 매도. 손절·익절은 평균단가 기준, 같은 봉에 둘 다 닿으면 손절 우선. 기본 비용: 매수 0.015%, 매도 수수료+세금 0.215%, 슬리피지 편도 0.05%.
 
+사용자의 매매 철학: 매일 이기는 것보다 승률 50~60%, 손실은 작게, 이익은 크게(손익비 1.5 이상). 결과에는 '내 목표 기준' 통과 여부(goal)가 있으니 이것을 중심으로 평가하고, 손익비를 키우는 방법(손절 고정, 1차 익절 후 트레일링, 진입 필터)을 제안해.
+ETF는 매도 시 증권거래세가 없어 매도 비용을 0.015% 정도로 낮게 잡아도 돼.
+
 이 사용자의 지난 연구: 한국 대형주에서 같은 종목 박스권 롱숏 비중조절은 1시간봉·5분봉·일봉 모두 비용 후 우위가 없었고, 1시간봉 박스 상단 돌파 뒤에는 추세가 이어지는 경향이 있었어.
 
 답변은 짧고 읽기 쉽게. 숫자는 퍼센트 소수 한두 자리로.`;
@@ -964,7 +1046,8 @@ ${strategies}
       type: "object",
       properties: {
         ranges: { type: "array", items: { type: "object", properties: { key: { type: "string" }, from: { type: "number" }, to: { type: "number" }, step: { type: "number" } }, required: ["key", "from", "to", "step"] } },
-        train_pct: { type: "number" }, objective: { type: "string", enum: ["sharpe", "calmar", "ret", "pf"] }, min_trades: { type: "integer" },
+        train_pct: { type: "number" }, objective: { type: "string", enum: ["sharpe", "calmar", "ret", "exp", "pf"] }, min_trades: { type: "integer" },
+        goal_filter: { type: "boolean", description: "학습 구간에서 사용자의 목표 기준을 만족한 설정만 남길지" },
       },
       required: ["ranges"],
     },
@@ -1183,6 +1266,7 @@ ${strategies}
     $("#opt-run").addEventListener("click", async () => { try { await optimize(); } catch (err) { toast(esc(err.message), true); } });
     $("#opt-stop").addEventListener("click", () => (S.opt.stop = true));
     $("#opt-objective").addEventListener("change", () => { if (S.opt.result) { S.opt.result.objective = $("#opt-objective").value; renderOpt(); } });
+    $("#opt-goal").addEventListener("change", () => { if (S.opt.result) renderOpt(); });
     $("#opt-mintrades").addEventListener("change", () => { if (S.opt.result) { S.opt.result.minTrades = +$("#opt-mintrades").value || 0; renderOpt(); } });
     $$("#opt-heat-seg button").forEach((b) => b.addEventListener("click", () => {
       S.opt.heat = b.dataset.h; $$("#opt-heat-seg button").forEach((x) => x.classList.toggle("on", x === b)); renderHeat(S.opt.result);
@@ -1207,7 +1291,7 @@ ${strategies}
       renderCompare();
     });
 
-    initCharts(); initChat();
+    initCharts(); initChat(); initGoal();
     setDates();
     renderParams();
     const saved = store.get(FORM_KEY, null);

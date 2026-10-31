@@ -1,0 +1,1844 @@
+[
+ {
+  "iv": "60m",
+  "sid": "breakout",
+  "sym": "069500.KS",
+  "name": "KODEX 200",
+  "combos": 648,
+  "trainPass": 36,
+  "testPassOfTrainPass": 8,
+  "testPosOfTrainPass": 36,
+  "rho": 0.9192699851498407,
+  "best": {
+   "cfg": {
+    "p": {
+     "lookback": 24,
+     "volLen": 20,
+     "volMult": 1,
+     "exitLen": 12
+    },
+    "o": {
+     "stopLoss": 2,
+     "tp1Pct": 0,
+     "tp1Frac": 50,
+     "trailing": 0,
+     "dayClose": false
+    }
+   },
+   "train": {
+    "ret": 46.756108819013065,
+    "mdd": -10.769622303740134,
+    "sharpe": 1.7267532983261102,
+    "trades": 31,
+    "win": 58.06451612903226,
+    "payoff": 2.747926154999998,
+    "exp": 1.275290044057881
+   },
+   "test": {
+    "ret": 68.54952200629411,
+    "mdd": -16.134497388675406,
+    "sharpe": 2.3883344718605577,
+    "trades": 16,
+    "win": 37.5,
+    "payoff": 6.787864893230132,
+    "exp": 3.884505724030178
+   },
+   "testSlip05": {
+    "ret": 67.29000609627731,
+    "mdd": -16.536139848912967,
+    "sharpe": 2.3546665052763003,
+    "trades": 16,
+    "win": 37.5,
+    "payoff": 6.6194422481346455,
+    "exp": 3.8331970390803374
+   }
+  },
+  "bh": {
+   "train": 84.39352667841693,
+   "test": 56.20057356391761
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "breakout",
+  "sym": "122630.KS",
+  "name": "KODEX 레버리지",
+  "combos": 648,
+  "trainPass": 2,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 2,
+  "rho": 0.6671720321004736,
+  "best": {
+   "cfg": {
+    "p": {
+     "lookback": 6,
+     "volLen": 20,
+     "volMult": 2,
+     "exitLen": 12
+    },
+    "o": {
+     "stopLoss": 2,
+     "tp1Pct": 2,
+     "tp1Frac": 50,
+     "trailing": 0,
+     "dayClose": false
+    }
+   },
+   "train": {
+    "ret": 96.45143162931427,
+    "mdd": -16.673704300829307,
+    "sharpe": 1.9901654057833047,
+    "trades": 50,
+    "win": 52,
+    "payoff": 2.2349579020473413,
+    "exp": 1.4159875168673943
+   },
+   "test": {
+    "ret": 69.74661549402398,
+    "mdd": -20.179458716171517,
+    "sharpe": 2.0598097491694785,
+    "trades": 20,
+    "win": 20,
+    "payoff": 16.939892116486014,
+    "exp": 3.332999609182285
+   },
+   "testSlip05": {
+    "ret": 68.52760394785645,
+    "mdd": -20.405975475466875,
+    "sharpe": 2.034312619902489,
+    "trades": 20,
+    "win": 20,
+    "payoff": 16.464351651067137,
+    "exp": 3.29333371230067
+   }
+  },
+  "bh": {
+   "train": 204.29078014184395,
+   "test": 65.46662006291506
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "breakout",
+  "sym": "114800.KS",
+  "name": "KODEX 인버스",
+  "combos": 648,
+  "trainPass": 136,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 22,
+  "rho": 0.39841608475155854,
+  "best": {
+   "cfg": {
+    "p": {
+     "lookback": 24,
+     "volLen": 20,
+     "volMult": 2,
+     "exitLen": 12
+    },
+    "o": {
+     "stopLoss": 2,
+     "tp1Pct": 0,
+     "tp1Frac": 50,
+     "trailing": 2,
+     "dayClose": true
+    }
+   },
+   "train": {
+    "ret": 11.235176510448252,
+    "mdd": -3.0248139815293396,
+    "sharpe": 1.493481942720828,
+    "trades": 43,
+    "win": 58.139534883720934,
+    "payoff": 1.9542221138320066,
+    "exp": 0.2515115481165555
+   },
+   "test": {
+    "ret": -0.2851047051985023,
+    "mdd": -8.713173987559063,
+    "sharpe": 0.0038305945185737366,
+    "trades": 15,
+    "win": 40,
+    "payoff": 1.4948088430384165,
+    "exp": -0.002536289322068508
+   },
+   "testSlip05": {
+    "ret": -1.0598970878618053,
+    "mdd": -9.095812862438867,
+    "sharpe": -0.09903899145769218,
+    "trades": 15,
+    "win": 33.33333333333333,
+    "payoff": 1.8566031149723108,
+    "exp": -0.05469478760775208
+   }
+  },
+  "bh": {
+   "train": -47.77777777777777,
+   "test": -53.91169635941131
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "breakout",
+  "sym": "252670.KS",
+  "name": "KODEX 200선물인버스2X",
+  "combos": 648,
+  "trainPass": 10,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.5552434014055152,
+  "best": {
+   "cfg": {
+    "p": {
+     "lookback": 24,
+     "volLen": 20,
+     "volMult": 1.5,
+     "exitLen": 6
+    },
+    "o": {
+     "stopLoss": 2,
+     "tp1Pct": 0,
+     "tp1Frac": 50,
+     "trailing": 2,
+     "dayClose": true
+    }
+   },
+   "train": {
+    "ret": 26.409078198194734,
+    "mdd": -4.878366362692487,
+    "sharpe": 1.835482263807101,
+    "trades": 44,
+    "win": 65.9090909090909,
+    "payoff": 1.5699398360308872,
+    "exp": 0.5462328678675318
+   },
+   "test": {
+    "ret": -6.999669546410381,
+    "mdd": -11.798654819605714,
+    "sharpe": -0.9418407324495951,
+    "trades": 14,
+    "win": 35.714285714285715,
+    "payoff": 0.9849179235193962,
+    "exp": -0.500055197969739
+   },
+   "testSlip05": {
+    "ret": -7.583797907988066,
+    "mdd": -12.221080609861378,
+    "sharpe": -1.024074335197911,
+    "trades": 14,
+    "win": 35.714285714285715,
+    "payoff": 0.9298522039195875,
+    "exp": -0.5450631589501779
+   }
+  },
+  "bh": {
+   "train": -76.83860232945091,
+   "test": -85.65279770444764
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "breakout",
+  "sym": "229200.KS",
+  "name": "KODEX 코스닥150",
+  "combos": 648,
+  "trainPass": 3,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 3,
+  "rho": 0.46363728403705695,
+  "best": {
+   "cfg": {
+    "p": {
+     "lookback": 12,
+     "volLen": 20,
+     "volMult": 2,
+     "exitLen": 6
+    },
+    "o": {
+     "stopLoss": 2,
+     "tp1Pct": 0,
+     "tp1Frac": 50,
+     "trailing": 0,
+     "dayClose": false
+    }
+   },
+   "train": {
+    "ret": 19.685086401952077,
+    "mdd": -10.65206606647482,
+    "sharpe": 0.8878674399729426,
+    "trades": 31,
+    "win": 51.61290322580645,
+    "payoff": 1.719735456229249,
+    "exp": 0.5525141038074478
+   },
+   "test": {
+    "ret": 20.690656439972788,
+    "mdd": -11.461901272832142,
+    "sharpe": 1.3352197323205885,
+    "trades": 13,
+    "win": 38.46153846153847,
+    "payoff": 4.469901116671954,
+    "exp": 1.7671213608711251
+   },
+   "testSlip05": {
+    "ret": 20.004588305762706,
+    "mdd": -11.806573746388105,
+    "sharpe": 1.2966277285622747,
+    "trades": 13,
+    "win": 38.46153846153847,
+    "payoff": 4.329665720300305,
+    "exp": 1.7196240322080423
+   }
+  },
+  "bh": {
+   "train": 35.449957947855346,
+   "test": -26.451412604781122
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "breakout",
+  "sym": "233740.KS",
+  "name": "KODEX 코스닥150레버리지",
+  "combos": 648,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.4292369960317345,
+  "best": null,
+  "bh": {
+   "train": 45.61301568855316,
+   "test": -62.145991224571205
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "rsi",
+  "sym": "069500.KS",
+  "name": "KODEX 200",
+  "combos": 288,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.025740012733924598,
+  "best": null,
+  "bh": {
+   "train": 84.39352667841693,
+   "test": 56.20057356391761
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "rsi",
+  "sym": "122630.KS",
+  "name": "KODEX 레버리지",
+  "combos": 288,
+  "trainPass": 2,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.4035477127654906,
+  "best": {
+   "cfg": {
+    "p": {
+     "period": 7,
+     "low": 20,
+     "high": 60
+    },
+    "o": {
+     "stopLoss": 2,
+     "tp1Pct": 1,
+     "tp1Frac": 50,
+     "trailing": 1,
+     "dayClose": false
+    }
+   },
+   "train": {
+    "ret": 12.227241303774639,
+    "mdd": -5.149789181912546,
+    "sharpe": 0.9456162022852731,
+    "trades": 46,
+    "win": 50,
+    "payoff": 1.712621006012282,
+    "exp": 0.258195057459479
+   },
+   "test": {
+    "ret": -16.721296954075438,
+    "mdd": -16.721296954075438,
+    "sharpe": -4.290250908502556,
+    "trades": 20,
+    "win": 10,
+    "payoff": 0.34747112514853745,
+    "exp": -0.9099180661439086
+   },
+   "testSlip05": {
+    "ret": -17.68984316294322,
+    "mdd": -17.68984316294322,
+    "sharpe": -4.330924686442721,
+    "trades": 20,
+    "win": 10,
+    "payoff": 0.2883310011513116,
+    "exp": -0.9678500289480194
+   }
+  },
+  "bh": {
+   "train": 204.29078014184395,
+   "test": 65.46662006291506
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "rsi",
+  "sym": "114800.KS",
+  "name": "KODEX 인버스",
+  "combos": 288,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.7883358400607526,
+  "best": null,
+  "bh": {
+   "train": -47.77777777777777,
+   "test": -53.91169635941131
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "rsi",
+  "sym": "252670.KS",
+  "name": "KODEX 200선물인버스2X",
+  "combos": 288,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.7661352670963384,
+  "best": null,
+  "bh": {
+   "train": -76.83860232945091,
+   "test": -85.65279770444764
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "rsi",
+  "sym": "229200.KS",
+  "name": "KODEX 코스닥150",
+  "combos": 288,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.05085391615403118,
+  "best": null,
+  "bh": {
+   "train": 35.449957947855346,
+   "test": -26.451412604781122
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "rsi",
+  "sym": "233740.KS",
+  "name": "KODEX 코스닥150레버리지",
+  "combos": 288,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.01435681321972615,
+  "best": null,
+  "bh": {
+   "train": 45.61301568855316,
+   "test": -62.145991224571205
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "bollinger",
+  "sym": "069500.KS",
+  "name": "KODEX 200",
+  "combos": 216,
+  "trainPass": 2,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 2,
+  "rho": -0.03803846876480942,
+  "best": {
+   "cfg": {
+    "p": {
+     "period": 20,
+     "k": 2.5,
+     "exitAt": "중심선"
+    },
+    "o": {
+     "stopLoss": 1,
+     "tp1Pct": 1,
+     "tp1Frac": 50,
+     "trailing": 1,
+     "dayClose": false
+    }
+   },
+   "train": {
+    "ret": 6.678870771558221,
+    "mdd": -2.9474157584328253,
+    "sharpe": 0.7649254206468455,
+    "trades": 34,
+    "win": 50,
+    "payoff": 1.5534002548041708,
+    "exp": 0.1951337111376844
+   },
+   "test": {
+    "ret": 1.0746959266456857,
+    "mdd": -6.8548937070286975,
+    "sharpe": 0.1970777692499691,
+    "trades": 19,
+    "win": 47.368421052631575,
+    "payoff": 1.2482489093338405,
+    "exp": 0.06552205234699474
+   },
+   "testSlip05": {
+    "ret": 0.25925227581244936,
+    "mdd": -7.0638517417834334,
+    "sharpe": 0.07544528566681802,
+    "trades": 19,
+    "win": 47.368421052631575,
+    "payoff": 1.157057274772491,
+    "exp": 0.02282442953180589
+   }
+  },
+  "bh": {
+   "train": 84.39352667841693,
+   "test": 56.20057356391761
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "bollinger",
+  "sym": "122630.KS",
+  "name": "KODEX 레버리지",
+  "combos": 216,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.040389101444305124,
+  "best": null,
+  "bh": {
+   "train": 204.29078014184395,
+   "test": 65.46662006291506
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "bollinger",
+  "sym": "114800.KS",
+  "name": "KODEX 인버스",
+  "combos": 216,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.626028240611179,
+  "best": null,
+  "bh": {
+   "train": -47.77777777777777,
+   "test": -53.91169635941131
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "bollinger",
+  "sym": "252670.KS",
+  "name": "KODEX 200선물인버스2X",
+  "combos": 216,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.1404251544138868,
+  "best": null,
+  "bh": {
+   "train": -76.83860232945091,
+   "test": -85.65279770444764
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "bollinger",
+  "sym": "229200.KS",
+  "name": "KODEX 코스닥150",
+  "combos": 216,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.3055473112844961,
+  "best": null,
+  "bh": {
+   "train": 35.449957947855346,
+   "test": -26.451412604781122
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "bollinger",
+  "sym": "233740.KS",
+  "name": "KODEX 코스닥150레버리지",
+  "combos": 216,
+  "trainPass": 4,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.1979856761070381,
+  "best": {
+   "cfg": {
+    "p": {
+     "period": 20,
+     "k": 2.5,
+     "exitAt": "상단"
+    },
+    "o": {
+     "stopLoss": 1,
+     "tp1Pct": 1,
+     "tp1Frac": 50,
+     "trailing": 2,
+     "dayClose": false
+    }
+   },
+   "train": {
+    "ret": 17.095463315496893,
+    "mdd": -8.1891878893117,
+    "sharpe": 1.0112158510619307,
+    "trades": 47,
+    "win": 51.06382978723404,
+    "payoff": 1.6777602762375694,
+    "exp": 0.3524161234482659
+   },
+   "test": {
+    "ret": -1.3825734614483998,
+    "mdd": -9.270886826578584,
+    "sharpe": -0.12303564473966731,
+    "trades": 33,
+    "win": 33.33333333333333,
+    "payoff": 1.9124661744741023,
+    "exp": -0.03062653999593253
+   },
+   "testSlip05": {
+    "ret": -2.531419899489973,
+    "mdd": -9.90917316299561,
+    "sharpe": -0.2632786631281958,
+    "trades": 33,
+    "win": 33.33333333333333,
+    "payoff": 1.8158982020529784,
+    "exp": -0.06623630288608898
+   }
+  },
+  "bh": {
+   "train": 45.61301568855316,
+   "test": -62.145991224571205
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "ma_cross",
+  "sym": "069500.KS",
+  "name": "KODEX 200",
+  "combos": 288,
+  "trainPass": 16,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 16,
+  "rho": 0.8144986869855145,
+  "best": {
+   "cfg": {
+    "p": {
+     "type": "EMA",
+     "fast": 10,
+     "slow": 60
+    },
+    "o": {
+     "stopLoss": 2,
+     "tp1Pct": 2,
+     "tp1Frac": 50,
+     "trailing": 0,
+     "dayClose": false
+    }
+   },
+   "train": {
+    "ret": 43.19887913262661,
+    "mdd": -8.795166035451295,
+    "sharpe": 1.8290531179046212,
+    "trades": 32,
+    "win": 50,
+    "payoff": 3.1536002841301243,
+    "exp": 1.135522629583498
+   },
+   "test": {
+    "ret": 22.99894153909854,
+    "mdd": -19.405228974618094,
+    "sharpe": 1.2537833210003342,
+    "trades": 17,
+    "win": 29.411764705882355,
+    "payoff": 6.144442131774657,
+    "exp": 1.535394026086868
+   },
+   "testSlip05": {
+    "ret": 22.714770343721714,
+    "mdd": -19.801220426543196,
+    "sharpe": 1.2393194355416828,
+    "trades": 17,
+    "win": 35.294117647058826,
+    "payoff": 4.5923155730683165,
+    "exp": 1.5209356576096829
+   }
+  },
+  "bh": {
+   "train": 84.39352667841693,
+   "test": 56.20057356391761
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "ma_cross",
+  "sym": "122630.KS",
+  "name": "KODEX 레버리지",
+  "combos": 288,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.5567923785020871,
+  "best": null,
+  "bh": {
+   "train": 204.29078014184395,
+   "test": 65.46662006291506
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "ma_cross",
+  "sym": "114800.KS",
+  "name": "KODEX 인버스",
+  "combos": 288,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.09613459870496163,
+  "best": null,
+  "bh": {
+   "train": -47.77777777777777,
+   "test": -53.91169635941131
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "ma_cross",
+  "sym": "252670.KS",
+  "name": "KODEX 200선물인버스2X",
+  "combos": 288,
+  "trainPass": 1,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.08207364744854899,
+  "best": {
+   "cfg": {
+    "p": {
+     "type": "EMA",
+     "fast": 10,
+     "slow": 40
+    },
+    "o": {
+     "stopLoss": 2,
+     "tp1Pct": 2,
+     "tp1Frac": 50,
+     "trailing": 0,
+     "dayClose": false
+    }
+   },
+   "train": {
+    "ret": 21.731393730007564,
+    "mdd": -15.564090614062497,
+    "sharpe": 0.6415893623426081,
+    "trades": 35,
+    "win": 54.285714285714285,
+    "payoff": 1.5624085741449338,
+    "exp": 0.5969821389735042
+   },
+   "test": {
+    "ret": -35.14937356543487,
+    "mdd": -36.763745378844426,
+    "sharpe": -2.366684508937135,
+    "trades": 17,
+    "win": 0,
+    "payoff": 0,
+    "exp": -2.4919462181240273
+   },
+   "testSlip05": {
+    "ret": -35.536305228941536,
+    "mdd": -37.075208616901165,
+    "sharpe": -2.394769273256721,
+    "trades": 17,
+    "win": 0,
+    "payoff": 0,
+    "exp": -2.5261175562403833
+   }
+  },
+  "bh": {
+   "train": -76.83860232945091,
+   "test": -85.65279770444764
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "ma_cross",
+  "sym": "229200.KS",
+  "name": "KODEX 코스닥150",
+  "combos": 288,
+  "trainPass": 9,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 3,
+  "rho": 0.004902108848610357,
+  "best": {
+   "cfg": {
+    "p": {
+     "type": "EMA",
+     "fast": 20,
+     "slow": 40
+    },
+    "o": {
+     "stopLoss": 2,
+     "tp1Pct": 0,
+     "tp1Frac": 50,
+     "trailing": 2,
+     "dayClose": false
+    }
+   },
+   "train": {
+    "ret": 26.06139334130708,
+    "mdd": -7.655577212570918,
+    "sharpe": 1.2527088015777028,
+    "trades": 31,
+    "win": 51.61290322580645,
+    "payoff": 2.1955931233270234,
+    "exp": 0.7841924057739998
+   },
+   "test": {
+    "ret": 1.6975609339453968,
+    "mdd": -9.296911505025406,
+    "sharpe": 0.20775001973349497,
+    "trades": 15,
+    "win": 33.33333333333333,
+    "payoff": 2.291458222841808,
+    "exp": 0.1717499202481613
+   },
+   "testSlip05": {
+    "ret": 0.8166190611185842,
+    "mdd": -9.893599714452417,
+    "sharpe": 0.1331458165829756,
+    "trades": 15,
+    "win": 33.33333333333333,
+    "payoff": 2.1868821595044237,
+    "exp": 0.113613639768303
+   }
+  },
+  "bh": {
+   "train": 35.449957947855346,
+   "test": -26.451412604781122
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "60m",
+  "sid": "ma_cross",
+  "sym": "233740.KS",
+  "name": "KODEX 코스닥150레버리지",
+  "combos": 288,
+  "trainPass": 4,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.39337646325473863,
+  "best": {
+   "cfg": {
+    "p": {
+     "type": "EMA",
+     "fast": 20,
+     "slow": 40
+    },
+    "o": {
+     "stopLoss": 2,
+     "tp1Pct": 0,
+     "tp1Frac": 50,
+     "trailing": 2,
+     "dayClose": false
+    }
+   },
+   "train": {
+    "ret": 53.463288351301095,
+    "mdd": -8.835811278328688,
+    "sharpe": 1.817345983168413,
+    "trades": 30,
+    "win": 56.666666666666664,
+    "payoff": 2.837223017257238,
+    "exp": 1.4924685506803248
+   },
+   "test": {
+    "ret": -9.804097911799714,
+    "mdd": -14.62970348932262,
+    "sharpe": -1.2748729583677236,
+    "trades": 16,
+    "win": 31.25,
+    "payoff": 0.9886508165724106,
+    "exp": -0.6289216805495843
+   },
+   "testSlip05": {
+    "ret": -10.55860793221549,
+    "mdd": -15.191327857518422,
+    "sharpe": -1.3705239434749756,
+    "trades": 16,
+    "win": 31.25,
+    "payoff": 0.9250478416411766,
+    "exp": -0.6811938970968686
+   }
+  },
+  "bh": {
+   "train": 45.61301568855316,
+   "test": -62.145991224571205
+  },
+  "period": {
+   "train": [
+    "2023-10-31",
+    "2025-12-03"
+   ],
+   "test": [
+    "2025-12-03",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "breakout",
+  "sym": "069500.KS",
+  "name": "KODEX 200",
+  "combos": 324,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.29341906803207113,
+  "best": null,
+  "bh": {
+   "train": 9.472445577564237,
+   "test": -19.492967840186324
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "breakout",
+  "sym": "122630.KS",
+  "name": "KODEX 레버리지",
+  "combos": 324,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.4945683199155487,
+  "best": null,
+  "bh": {
+   "train": 13.539323033848305,
+   "test": -37.46642596098807
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "breakout",
+  "sym": "114800.KS",
+  "name": "KODEX 인버스",
+  "combos": 324,
+  "trainPass": 4,
+  "testPassOfTrainPass": 2,
+  "testPosOfTrainPass": 4,
+  "rho": -0.02934659658229304,
+  "best": {
+   "cfg": {
+    "p": {
+     "lookback": 12,
+     "volLen": 20,
+     "volMult": 2,
+     "exitLen": 6
+    },
+    "o": {
+     "stopLoss": 1,
+     "tp1Pct": 0,
+     "tp1Frac": 50,
+     "trailing": 1,
+     "dayClose": true
+    }
+   },
+   "train": {
+    "ret": 4.935182913418479,
+    "mdd": -2.8869281263511404,
+    "sharpe": 2.597423542349484,
+    "trades": 24,
+    "win": 50,
+    "payoff": 1.7712270003094466,
+    "exp": 0.20607568992541406
+   },
+   "test": {
+    "ret": 5.174497519719368,
+    "mdd": -2.403378870144812,
+    "sharpe": 4.184430926033873,
+    "trades": 15,
+    "win": 53.333333333333336,
+    "payoff": 2.0489955352326126,
+    "exp": 0.34286737040967596
+   },
+   "testSlip05": {
+    "ret": 4.263437136680137,
+    "mdd": -2.5788947992700595,
+    "sharpe": 3.469093400870961,
+    "trades": 15,
+    "win": 40,
+    "payoff": 2.9877551358136136,
+    "exp": 0.28464842725436035
+   }
+  },
+  "bh": {
+   "train": -10.502283105022837,
+   "test": 21.42857142857142
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "breakout",
+  "sym": "252670.KS",
+  "name": "KODEX 200선물인버스2X",
+  "combos": 324,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.464192867461653,
+  "best": null,
+  "bh": {
+   "train": -22.22222222222222,
+   "test": 42.85714285714286
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "breakout",
+  "sym": "229200.KS",
+  "name": "KODEX 코스닥150",
+  "combos": 324,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.11175059520589689,
+  "best": null,
+  "bh": {
+   "train": 29.680170575692966,
+   "test": -22.097994080894445
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "breakout",
+  "sym": "233740.KS",
+  "name": "KODEX 코스닥150레버리지",
+  "combos": 324,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.437006976683468,
+  "best": null,
+  "bh": {
+   "train": 62.75303643724697,
+   "test": -40.945861854387054
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "rsi",
+  "sym": "069500.KS",
+  "name": "KODEX 200",
+  "combos": 144,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.4809797364886107,
+  "best": null,
+  "bh": {
+   "train": 9.472445577564237,
+   "test": -19.492967840186324
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "rsi",
+  "sym": "122630.KS",
+  "name": "KODEX 레버리지",
+  "combos": 144,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.028343050950802178,
+  "best": null,
+  "bh": {
+   "train": 13.539323033848305,
+   "test": -37.46642596098807
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "rsi",
+  "sym": "114800.KS",
+  "name": "KODEX 인버스",
+  "combos": 144,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.4383663437080225,
+  "best": null,
+  "bh": {
+   "train": -10.502283105022837,
+   "test": 21.42857142857142
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "rsi",
+  "sym": "252670.KS",
+  "name": "KODEX 200선물인버스2X",
+  "combos": 144,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.19947886601288364,
+  "best": null,
+  "bh": {
+   "train": -22.22222222222222,
+   "test": 42.85714285714286
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "rsi",
+  "sym": "229200.KS",
+  "name": "KODEX 코스닥150",
+  "combos": 144,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.7568213863800922,
+  "best": null,
+  "bh": {
+   "train": 29.680170575692966,
+   "test": -22.097994080894445
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "rsi",
+  "sym": "233740.KS",
+  "name": "KODEX 코스닥150레버리지",
+  "combos": 144,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.04273015691542573,
+  "best": null,
+  "bh": {
+   "train": 62.75303643724697,
+   "test": -40.945861854387054
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "bollinger",
+  "sym": "069500.KS",
+  "name": "KODEX 200",
+  "combos": 108,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.05199729438775996,
+  "best": null,
+  "bh": {
+   "train": 9.472445577564237,
+   "test": -19.492967840186324
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "bollinger",
+  "sym": "122630.KS",
+  "name": "KODEX 레버리지",
+  "combos": 108,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.1960806729734107,
+  "best": null,
+  "bh": {
+   "train": 13.539323033848305,
+   "test": -37.46642596098807
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "bollinger",
+  "sym": "114800.KS",
+  "name": "KODEX 인버스",
+  "combos": 108,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.32600722131717585,
+  "best": null,
+  "bh": {
+   "train": -10.502283105022837,
+   "test": 21.42857142857142
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "bollinger",
+  "sym": "252670.KS",
+  "name": "KODEX 200선물인버스2X",
+  "combos": 108,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.8200398720497343,
+  "best": null,
+  "bh": {
+   "train": -22.22222222222222,
+   "test": 42.85714285714286
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "bollinger",
+  "sym": "229200.KS",
+  "name": "KODEX 코스닥150",
+  "combos": 108,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.38199624643935715,
+  "best": null,
+  "bh": {
+   "train": 29.680170575692966,
+   "test": -22.097994080894445
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "bollinger",
+  "sym": "233740.KS",
+  "name": "KODEX 코스닥150레버리지",
+  "combos": 108,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.06163841969380853,
+  "best": null,
+  "bh": {
+   "train": 62.75303643724697,
+   "test": -40.945861854387054
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "ma_cross",
+  "sym": "069500.KS",
+  "name": "KODEX 200",
+  "combos": 144,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.626132733408324,
+  "best": null,
+  "bh": {
+   "train": 9.472445577564237,
+   "test": -19.492967840186324
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "ma_cross",
+  "sym": "122630.KS",
+  "name": "KODEX 레버리지",
+  "combos": 144,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.05057667791526059,
+  "best": null,
+  "bh": {
+   "train": 13.539323033848305,
+   "test": -37.46642596098807
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "ma_cross",
+  "sym": "114800.KS",
+  "name": "KODEX 인버스",
+  "combos": 144,
+  "trainPass": 3,
+  "testPassOfTrainPass": 2,
+  "testPosOfTrainPass": 3,
+  "rho": 0.6249088863892014,
+  "best": {
+   "cfg": {
+    "p": {
+     "type": "EMA",
+     "fast": 10,
+     "slow": 40
+    },
+    "o": {
+     "stopLoss": 1,
+     "tp1Pct": 0,
+     "tp1Frac": 50,
+     "trailing": 1,
+     "dayClose": true
+    }
+   },
+   "train": {
+    "ret": 5.73682609010826,
+    "mdd": -5.02159315425863,
+    "sharpe": 2.7473277697277787,
+    "trades": 34,
+    "win": 50,
+    "payoff": 1.7264083857696304,
+    "exp": 0.16843222720906617
+   },
+   "test": {
+    "ret": 4.059657922628057,
+    "mdd": -2.0961346949430415,
+    "sharpe": 4.633045127044223,
+    "trades": 13,
+    "win": 53.84615384615385,
+    "payoff": 2.7319847721283,
+    "exp": 0.3094611075872568
+   },
+   "testSlip05": {
+    "ret": 3.25114976666645,
+    "mdd": -2.360128879094736,
+    "sharpe": 3.724878755017651,
+    "trades": 13,
+    "win": 38.46153846153847,
+    "payoff": 3.8775824617336947,
+    "exp": 0.2492844778939482
+   }
+  },
+  "bh": {
+   "train": -10.502283105022837,
+   "test": 21.42857142857142
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "ma_cross",
+  "sym": "252670.KS",
+  "name": "KODEX 200선물인버스2X",
+  "combos": 144,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": 0.32487742142914555,
+  "best": null,
+  "bh": {
+   "train": -22.22222222222222,
+   "test": 42.85714285714286
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "ma_cross",
+  "sym": "229200.KS",
+  "name": "KODEX 코스닥150",
+  "combos": 144,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.24467084639498432,
+  "best": null,
+  "bh": {
+   "train": 29.680170575692966,
+   "test": -22.097994080894445
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ },
+ {
+  "iv": "5m",
+  "sid": "ma_cross",
+  "sym": "233740.KS",
+  "name": "KODEX 코스닥150레버리지",
+  "combos": 144,
+  "trainPass": 0,
+  "testPassOfTrainPass": 0,
+  "testPosOfTrainPass": 0,
+  "rho": -0.31533236878064463,
+  "best": null,
+  "bh": {
+   "train": 62.75303643724697,
+   "test": -40.945861854387054
+  },
+  "period": {
+   "train": [
+    "2026-08-03",
+    "2026-10-02"
+   ],
+   "test": [
+    "2026-10-02",
+    "2026-10-30"
+   ]
+  }
+ }
+]

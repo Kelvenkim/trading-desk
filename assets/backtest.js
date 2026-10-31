@@ -515,6 +515,16 @@ const BT = (() => {
       prevKey = key;
     }
     if (prevKey) monthly[prevKey] = (eq[n - 1] / prevEq - 1) * 100;
+    // 일별 손익 (그날 자산 변화). 포지션 없이 그대로인 날은 '쉰 날'로 따로 셈
+    const daily = [];
+    let dPrev = cap;
+    for (let i = 0; i < n; i++) {
+      const last = i === n - 1 || (bars[i].day || bars[i].t) !== (bars[i + 1].day || bars[i + 1].t);
+      if (last) { daily.push((eq[i] / dPrev - 1) * 100); dPrev = eq[i]; }
+    }
+    const active = daily.filter((d) => Math.abs(d) > 1e-9);
+    const avgWinR = wins.length ? wins.reduce((s, t) => s + t.ret, 0) / wins.length : 0;
+    const avgLossR = losses.length ? losses.reduce((s, t) => s + t.ret, 0) / losses.length : 0;
     return {
       totalRet: totalRet * 100,
       cagr: cagr == null ? null : cagr * 100,
@@ -524,9 +534,15 @@ const BT = (() => {
       calmar: cagr != null && mdd < 0 ? cagr / -mdd : null,
       trades: trades.length,
       winRate: trades.length ? (wins.length / trades.length) * 100 : 0,
-      avgWin: wins.length ? wins.reduce((s, t) => s + t.ret, 0) / wins.length : 0,
-      avgLoss: losses.length ? losses.reduce((s, t) => s + t.ret, 0) / losses.length : 0,
+      avgWin: avgWinR,
+      avgLoss: avgLossR,
+      payoff: avgLossR < 0 ? avgWinR / -avgLossR : (avgWinR > 0 ? Infinity : 0),
       expectancy: trades.length ? trades.reduce((s, t) => s + t.ret, 0) / trades.length : 0,
+      days: daily.length, activeDays: active.length,
+      posDays: active.length ? (active.filter((d) => d > 0).length / active.length) * 100 : 0,
+      bestDay: active.length ? Math.max(...active) : 0, worstDay: active.length ? Math.min(...active) : 0,
+      avgDay: active.length ? active.reduce((s, d) => s + d, 0) / active.length : 0,
+      dailyRets: active,
       profitFactor: gl > 0 ? gw / gl : (gw > 0 ? Infinity : 0),
       maxLoseStreak,
       avgHold: trades.length ? trades.reduce((s, t) => s + t.bars, 0) / trades.length : 0,

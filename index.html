@@ -6,7 +6,7 @@
   <title>Trading Desk</title>
   <meta name="theme-color" content="#0e1422" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="assets/style.css?v=ed27131a" />
+  <link rel="stylesheet" href="assets/style.css?v=adc2110b" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -321,6 +321,21 @@
               <div class="empty">왼쪽에서 대상과 전략을 고르고 <b>백테스트 실행</b>을 누르세요.</div>
             </div>
             <p class="warnline" id="bt-warn" hidden></p>
+            <div class="box goal" id="bt-goal">
+              <div class="box-head">
+                <h2>내 목표 기준</h2>
+                <button class="btn small ghost" id="goal-edit">기준 바꾸기</button>
+              </div>
+              <div class="goal-form" id="goal-form" hidden>
+                <label>최소 승률 % <input type="number" id="g-winMin" step="1" min="0" max="100" /></label>
+                <label>최대 승률 % <span class="muted">(비우면 제한 없음)</span><input type="number" id="g-winMax" step="1" min="0" max="100" /></label>
+                <label>최소 손익비 <span class="muted">(평균 수익÷평균 손실)</span><input type="number" id="g-payoff" step="0.1" min="0" /></label>
+                <label>최소 거래 수 <input type="number" id="g-trades" step="10" min="0" /></label>
+                <label>MDD 한도 % <input type="number" id="g-mdd" step="1" max="0" /></label>
+                <label>하루 최대 손실 한도 % <input type="number" id="g-worstDay" step="0.5" max="0" /></label>
+              </div>
+              <div class="goal-chips" id="goal-chips"><span class="muted small">백테스트를 실행하면 기준 통과 여부가 여기에 나와요.</span></div>
+            </div>
 
             <div class="box" id="bt-basket-box" hidden>
               <div class="box-head"><h2>종목별 결과</h2><span class="muted small">행을 누르면 그 종목만 자세히 볼 수 있어요</span></div>
@@ -347,6 +362,11 @@
               <div id="bt-equity" class="bt-chart short"></div>
               <div class="sub-head">낙폭 (고점 대비 하락)</div>
               <div id="bt-dd" class="bt-chart tiny"></div>
+            </div>
+            <div class="box">
+              <div class="box-head"><h2>일별 손익</h2><span class="muted small">포지션이 있었던 날만 · 하루 자산 변화 %</span></div>
+              <div class="day-stats" id="bt-daystats"></div>
+              <div class="histo" id="bt-histo"></div>
             </div>
             <div class="box">
               <div class="box-head"><h2>월별 수익률</h2><span class="muted small">%</span></div>
@@ -388,11 +408,13 @@
                     <option value="sharpe">샤프 지수 (수익 대비 변동)</option>
                     <option value="calmar">수익 ÷ 최대 낙폭</option>
                     <option value="ret">총 수익률</option>
-                    <option value="pf">손익비</option>
+                    <option value="exp">거래당 기대값</option>
+                    <option value="pf">총이익÷총손실 (PF)</option>
                   </select>
                 </label>
                 <label>학습 구간 최소 거래 수 <input type="number" id="opt-mintrades" value="5" min="0" step="1" /></label>
               </div>
+              <label class="check goal-filter"><input type="checkbox" id="opt-goal" /> 학습 구간에서 <b>내 목표 기준</b>(승률·손익비·MDD)을 만족한 설정만 남기기</label>
               <div class="row-btns">
                 <button class="btn primary" id="opt-run">탐색 시작</button>
                 <button class="btn" id="opt-stop" hidden>멈추기</button>
@@ -470,11 +492,11 @@
   <footer class="foot">개인 학습·연구용 도구입니다. 과거 수익률이 미래 수익을 보장하지 않습니다.</footer>
 
   <script src="assets/util.js?v=3ac469f5"></script>
-  <script src="assets/backtest.js?v=61c95b1b"></script>
+  <script src="assets/backtest.js?v=2c5961d6"></script>
   <script src="assets/data.js?v=34e69e79"></script>
   <script src="assets/chart.js?v=a0397362"></script>
   <script src="assets/draw.js?v=207665ac"></script>
-  <script src="assets/bt.js?v=aa807016"></script>
+  <script src="assets/bt.js?v=d94fbc54"></script>
   <script src="assets/app.js?v=7a2b94b6"></script>
 </body>
 </html>
