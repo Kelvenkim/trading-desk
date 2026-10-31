@@ -170,43 +170,121 @@
     <!-- ================= 백테스트 ================= -->
     <section id="tab-backtest" class="panel">
       <div class="bt-layout">
-        <aside class="box controls">
+        <aside class="box controls" id="bt-controls">
           <div class="group">
-            <h3>데이터</h3>
-            <label>종목 <div class="search mini"><input id="bt-symbol" autocomplete="off" placeholder="종목명 또는 코드" /><ul class="suggest" hidden></ul></div></label>
+            <h3>대상</h3>
+            <div class="seg wide" id="bt-mode">
+              <button data-mode="single" class="on">한 종목</button>
+              <button data-mode="basket">여러 종목</button>
+            </div>
+            <div data-show="single">
+              <label>종목 <div class="search mini"><input id="bt-symbol" autocomplete="off" placeholder="종목명 또는 코드" /><ul class="suggest" hidden></ul></div></label>
+              <label class="btn ghost small file">CSV 불러오기 (TradingView 내보내기 등)<input type="file" id="bt-csv" accept=".csv,.txt" hidden /></label>
+              <div class="muted small" id="bt-csv-name"></div>
+            </div>
+            <div data-show="basket" hidden>
+              <label>종목 묶음
+                <select id="bt-basket">
+                  <option value="watch">관심종목 전체</option>
+                  <option value="top20">한국 시가총액 상위 20</option>
+                  <option value="top50">한국 시가총액 상위 50</option>
+                  <option value="custom">직접 고르기</option>
+                </select>
+              </label>
+              <div id="bt-basket-pick" hidden>
+                <div class="search mini"><input id="bt-basket-add" autocomplete="off" placeholder="종목 검색해서 추가" /><ul class="suggest" hidden></ul></div>
+                <div class="tags" id="bt-basket-tags"></div>
+              </div>
+              <p class="desc" id="bt-basket-note"></p>
+            </div>
             <label>봉 주기 <select id="bt-interval"></select></label>
             <div class="two">
               <label>시작일 <input type="date" id="bt-start" /></label>
               <label>종료일 <input type="date" id="bt-end" /></label>
             </div>
-            <label class="btn ghost small">CSV 불러오기 (TradingView 내보내기 등)<input type="file" id="bt-csv" accept=".csv,.txt" hidden /></label>
-            <div class="muted small" id="bt-csv-name"></div>
           </div>
+
           <div class="group">
             <h3>전략</h3>
             <select id="bt-strategy"></select>
             <p class="desc" id="bt-desc"></p>
             <div id="bt-params" class="params"></div>
+            <div id="bt-custom" hidden>
+              <div class="rule-group" data-group="entry">
+                <div class="rg-head"><b>매수 조건</b>
+                  <select data-logic><option value="AND">모두 만족</option><option value="OR">하나라도</option></select></div>
+                <div class="rules"></div>
+                <button class="btn ghost small" data-add-rule>+ 조건 추가</button>
+              </div>
+              <div class="rule-group" data-group="exit">
+                <div class="rg-head"><b>매도 조건</b>
+                  <select data-logic><option value="AND">모두 만족</option><option value="OR">하나라도</option></select></div>
+                <div class="rules"></div>
+                <button class="btn ghost small" data-add-rule>+ 조건 추가</button>
+              </div>
+            </div>
           </div>
+
+          <div class="group">
+            <h3>방향과 비중</h3>
+            <div class="params">
+              <label>방향
+                <select id="o-direction">
+                  <option value="long">롱 (매수만)</option>
+                  <option value="short">숏 (매도 신호에 숏)</option>
+                  <option value="both">양방향 (신호마다 뒤집기)</option>
+                </select>
+              </label>
+              <label>비중 방식
+                <select id="o-sizing">
+                  <option value="all">자산 전액</option>
+                  <option value="fixed">자산의 일정 비율</option>
+                  <option value="risk">ATR 위험 기준</option>
+                </select>
+              </label>
+              <label data-when="sizing=fixed">투입 비율 % <input type="number" id="o-sizePct" value="50" min="1" max="100" step="1" /></label>
+              <label data-when="sizing=risk">1회 위험 % <input type="number" id="o-riskPct" value="1" min="0.1" max="20" step="0.1" /></label>
+              <label data-when="sizing=risk">손절 거리 (ATR 배수) <input type="number" id="o-atrMult" value="2" min="0.5" max="10" step="0.5" /></label>
+              <label>분할 횟수 <input type="number" id="o-pyrN" value="1" min="1" max="10" step="1" /></label>
+              <label data-when="pyrN>1">분할 방식
+                <select id="o-pyrMode">
+                  <option value="down">물타기 (떨어지면 추가)</option>
+                  <option value="up">불타기 (오르면 추가)</option>
+                  <option value="signal">신호 반복 시 추가</option>
+                </select>
+              </label>
+              <label data-when="pyrN>1&amp;pyrMode!=signal">추가 간격 % <input type="number" id="o-pyrPct" value="3" min="0.1" step="0.1" /></label>
+              <label>1차 익절 % <input type="number" id="o-tp1Pct" value="0" min="0" step="0.1" /></label>
+              <label data-when="tp1Pct>0">1차 익절 비율 % <input type="number" id="o-tp1Frac" value="50" min="1" max="99" step="1" /></label>
+            </div>
+            <p class="desc">분할 횟수가 3이면 정한 비중을 3번에 나눠 사요. 1차 익절은 그 수익률에 닿으면 일부만 팔아요.</p>
+          </div>
+
           <div class="group">
             <h3>리스크 관리 <span class="muted">0이면 사용 안 함</span></h3>
             <div class="params">
-              <label>손절 % <input type="number" id="bt-sl" value="0" step="0.1" min="0" /></label>
-              <label>익절 % <input type="number" id="bt-tp" value="0" step="0.1" min="0" /></label>
-              <label>트레일링 % <input type="number" id="bt-trail" value="0" step="0.1" min="0" /></label>
-              <label>최대 보유 봉 <input type="number" id="bt-hold" value="0" step="1" min="0" /></label>
+              <label>손절 % <input type="number" id="o-stopLoss" value="0" step="0.1" min="0" /></label>
+              <label>익절 % <input type="number" id="o-takeProfit" value="0" step="0.1" min="0" /></label>
+              <label>트레일링 % <input type="number" id="o-trailing" value="0" step="0.1" min="0" /></label>
+              <label>최대 보유 봉 <input type="number" id="o-maxHold" value="0" step="1" min="0" /></label>
             </div>
-            <label class="check"><input type="checkbox" id="bt-dayclose" /> 장 마감 전 청산 (분봉 단타)</label>
+            <label class="check"><input type="checkbox" id="o-dayClose" /> 장 마감 전 청산 (분봉 단타)</label>
           </div>
+
           <div class="group">
-            <h3>비용</h3>
+            <h3>비용과 체결</h3>
             <div class="params">
-              <label>초기 자금 <input type="number" id="bt-capital" value="10000000" step="100000" min="0" /></label>
-              <label>매수 수수료 % <input type="number" id="bt-buyfee" value="0.015" step="0.001" min="0" /></label>
-              <label>매도 수수료+세금 % <input type="number" id="bt-sellfee" value="0.215" step="0.001" min="0" /></label>
-              <label>슬리피지 % <input type="number" id="bt-slip" value="0.05" step="0.01" min="0" /></label>
+              <label>초기 자금 <input type="number" id="o-capital" value="10000000" step="100000" min="0" /></label>
+              <label>슬리피지 % <input type="number" id="o-slip" value="0.05" step="0.01" min="0" /></label>
+              <label>매수 수수료 % <input type="number" id="o-buyFee" value="0.015" step="0.001" min="0" /></label>
+              <label>매도 수수료+세금 % <input type="number" id="o-sellFee" value="0.215" step="0.001" min="0" /></label>
+              <label data-when="direction!=long">대주 수수료 연 % <input type="number" id="o-borrowFee" value="0" step="0.1" min="0" /></label>
+              <label>거래량 한도 % <input type="number" id="o-volCap" value="0" step="0.5" min="0" title="한 봉 거래량의 몇 %까지만 체결할지. 0이면 제한 없음" /></label>
             </div>
+            <label class="check"><input type="checkbox" id="o-tick" /> 한국 호가 단위·1주 단위로 체결</label>
+            <label class="check"><input type="checkbox" id="o-limit" /> 상한가에서 못 사고, 하한가에서 못 팔기</label>
           </div>
+
           <button class="btn primary wide" id="bt-run">백테스트 실행</button>
         </aside>
 
@@ -223,7 +301,7 @@
               <button>삼성전자 5분봉 거래량 돌파 전략 돌려줘</button>
               <button>지금 결과 해석해줘</button>
               <button>손절이랑 트레일링 넣으면 나아질까? 비교해줘</button>
-              <button>이 종목에 맞는 전략 추천해줘</button>
+              <button>시총 상위 20개에 같은 전략 돌려줘</button>
             </div>
             <div class="chat-input">
               <textarea id="chat-input" rows="1" placeholder="예: SK하이닉스 1시간봉으로 RSI 25/75, 손절 3% 넣어서 돌려줘"></textarea>
@@ -231,33 +309,121 @@
             </div>
           </div>
 
-          <div class="metrics" id="bt-metrics">
-            <div class="empty">왼쪽에서 종목과 전략을 고르고 <b>백테스트 실행</b>을 누르세요.</div>
-          </div>
-          <div class="box">
-            <div class="box-head"><h2>가격과 매매 시점</h2><span class="muted small" id="bt-range"></span></div>
-            <div id="bt-price" class="bt-chart"></div>
-          </div>
-          <div class="box">
-            <div class="box-head">
-              <h2>자산 곡선</h2>
-              <div class="legend-inline"><span><i style="background:#f2b84b"></i>전략</span><span><i style="background:#8d98b3"></i>보유만 했을 때</span></div>
+          <nav class="subtabs" id="bt-subtabs">
+            <button data-sub="result" class="on">결과</button>
+            <button data-sub="opt">설정 자동 탐색</button>
+            <button data-sub="saved">저장한 결과 <span id="saved-count" class="muted"></span></button>
+          </nav>
+
+          <!-- 결과 -->
+          <div data-subpanel="result">
+            <div class="metrics" id="bt-metrics">
+              <div class="empty">왼쪽에서 대상과 전략을 고르고 <b>백테스트 실행</b>을 누르세요.</div>
             </div>
-            <div id="bt-equity" class="bt-chart short"></div>
-          </div>
-          <div class="box">
-            <div class="box-head">
-              <h2>거래 내역</h2>
-              <div class="row-btns">
-                <button class="btn small" id="bt-trades-csv">CSV 저장</button>
-                <button class="btn small" id="bt-pine">Pine Script 보기</button>
+            <p class="warnline" id="bt-warn" hidden></p>
+
+            <div class="box" id="bt-basket-box" hidden>
+              <div class="box-head"><h2>종목별 결과</h2><span class="muted small">행을 누르면 그 종목만 자세히 볼 수 있어요</span></div>
+              <div class="table-wrap">
+                <table class="tbl sortable" id="bt-basket-table">
+                  <thead><tr>
+                    <th data-k="name">종목</th><th class="r" data-k="ret">수익률</th><th class="r" data-k="bh">보유만</th><th class="r" data-k="ex">차이</th>
+                    <th class="r" data-k="mdd">MDD</th><th class="r" data-k="sharpe">샤프</th><th class="r" data-k="trades">거래</th><th class="r" data-k="win">승률</th><th class="r" data-k="pf">손익비</th>
+                  </tr></thead>
+                  <tbody></tbody>
+                </table>
               </div>
             </div>
-            <div class="table-wrap">
-              <table class="tbl" id="bt-trades">
-                <thead><tr><th>#</th><th>진입</th><th class="r">진입가</th><th>청산</th><th class="r">청산가</th><th class="r">보유</th><th class="r">수익률</th><th>사유</th></tr></thead>
-                <tbody></tbody>
-              </table>
+
+            <div class="box" id="bt-price-box">
+              <div class="box-head"><h2>가격과 매매 시점</h2><span class="muted small" id="bt-range"></span></div>
+              <div id="bt-price" class="bt-chart"></div>
+            </div>
+            <div class="box">
+              <div class="box-head">
+                <h2>자산 곡선</h2>
+                <div class="legend-inline"><span><i style="background:#f2b84b"></i>전략</span><span><i style="background:#8d98b3"></i>보유만 했을 때</span><span id="bench-legend" hidden><i style="background:#4fd1a5"></i>코스피200 (KODEX 200)</span></div>
+              </div>
+              <div id="bt-equity" class="bt-chart short"></div>
+              <div class="sub-head">낙폭 (고점 대비 하락)</div>
+              <div id="bt-dd" class="bt-chart tiny"></div>
+            </div>
+            <div class="box">
+              <div class="box-head"><h2>월별 수익률</h2><span class="muted small">%</span></div>
+              <div class="table-wrap"><table class="tbl monthly" id="bt-monthly"></table></div>
+            </div>
+            <div class="box">
+              <div class="box-head">
+                <h2>거래 내역</h2>
+                <div class="row-btns">
+                  <button class="btn small" id="bt-save">결과 저장</button>
+                  <button class="btn small" id="bt-trades-csv">CSV 저장</button>
+                  <button class="btn small" id="bt-pine">Pine Script 보기</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="tbl" id="bt-trades">
+                  <thead><tr><th>#</th><th>방향</th><th>진입</th><th class="r">평균 진입가</th><th>청산</th><th class="r">평균 청산가</th><th class="r">보유</th><th class="r">수익률</th><th>사유</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 설정 자동 탐색 -->
+          <div data-subpanel="opt" hidden>
+            <div class="box">
+              <div class="box-head"><h2>설정 자동 탐색</h2></div>
+              <p class="hint" style="margin-top:0">기간을 <b>학습</b>과 <b>검증</b>으로 나눠요. 학습 구간에서만 가장 좋은 설정을 고르고, 그 설정이 처음 보는 검증 구간에서도 통하는지 확인해요. 학습 성적만 좋고 검증에서 무너지면 과거에만 맞춘 설정이에요.</p>
+              <div class="table-wrap">
+                <table class="tbl ranges" id="opt-ranges">
+                  <thead><tr><th>탐색</th><th>항목</th><th class="r">시작</th><th class="r">끝</th><th class="r">간격</th><th class="r">개수</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div class="opt-row">
+                <label>학습 구간 % <input type="number" id="opt-train" value="70" min="30" max="90" step="5" /></label>
+                <label>무엇을 기준으로 고를까
+                  <select id="opt-objective">
+                    <option value="sharpe">샤프 지수 (수익 대비 변동)</option>
+                    <option value="calmar">수익 ÷ 최대 낙폭</option>
+                    <option value="ret">총 수익률</option>
+                    <option value="pf">손익비</option>
+                  </select>
+                </label>
+                <label>학습 구간 최소 거래 수 <input type="number" id="opt-mintrades" value="5" min="0" step="1" /></label>
+              </div>
+              <div class="row-btns">
+                <button class="btn primary" id="opt-run">탐색 시작</button>
+                <button class="btn" id="opt-stop" hidden>멈추기</button>
+                <span class="muted small" id="opt-count"></span>
+              </div>
+              <div class="progress" id="opt-progress" hidden><i></i></div>
+            </div>
+            <div id="opt-out" hidden>
+              <div class="metrics" id="opt-summary"></div>
+              <div class="box" id="opt-heat-box" hidden>
+                <div class="box-head"><h2>두 항목 조합별 성적</h2>
+                  <div class="seg" id="opt-heat-seg"><button data-h="train" class="on">학습</button><button data-h="test">검증</button></div></div>
+                <div class="table-wrap"><table class="tbl heat" id="opt-heat"></table></div>
+              </div>
+              <div class="box">
+                <div class="box-head"><h2>학습 성적 상위 설정</h2><span class="muted small">행을 누르면 그 설정으로 바꾸고 전체 기간을 다시 돌려요</span></div>
+                <div class="table-wrap"><table class="tbl" id="opt-table"></table></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 저장한 결과 -->
+          <div data-subpanel="saved" hidden>
+            <div class="box">
+              <div class="box-head"><h2>저장한 결과</h2><span class="muted small">체크해서 나란히 비교하세요 (이 브라우저에만 저장)</span></div>
+              <div class="table-wrap"><table class="tbl" id="saved-table"></table></div>
+            </div>
+            <div class="box" id="saved-chart-box" hidden>
+              <div class="box-head"><h2>자산 곡선 비교</h2><span class="muted small">시작을 100으로 맞춤</span></div>
+              <div id="saved-chart" class="bt-chart short"></div>
+              <div class="legend-inline" id="saved-legend"></div>
             </div>
           </div>
         </div>
@@ -303,10 +469,12 @@
 
   <footer class="foot">개인 학습·연구용 도구입니다. 과거 수익률이 미래 수익을 보장하지 않습니다.</footer>
 
+  <script src="assets/util.js"></script>
   <script src="assets/backtest.js"></script>
   <script src="assets/data.js"></script>
   <script src="assets/chart.js"></script>
   <script src="assets/draw.js"></script>
+  <script src="assets/bt.js"></script>
   <script src="assets/app.js"></script>
 </body>
 </html>

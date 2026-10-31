@@ -1,12 +1,15 @@
 /* =========================================================
- * 백테스트 엔진
- *  - 롱 온리, 전액 진입/청산
- *  - 신호는 봉 종가 기준으로 판단, 체결은 다음 봉 시가 (미래 참조 방지)
- *  - 손절/익절/트레일링은 봉 안에서 체결 (같은 봉에 둘 다 닿으면 손절 우선 = 보수적)
- * bars: [{t, o, h, l, c, v}]
+ * 백테스트 엔진 v2
+ *  - 신호는 봉 종가로 판단, 체결은 다음 봉 시가 (미래 참조 방지)
+ *  - 방향: 롱 / 숏 / 양방향(신호마다 뒤집기)
+ *  - 비중: 전액 / 자산의 일정 비율 / ATR 위험 기준
+ *  - 분할매수(물타기·불타기·신호 반복), 1차 익절 일부 매도
+ *  - 손절·익절·트레일링은 봉 안에서 체결, 같은 봉에 둘 다 닿으면 손절 우선 (보수적)
+ *  - 체결 규칙(선택): 한국 호가 단위, 상·하한가 체결 불가, 거래량 대비 주문 한도
+ * bars: [{t, ms, day, o, h, l, c, v}]
  * ========================================================= */
 const BT = (() => {
-  // ---------- 지표 ----------
+  // ================= 지표 =================
   const sma = (a, n) => {
     const out = new Array(a.length).fill(NaN);
     let s = 0;
@@ -20,42 +23,38 @@ const BT = (() => {
   const ema = (a, n) => {
     const out = new Array(a.length).fill(NaN);
     const k = 2 / (n + 1);
-    let prev = NaN;
-    for (let i = 0; i < a.length; i++) {
-      if (i === n - 1) {
+    let prev = NaN, start = a.findIndex((v) => !isNaN(v));
+    if (start < 0) return out;
+    for (let i = start; i < a.length; i++) {
+      if (i === start + n - 1) {
         let s = 0;
-        for (let j = 0; j < n; j++) s += a[j];
-        prev = s / n;
-        out[i] = prev;
-      } else if (i >= n) {
-        prev = a[i] * k + prev * (1 - k);
-        out[i] = prev;
+        for (let j = start; j <= i; j++) s += a[j];
+        prev = s / n; out[i] = prev;
+      } else if (i >= start + n) {
+        prev = a[i] * k + prev * (1 - k); out[i] = prev;
       }
     }
     return out;
   };
-  // Wilder RSI (TradingView ta.rsi 와 동일한 방식)
+  // Wilder RSI (TradingView ta.rsi 와 같은 방식)
   const rsi = (a, n) => {
     const out = new Array(a.length).fill(NaN);
     let ag = 0, al = 0;
     for (let i = 1; i < a.length; i++) {
-      const d = a[i] - a[i - 1];
-      const g = Math.max(d, 0), l = Math.max(-d, 0);
+      const d = a[i] - a[i - 1], g = Math.max(d, 0), l = Math.max(-d, 0);
       if (i <= n) {
         ag += g / n; al += l / n;
         if (i === n) out[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
       } else {
-        ag = (ag * (n - 1) + g) / n;
-        al = (al * (n - 1) + l) / n;
+        ag = (ag * (n - 1) + g) / n; al = (al * (n - 1) + l) / n;
         out[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
       }
     }
     return out;
   };
-  // 모표준편차 (TradingView ta.stdev 와 동일)
+  // 모표준편차 (TradingView ta.stdev 와 같음)
   const stdev = (a, n) => {
-    const m = sma(a, n);
-    const out = new Array(a.length).fill(NaN);
+    const m = sma(a, n), out = new Array(a.length).fill(NaN);
     for (let i = n - 1; i < a.length; i++) {
       let s = 0;
       for (let j = i - n + 1; j <= i; j++) s += (a[j] - m[i]) ** 2;
@@ -63,13 +62,120 @@ const BT = (() => {
     }
     return out;
   };
+  // ATR (Wilder, TradingView ta.atr 와 같음)
+  const atr = (b, n) => {
+    const out = new Array(b.length).fill(NaN);
+    let prev = NaN;
+    for (let i = 0; i < b.length; i++) {
+      const tr = i === 0 ? b[i].h - b[i].l : Math.max(b[i].h - b[i].l, Math.abs(b[i].h - b[i - 1].c), Math.abs(b[i].l - b[i - 1].c));
+      if (i < n - 1) { prev = isNaN(prev) ? tr : prev + tr; continue; }
+      if (i === n - 1) { prev = (prev + tr) / n; out[i] = prev; continue; }
+      prev = (prev * (n - 1) + tr) / n; out[i] = prev;
+    }
+    return out;
+  };
   // 직전 n개 봉(현재 봉 제외)의 최고/최저
-  const prevHighest = (a, n) => a.map((_, i) => (i < n ? NaN : Math.max(...a.slice(i - n, i))));
-  const prevLowest = (a, n) => a.map((_, i) => (i < n ? NaN : Math.min(...a.slice(i - n, i))));
+  const prevHighest = (a, n) => {
+    const out = new Array(a.length).fill(NaN);
+    for (let i = n; i < a.length; i++) { let m = -Infinity; for (let j = i - n; j < i; j++) if (a[j] > m) m = a[j]; out[i] = m; }
+    return out;
+  };
+  const prevLowest = (a, n) => {
+    const out = new Array(a.length).fill(NaN);
+    for (let i = n; i < a.length; i++) { let m = Infinity; for (let j = i - n; j < i; j++) if (a[j] < m) m = a[j]; out[i] = m; }
+    return out;
+  };
   const shift1 = (a) => a.map((_, i) => (i === 0 ? NaN : a[i - 1]));
 
-  // ---------- 전략 정의 ----------
+  // ================= 조건 조합용 지표 =================
+  const IND = {
+    close: { label: "종가", args: [] }, open: { label: "시가", args: [] }, high: { label: "고가", args: [] }, low: { label: "저가", args: [] },
+    volume: { label: "거래량", args: [] },
+    sma: { label: "이동평균", args: ["n"], def: { n: 20 } },
+    ema: { label: "지수이동평균", args: ["n"], def: { n: 20 } },
+    rsi: { label: "RSI", args: ["n"], def: { n: 14 } },
+    bb_up: { label: "볼린저 상단", args: ["n", "k"], def: { n: 20, k: 2 } },
+    bb_mid: { label: "볼린저 중심", args: ["n"], def: { n: 20 } },
+    bb_low: { label: "볼린저 하단", args: ["n", "k"], def: { n: 20, k: 2 } },
+    hh: { label: "직전 N봉 최고가", args: ["n"], def: { n: 20 } },
+    ll: { label: "직전 N봉 최저가", args: ["n"], def: { n: 20 } },
+    vol_sma: { label: "직전 N봉 평균 거래량", args: ["n"], def: { n: 20 } },
+    roc: { label: "N봉 등락률(%)", args: ["n"], def: { n: 1 } },
+    atr: { label: "ATR", args: ["n"], def: { n: 14 } },
+    macd: { label: "MACD", args: [] }, macd_sig: { label: "MACD 시그널", args: [] }, macd_hist: { label: "MACD 히스토그램", args: [] },
+    num: { label: "숫자", args: ["v"], def: { v: 0 } },
+  };
+  const OPS = { ">": "보다 크면", "<": "보다 작으면", ">=": "이상이면", "<=": "이하면", cross_up: "을 위로 뚫으면", cross_down: "을 아래로 뚫으면" };
+
+  function series(b, s, cache) {
+    const key = JSON.stringify(s);
+    if (cache[key]) return cache[key];
+    const c = b.map((x) => x.c), n = +s.n || 14, k = +s.k || 2;
+    let out;
+    switch (s.ind) {
+      case "close": out = c; break;
+      case "open": out = b.map((x) => x.o); break;
+      case "high": out = b.map((x) => x.h); break;
+      case "low": out = b.map((x) => x.l); break;
+      case "volume": out = b.map((x) => x.v); break;
+      case "sma": out = sma(c, n); break;
+      case "ema": out = ema(c, n); break;
+      case "rsi": out = rsi(c, n); break;
+      case "bb_mid": out = sma(c, n); break;
+      case "bb_up": case "bb_low": {
+        const m = sma(c, n), sd = stdev(c, n), sg = s.ind === "bb_up" ? 1 : -1;
+        out = m.map((v, i) => v + sg * k * sd[i]); break;
+      }
+      case "hh": out = prevHighest(b.map((x) => x.h), n); break;
+      case "ll": out = prevLowest(b.map((x) => x.l), n); break;
+      case "vol_sma": out = shift1(sma(b.map((x) => x.v), n)); break;
+      case "roc": out = c.map((v, i) => (i >= n ? (v / c[i - n] - 1) * 100 : NaN)); break;
+      case "atr": out = atr(b, n); break;
+      case "macd": case "macd_sig": case "macd_hist": {
+        const e26 = ema(c, 26), e12 = ema(c, 12), mm = e12.map((v, i) => v - e26[i]);
+        const sg = ema(mm, 9);
+        out = s.ind === "macd" ? mm : s.ind === "macd_sig" ? sg : mm.map((v, i) => v - sg[i]);
+        break;
+      }
+      case "num": out = new Array(b.length).fill(+s.v || 0); break;
+      default: out = new Array(b.length).fill(NaN);
+    }
+    cache[key] = out;
+    return out;
+  }
+  function evalRules(b, group, cache) {
+    const n = b.length, rules = (group && group.rules) || [];
+    if (!rules.length) return new Array(n).fill(false);
+    const res = rules.map((r) => {
+      const A = series(b, r.a, cache), B0 = series(b, r.b, cache), m = r.mult == null || r.mult === "" ? 1 : +r.mult;
+      const B = m === 1 ? B0 : B0.map((v) => v * m);
+      return A.map((a, i) => {
+        const x = B[i];
+        if (isNaN(a) || isNaN(x)) return false;
+        switch (r.op) {
+          case ">": return a > x;
+          case "<": return a < x;
+          case ">=": return a >= x;
+          case "<=": return a <= x;
+          case "cross_up": return i > 0 && A[i - 1] <= B[i - 1] && a > x;
+          case "cross_down": return i > 0 && A[i - 1] >= B[i - 1] && a < x;
+        }
+        return false;
+      });
+    });
+    const any = group.logic === "OR";
+    return new Array(n).fill(0).map((_, i) => (any ? res.some((r) => r[i]) : res.every((r) => r[i])));
+  }
+  function describeSpec(s) {
+    const d = IND[s.ind] || { label: s.ind };
+    if (s.ind === "num") return String(s.v);
+    const a = d.args.map((k) => s[k]).filter((v) => v != null && v !== "");
+    return a.length ? `${d.label}(${a.join(",")})` : d.label;
+  }
+
+  // ================= 전략 =================
   // signals(bars, p) → { entry: bool[], exit: bool[], lines: [{name, data, color}] }
+  // 롱 기준으로 entry=매수 신호, exit=매도 신호. 숏 방향에서는 exit 신호로 숏 진입, entry 신호로 청산.
   const STRATEGIES = {
     ma_cross: {
       name: "이동평균 크로스",
@@ -82,12 +188,11 @@ const BT = (() => {
       signals(b, p) {
         const c = b.map((x) => x.c), f = p.type === "EMA" ? ema : sma;
         const fa = f(c, p.fast), sl = f(c, p.slow);
-        const entry = c.map((_, i) => i > 0 && fa[i - 1] <= sl[i - 1] && fa[i] > sl[i]);
-        const exit = c.map((_, i) => i > 0 && fa[i - 1] >= sl[i - 1] && fa[i] < sl[i]);
-        return { entry, exit, lines: [
-          { name: `${p.type}${p.fast}`, data: fa, color: "#f5b642" },
-          { name: `${p.type}${p.slow}`, data: sl, color: "#7aa2ff" },
-        ] };
+        return {
+          entry: c.map((_, i) => i > 0 && fa[i - 1] <= sl[i - 1] && fa[i] > sl[i]),
+          exit: c.map((_, i) => i > 0 && fa[i - 1] >= sl[i - 1] && fa[i] < sl[i]),
+          lines: [{ name: `${p.type}${p.fast}`, data: fa, color: "#f2b84b" }, { name: `${p.type}${p.slow}`, data: sl, color: "#7aa2ff" }],
+        };
       },
     },
     rsi: {
@@ -100,9 +205,11 @@ const BT = (() => {
       ],
       signals(b, p) {
         const r = rsi(b.map((x) => x.c), p.period);
-        const entry = r.map((v, i) => i > 0 && r[i - 1] <= p.low && v > p.low);
-        const exit = r.map((v, i) => i > 0 && r[i - 1] <= p.high && v > p.high);
-        return { entry, exit, lines: [] };
+        return {
+          entry: r.map((v, i) => i > 0 && r[i - 1] <= p.low && v > p.low),
+          exit: r.map((v, i) => i > 0 && r[i - 1] <= p.high && v > p.high),
+          lines: [],
+        };
       },
     },
     bollinger: {
@@ -114,18 +221,13 @@ const BT = (() => {
         { key: "exitAt", label: "매도 기준", type: "select", options: ["중심선", "상단"], def: "중심선" },
       ],
       signals(b, p) {
-        const c = b.map((x) => x.c);
-        const mid = sma(c, p.period), sd = stdev(c, p.period);
+        const c = b.map((x) => x.c), mid = sma(c, p.period), sd = stdev(c, p.period);
         const up = mid.map((m, i) => m + p.k * sd[i]), lo = mid.map((m, i) => m - p.k * sd[i]);
         const tgt = p.exitAt === "상단" ? up : mid;
         return {
           entry: c.map((v, i) => v < lo[i]),
           exit: c.map((v, i) => v > tgt[i]),
-          lines: [
-            { name: "상단", data: up, color: "#8b8fa3" },
-            { name: "중심", data: mid, color: "#f5b642" },
-            { name: "하단", data: lo, color: "#8b8fa3" },
-          ],
+          lines: [{ name: "상단", data: up, color: "#8d98b3" }, { name: "중심", data: mid, color: "#f2b84b" }, { name: "하단", data: lo, color: "#8d98b3" }],
         };
       },
     },
@@ -140,194 +242,424 @@ const BT = (() => {
       ],
       signals(b, p) {
         const h = b.map((x) => x.h), l = b.map((x) => x.l), c = b.map((x) => x.c), v = b.map((x) => x.v);
-        const hh = prevHighest(h, p.lookback), ll = prevLowest(l, p.exitLen);
-        const va = shift1(sma(v, p.volLen));
+        const hh = prevHighest(h, p.lookback), ll = prevLowest(l, p.exitLen), va = shift1(sma(v, p.volLen));
         return {
           entry: c.map((x, i) => x > hh[i] && v[i] > va[i] * p.volMult),
           exit: c.map((x, i) => x < ll[i]),
-          lines: [
-            { name: `${p.lookback}봉 최고`, data: hh, color: "#ef5350" },
-            { name: `${p.exitLen}봉 최저`, data: ll, color: "#42a5f5" },
-          ],
+          lines: [{ name: `${p.lookback}봉 최고`, data: hh, color: "#f0525c" }, { name: `${p.exitLen}봉 최저`, data: ll, color: "#3d8bfd" }],
         };
+      },
+    },
+    custom: {
+      name: "직접 만들기 (조건 조합)",
+      desc: "지표와 조건을 직접 골라 매수·매도 규칙을 만들어요. 각 묶음 안에서 '모두(AND)' 또는 '하나라도(OR)' 만족하면 신호.",
+      params: [],
+      signals(b, p) {
+        const cache = {}, rules = p.rules || {};
+        const entry = evalRules(b, rules.entry, cache), exit = evalRules(b, rules.exit, cache);
+        const lines = [];
+        const colors = ["#f2b84b", "#7aa2ff", "#c792ea", "#4fd1a5"];
+        const seen = new Set();
+        for (const g of [rules.entry, rules.exit]) for (const r of (g && g.rules) || []) for (const s of [r.a, r.b]) {
+          // 가격 단위 지표만 차트에 표시
+          if (["sma", "ema", "bb_up", "bb_mid", "bb_low", "hh", "ll"].includes(s.ind)) {
+            const key = describeSpec(s);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            lines.push({ name: key, data: series(b, s, cache), color: colors[lines.length % colors.length] });
+          }
+        }
+        return { entry, exit, lines };
       },
     },
   };
 
-  // ---------- 엔진 ----------
-  /**
-   * opt: { capital, buyFee, sellFee, slip (모두 %), stopLoss, takeProfit, trailing (%; 0=사용안함),
-   *        maxHold (봉; 0=사용안함), dayClose (bool), dayKey (i → 'YYYY-MM-DD') }
-   */
-  function run(bars, strategyId, p, opt) {
+  // ================= 한국 시장 규칙 =================
+  // 2023년 1월부터 코스피·코스닥 공통 호가 단위
+  function tickSize(px, etf) {
+    if (etf) return 5;
+    if (px < 2000) return 1;
+    if (px < 5000) return 5;
+    if (px < 20000) return 10;
+    if (px < 50000) return 50;
+    if (px < 200000) return 100;
+    if (px < 500000) return 500;
+    return 1000;
+  }
+  function roundTick(px, up, etf) {
+    const t = tickSize(px, etf);
+    return (up ? Math.ceil(px / t - 1e-9) : Math.floor(px / t + 1e-9)) * t;
+  }
+  // 각 봉의 전일 종가 (일봉은 직전 봉, 분봉은 직전 거래일 마지막 봉)
+  function prevDayClose(b) {
+    const out = new Array(b.length).fill(NaN);
+    let lastClose = NaN, prevDay = null, carry = NaN;
+    for (let i = 0; i < b.length; i++) {
+      const d = b[i].day || String(b[i].t);
+      if (d !== prevDay) { carry = lastClose; prevDay = d; }
+      out[i] = carry;
+      lastClose = b[i].c;
+    }
+    return out;
+  }
+
+  // ================= 엔진 =================
+  const DEFAULTS = {
+    capital: 10000000, buyFee: 0.015, sellFee: 0.215, slip: 0.05, borrowFee: 0,
+    stopLoss: 0, takeProfit: 0, trailing: 0, maxHold: 0, dayClose: false, dayKey: null,
+    direction: "long", sizing: "all", sizePct: 100, riskPct: 1, atrMult: 2,
+    pyrN: 1, pyrMode: "down", pyrPct: 3, tp1Pct: 0, tp1Frac: 50,
+    tick: false, etf: false, limit: false, volCap: 0,
+  };
+
+  function run(bars, strategyId, p, o) {
+    const opt = { ...DEFAULTS, ...o };
     const S = STRATEGIES[strategyId];
     const sig = S.signals(bars, p);
     const n = bars.length;
-    const buyCost = (opt.buyFee + opt.slip) / 100;
-    const sellCost = (opt.sellFee + opt.slip) / 100;
+    const A = opt.sizing === "risk" ? atr(bars, 20) : null;
+    const pdc = opt.limit ? prevDayClose(bars) : null;
+    const dirOK = (side) => opt.direction === "both" || (side > 0 ? opt.direction === "long" : opt.direction === "short");
 
-    let cash = opt.capital, qty = 0, entryPx = 0, entryIdx = -1, peak = 0, entryCash = 0;
-    let pendingEntry = false, pendingExit = false;
-    const equity = new Array(n), trades = [];
+    let cash = opt.capital, qty = 0, avg = 0, entryIdx = -1, lastFill = 0, tranches = 0, unit = 0, peak = 0, trough = 0, tp1Done = false;
+    let trade = null, pending = null, blocked = 0, capped = 0;
+    const equity = new Array(n), trades = [], fills = [];
 
-    const sell = (i, px, reason) => {
-      const proceeds = qty * px * (1 - sellCost);
+    const mark = (i) => cash + qty * bars[i].c;
+
+    function startTrade(i, side) {
+      trade = { side, entryIdx: i, flow: 0, invested: 0, inQty: 0, inVal: 0, outQty: 0, outVal: 0, adds: 0, partial: false };
+    }
+    function closeTrade(i, reason) {
+      const t = trade;
       trades.push({
-        entryIdx, exitIdx: i, entryPx, exitPx: px, bars: i - entryIdx,
-        pnl: proceeds - entryCash, ret: (proceeds / entryCash - 1) * 100, reason,
+        side: t.side, entryIdx: t.entryIdx, exitIdx: i, bars: i - t.entryIdx,
+        entryPx: t.inVal / t.inQty, exitPx: t.outQty ? t.outVal / t.outQty : NaN,
+        pnl: t.flow, ret: t.invested ? (t.flow / t.invested) * 100 : 0, reason, adds: t.adds, partial: t.partial,
       });
-      cash += proceeds; qty = 0; entryIdx = -1;
-    };
+      trade = null; entryIdx = -1; tranches = 0; tp1Done = false;
+    }
+
+    /** 주문 체결. want: 부호 있는 수량(+매수, −매도). 반환: 실제 체결 수량(부호 포함) */
+    function exec(i, want, refPx, kind) {
+      const b = bars[i], buy = want > 0;
+      if (opt.limit && isFinite(pdc[i])) {
+        // 상한가 근처에서는 매수 불가, 하한가 근처에서는 매도 불가 (잠긴 호가 가정)
+        if (buy && refPx >= pdc[i] * 1.295) { blocked++; return 0; }
+        if (!buy && refPx <= pdc[i] * 0.705) { blocked++; return 0; }
+      }
+      let px = refPx * (1 + (buy ? 1 : -1) * opt.slip / 100);
+      if (opt.tick) px = roundTick(px, buy, opt.etf);
+      let q = Math.abs(want);
+      if (opt.volCap > 0) { const cap = b.v * opt.volCap / 100; if (q > cap) { q = cap; capped++; } }
+      if (opt.tick) q = Math.floor(q + 1e-9);
+      if (!(q > 0)) return 0;
+      const notional = q * px, fee = notional * (buy ? opt.buyFee : opt.sellFee) / 100;
+      const delta = buy ? -notional - fee : notional - fee;
+      cash += delta;
+      const sq = buy ? q : -q;
+      const opening = qty === 0 || Math.sign(qty) === Math.sign(sq);
+      if (opening) {
+        avg = (avg * Math.abs(qty) + px * q) / (Math.abs(qty) + q);
+        trade.inQty += q; trade.inVal += px * q;
+      } else {
+        trade.outQty += q; trade.outVal += px * q;
+      }
+      qty += sq;
+      if (Math.abs(qty) < 1e-9) qty = 0;
+      trade.flow += delta;
+      trade.invested = Math.max(trade.invested, Math.abs(qty) * avg);
+      fills.push({ i, buy, px, q, kind });
+      lastFill = px;
+      return sq;
+    }
+    function targetUnit(i, refPx) {
+      const eq = cash + qty * refPx;
+      let notional;
+      if (opt.sizing === "fixed") notional = eq * opt.sizePct / 100;
+      else if (opt.sizing === "risk") {
+        const a = A[i - 1] || A[i];
+        const dist = isFinite(a) && a > 0 ? (opt.atrMult * a) / refPx : NaN;
+        notional = isFinite(dist) ? Math.min(eq * opt.riskPct / 100 / dist, eq) : eq * opt.riskPct / 100 * 10;
+      } else notional = eq;
+      return notional / Math.max(1, opt.pyrN);
+    }
+    function open(i, side, refPx) {
+      startTrade(i, side);
+      unit = targetUnit(i, refPx);
+      // 롱은 수수료·슬리피지까지 포함해 현금 안에서 살 수 있는 수량
+      const q = side > 0 ? unit / (refPx * (1 + opt.slip / 100) * (1 + opt.buyFee / 100)) : unit / refPx;
+      const got = exec(i, side * q, refPx, "open");
+      if (!got) { trade = null; return false; }
+      entryIdx = i; tranches = 1; peak = refPx; trough = refPx; tp1Done = false;
+      return true;
+    }
+    function closeAll(i, refPx, reason) {
+      if (!qty) return;
+      exec(i, -qty, refPx, "close");
+      if (!qty) closeTrade(i, reason);
+    }
 
     for (let i = 0; i < n; i++) {
       const b = bars[i];
-      // 1) 직전 봉에서 나온 신호를 이번 봉 시가에 체결
-      if (pendingExit && qty > 0) sell(i, b.o, "신호");
-      if (pendingEntry && qty === 0) {
-        entryCash = cash;
-        qty = cash / (b.o * (1 + buyCost));
-        cash = 0; entryPx = b.o; entryIdx = i;
-        peak = b.o; // 진입 봉 고가는 봉 내 순서를 알 수 없어 체크 후에 반영
-      }
-      pendingEntry = pendingExit = false;
-
-      // 2) 보유 중이면 봉 안에서 손절/트레일링/익절 체크
-      if (qty > 0) {
-        const slPx = opt.stopLoss > 0 ? entryPx * (1 - opt.stopLoss / 100) : -Infinity;
-        const trPx = opt.trailing > 0 ? peak * (1 - opt.trailing / 100) : -Infinity;
-        const stopPx = Math.max(slPx, trPx);
-        const tpPx = opt.takeProfit > 0 ? entryPx * (1 + opt.takeProfit / 100) : null;
-        if (stopPx > -Infinity && b.l <= stopPx) {
-          sell(i, Math.min(b.o, stopPx), trPx > slPx ? "트레일링" : "손절");
-        } else if (tpPx !== null && b.h >= tpPx) {
-          sell(i, Math.max(b.o, tpPx), "익절");
+      // 1) 전 봉 신호를 이번 봉 시가에 체결
+      if (pending && i > 0) {
+        const pd = pending; pending = null;
+        if (pd.kind === "close") closeAll(i, b.o, "신호");
+        else if (pd.kind === "reverse") { closeAll(i, b.o, "신호(전환)"); if (!qty) open(i, pd.side, b.o); }
+        else if (pd.kind === "open" && !qty) open(i, pd.side, b.o);
+        else if (pd.kind === "add" && qty && tranches < opt.pyrN) {
+          const side = Math.sign(qty);
+          if (exec(i, side * unit / b.o, b.o, "add")) { tranches++; trade.adds++; }
         }
-        if (qty > 0) peak = Math.max(peak, b.h);
       }
-
-      // 3) 보유기간 초과 / 당일 청산 (봉 종가)
-      if (qty > 0 && opt.maxHold > 0 && i - entryIdx >= opt.maxHold) sell(i, b.c, "보유기간");
+      // 숏 대주 수수료 (보유 시간만큼)
+      if (qty < 0 && opt.borrowFee > 0 && i > 0) {
+        const fee = Math.abs(qty) * b.c * opt.borrowFee / 100 * (b.ms - bars[i - 1].ms) / (365 * 86400000);
+        cash -= fee; trade.flow -= fee;
+      }
+      // 2) 봉 안에서 손절 / 1차 익절 / 익절
+      if (qty) {
+        const L = qty > 0;
+        const slPx = opt.stopLoss > 0 ? avg * (1 - (L ? 1 : -1) * opt.stopLoss / 100) : NaN;
+        const trPx = opt.trailing > 0 ? (L ? peak * (1 - opt.trailing / 100) : trough * (1 + opt.trailing / 100)) : NaN;
+        const stopPx = L ? Math.max(isNaN(slPx) ? -Infinity : slPx, isNaN(trPx) ? -Infinity : trPx)
+                         : Math.min(isNaN(slPx) ? Infinity : slPx, isNaN(trPx) ? Infinity : trPx);
+        const hitStop = L ? b.l <= stopPx : b.h >= stopPx;
+        if (isFinite(stopPx) && hitStop) {
+          const px = L ? Math.min(b.o, stopPx) : Math.max(b.o, stopPx);
+          const isTrail = !isNaN(trPx) && (isNaN(slPx) || (L ? trPx > slPx : trPx < slPx));
+          closeAll(i, px, isTrail ? "트레일링" : "손절");
+        }
+        if (qty && opt.tp1Pct > 0 && !tp1Done) {
+          const tp1 = avg * (1 + (L ? 1 : -1) * opt.tp1Pct / 100);
+          if (L ? b.h >= tp1 : b.l <= tp1) {
+            const px = L ? Math.max(b.o, tp1) : Math.min(b.o, tp1);
+            if (exec(i, -qty * opt.tp1Frac / 100, px, "tp1")) { tp1Done = true; trade.partial = true; if (!qty) closeTrade(i, "1차 익절"); }
+          }
+        }
+        if (qty && opt.takeProfit > 0) {
+          const tp = avg * (1 + (L ? 1 : -1) * opt.takeProfit / 100);
+          if (L ? b.h >= tp : b.l <= tp) closeAll(i, L ? Math.max(b.o, tp) : Math.min(b.o, tp), "익절");
+        }
+        if (qty) { peak = Math.max(peak, b.h); trough = Math.min(trough, b.l); }
+      }
+      // 3) 보유기간 초과 / 장 마감 청산 (종가)
       const lastOfDay = opt.dayClose && opt.dayKey && (i === n - 1 || opt.dayKey(i) !== opt.dayKey(i + 1));
-      if (qty > 0 && lastOfDay) sell(i, b.c, "당일청산");
+      if (qty && opt.maxHold > 0 && i - entryIdx >= opt.maxHold) closeAll(i, b.c, "보유기간");
+      if (qty && lastOfDay) closeAll(i, b.c, "당일청산");
 
-      // 4) 이번 봉 종가 기준 신호 → 다음 봉에서 체결
-      if (i < n - 1) {
-        if (qty > 0 && sig.exit[i]) pendingExit = true;
-        // 당일 청산 모드에서는 마지막 봉 신호로 다음날 진입하지 않음
-        if (qty === 0 && sig.entry[i] && !lastOfDay) pendingEntry = true;
+      // 4) 이번 봉 종가 신호 → 다음 봉 시가에 체결
+      if (i < n - 1 && !lastOfDay) {
+        const up = sig.entry[i], dn = sig.exit[i];
+        if (qty > 0) {
+          if (dn) pending = dirOK(-1) ? { kind: "reverse", side: -1 } : { kind: "close" };
+        } else if (qty < 0) {
+          if (up) pending = dirOK(1) ? { kind: "reverse", side: 1 } : { kind: "close" };
+        } else {
+          if (up && dirOK(1)) pending = { kind: "open", side: 1 };
+          else if (dn && dirOK(-1)) pending = { kind: "open", side: -1 };
+        }
+        // 분할매수
+        if (!pending && qty && opt.pyrN > 1 && tranches < opt.pyrN) {
+          const L = qty > 0, c = b.c;
+          const add = opt.pyrMode === "signal" ? (L ? up : dn)
+            : opt.pyrMode === "down" ? (L ? c <= lastFill * (1 - opt.pyrPct / 100) : c >= lastFill * (1 + opt.pyrPct / 100))
+            : (L ? c >= lastFill * (1 + opt.pyrPct / 100) : c <= lastFill * (1 - opt.pyrPct / 100));
+          if (add) pending = { kind: "add" };
+        }
       }
-      equity[i] = cash + qty * b.c;
+      equity[i] = mark(i);
     }
-    // 마지막까지 보유 중이면 평가만 하고 미청산으로 표시
-    let open = null;
-    if (qty > 0) {
+
+    let openPos = null;
+    if (qty && trade) {
       const last = bars[n - 1];
-      open = { entryIdx, entryPx, lastPx: last.c, ret: ((qty * last.c * (1 - sellCost)) / entryCash - 1) * 100 };
+      openPos = { side: Math.sign(qty), entryIdx: trade.entryIdx, entryPx: trade.inVal / trade.inQty, lastPx: last.c, qty,
+        ret: trade.invested ? ((trade.flow + qty * last.c) / trade.invested) * 100 : 0 };
     }
-    return { equity, trades, open, lines: sig.lines, stats: stats(bars, equity, trades, opt, open) };
+    const st = stats(bars, equity, trades, opt, openPos);
+    st.blocked = blocked; st.capped = capped;
+    return { equity, trades, open: openPos, lines: sig.lines, fills, stats: st };
   }
 
+  // ================= 성과 지표 =================
   function stats(bars, eq, trades, opt, open) {
-    const n = bars.length;
+    const n = bars.length, cap = opt.capital;
     const final = eq[n - 1];
-    let peak = -Infinity, mdd = 0;
-    for (const v of eq) { peak = Math.max(peak, v); mdd = Math.min(mdd, v / peak - 1); }
+    const rets = eq.map((v, i) => (i === 0 ? v / cap - 1 : v / eq[i - 1] - 1));
+    let peak = cap, mdd = 0, ddLen = 0, maxDdLen = 0;
+    const dd = eq.map((v) => {
+      if (v >= peak) { peak = v; ddLen = 0; } else { ddLen++; maxDdLen = Math.max(maxDdLen, ddLen); }
+      const d = v / peak - 1; mdd = Math.min(mdd, d); return d * 100;
+    });
+    const years = Math.max((bars[n - 1].ms - bars[0].ms) / (365.25 * 86400000), 1 / 365);
+    const bpy = n / years;
+    const mean = rets.reduce((s, r) => s + r, 0) / n;
+    const sd = Math.sqrt(rets.reduce((s, r) => s + (r - mean) ** 2, 0) / n);
+    const dsd = Math.sqrt(rets.reduce((s, r) => s + Math.min(r, 0) ** 2, 0) / n);
+    const totalRet = final / cap - 1;
+    const cagr = years >= 0.25 && final > 0 ? Math.pow(final / cap, 1 / years) - 1 : null;
     const wins = trades.filter((t) => t.pnl > 0), losses = trades.filter((t) => t.pnl <= 0);
     const gw = wins.reduce((s, t) => s + t.pnl, 0), gl = -losses.reduce((s, t) => s + t.pnl, 0);
-    const days = (bars[n - 1].ms - bars[0].ms) / 86400000;
-    const years = days / 365.25;
-    const totalRet = final / opt.capital - 1;
+    let streak = 0, maxLoseStreak = 0;
+    trades.forEach((t) => { if (t.pnl <= 0) { streak++; maxLoseStreak = Math.max(maxLoseStreak, streak); } else streak = 0; });
+    // 보유 노출(봉 기준)
     const held = trades.reduce((s, t) => s + t.bars + 1, 0) + (open ? n - open.entryIdx : 0);
+    // 월별 수익률
+    const monthly = {};
+    let prevEq = cap, prevKey = null;
+    for (let i = 0; i < n; i++) {
+      const key = (bars[i].day || String(bars[i].t)).slice(0, 7);
+      if (prevKey && key !== prevKey) { monthly[prevKey] = (eq[i - 1] / prevEq - 1) * 100; prevEq = eq[i - 1]; }
+      prevKey = key;
+    }
+    if (prevKey) monthly[prevKey] = (eq[n - 1] / prevEq - 1) * 100;
     return {
       totalRet: totalRet * 100,
-      cagr: years >= 0.25 ? (Math.pow(final / opt.capital, 1 / years) - 1) * 100 : null,
+      cagr: cagr == null ? null : cagr * 100,
       mdd: mdd * 100,
+      sharpe: sd > 0 ? (mean / sd) * Math.sqrt(bpy) : 0,
+      sortino: dsd > 0 ? (mean / dsd) * Math.sqrt(bpy) : 0,
+      calmar: cagr != null && mdd < 0 ? cagr / -mdd : null,
       trades: trades.length,
       winRate: trades.length ? (wins.length / trades.length) * 100 : 0,
       avgWin: wins.length ? wins.reduce((s, t) => s + t.ret, 0) / wins.length : 0,
       avgLoss: losses.length ? losses.reduce((s, t) => s + t.ret, 0) / losses.length : 0,
+      expectancy: trades.length ? trades.reduce((s, t) => s + t.ret, 0) / trades.length : 0,
       profitFactor: gl > 0 ? gw / gl : (gw > 0 ? Infinity : 0),
+      maxLoseStreak,
+      avgHold: trades.length ? trades.reduce((s, t) => s + t.bars, 0) / trades.length : 0,
       buyHold: (bars[n - 1].c / bars[0].o - 1) * 100,
       exposure: (held / n) * 100,
-      final,
+      maxDdBars: maxDdLen,
+      final, drawdown: dd, monthly, bpy, years,
     };
   }
 
-  // ---------- Pine Script 생성 ----------
-  function pine(strategyId, p, opt, title) {
+  // ================= Pine Script =================
+  const pineSpec = (s) => {
+    const n = +s.n || 14, k = +s.k || 2;
+    switch (s.ind) {
+      case "close": case "open": case "high": case "low": case "volume": return s.ind;
+      case "sma": return `ta.sma(close, ${n})`;
+      case "ema": return `ta.ema(close, ${n})`;
+      case "rsi": return `ta.rsi(close, ${n})`;
+      case "bb_mid": return `ta.sma(close, ${n})`;
+      case "bb_up": return `(ta.sma(close, ${n}) + ${k} * ta.stdev(close, ${n}))`;
+      case "bb_low": return `(ta.sma(close, ${n}) - ${k} * ta.stdev(close, ${n}))`;
+      case "hh": return `ta.highest(high, ${n})[1]`;
+      case "ll": return `ta.lowest(low, ${n})[1]`;
+      case "vol_sma": return `ta.sma(volume, ${n})[1]`;
+      case "roc": return `((close / close[${n}] - 1) * 100)`;
+      case "atr": return `ta.atr(${n})`;
+      case "macd": return `(ta.ema(close, 12) - ta.ema(close, 26))`;
+      case "macd_sig": return `ta.ema(ta.ema(close, 12) - ta.ema(close, 26), 9)`;
+      case "macd_hist": return `((ta.ema(close, 12) - ta.ema(close, 26)) - ta.ema(ta.ema(close, 12) - ta.ema(close, 26), 9))`;
+      case "num": return String(+s.v || 0);
+    }
+    return "na";
+  };
+  function pineRules(g) {
+    const rules = (g && g.rules) || [];
+    if (!rules.length) return "false";
+    const parts = rules.map((r) => {
+      const a = pineSpec(r.a), m = r.mult == null || r.mult === "" ? 1 : +r.mult;
+      const b = m === 1 ? pineSpec(r.b) : `${pineSpec(r.b)} * ${m}`;
+      if (r.op === "cross_up") return `ta.crossover(${a}, ${b})`;
+      if (r.op === "cross_down") return `ta.crossunder(${a}, ${b})`;
+      return `${a} ${r.op} ${b}`;
+    });
+    return parts.map((x) => `(${x})`).join(g.logic === "OR" ? " or " : " and ");
+  }
+
+  function pine(strategyId, p, o, title) {
+    const opt = { ...DEFAULTS, ...o };
     const perSide = ((opt.buyFee + opt.sellFee) / 2 + opt.slip).toFixed(4);
+    const qtyPct = opt.sizing === "fixed" ? opt.sizePct : 100;
     const L = [];
+    const notes = [];
+    if (opt.sizing === "risk") notes.push("ATR 위험 기준 비중은 Pine에서 고정 100%로 바뀌었어요.");
+    if (opt.pyrN > 1 && opt.pyrMode !== "signal") notes.push("가격 기준 분할매수(물타기·불타기)는 Pine으로 옮기지 않았어요. 신호 반복 분할매수만 반영돼요.");
+    if (opt.tick || opt.limit || opt.volCap) notes.push("호가 단위·상하한가·거래량 한도는 TradingView 체결 방식에 맡겼어요.");
     L.push("//@version=5");
     L.push(`strategy("${title.replace(/"/g, "'")}", overlay=true, initial_capital=${opt.capital},`);
-    L.push(`     default_qty_type=strategy.percent_of_equity, default_qty_value=100,`);
-    L.push(`     commission_type=strategy.commission.percent, commission_value=${perSide})`);
+    L.push(`     default_qty_type=strategy.percent_of_equity, default_qty_value=${(qtyPct / Math.max(1, opt.pyrN)).toFixed(2)},`);
+    L.push(`     pyramiding=${Math.max(1, opt.pyrN)}, commission_type=strategy.commission.percent, commission_value=${perSide})`);
+    notes.forEach((x) => L.push(`// 참고: ${x}`));
     L.push("");
-    L.push("// ===== 리스크 설정 (0 = 사용 안 함) =====");
+    L.push("// ===== 설정 (0 = 사용 안 함) =====");
+    L.push(`direction = input.string("${{ long: "롱", short: "숏", both: "양방향" }[opt.direction]}", "방향", options=["롱", "숏", "양방향"])`);
     L.push(`stopPct   = input.float(${opt.stopLoss}, "손절 %", minval=0)`);
     L.push(`tpPct     = input.float(${opt.takeProfit}, "익절 %", minval=0)`);
     L.push(`trailPct  = input.float(${opt.trailing}, "트레일링 %", minval=0)`);
+    L.push(`tp1Pct    = input.float(${opt.tp1Pct}, "1차 익절 %", minval=0)`);
+    L.push(`tp1Frac   = input.float(${opt.tp1Frac}, "1차 익절 비율 %", minval=1, maxval=100)`);
     L.push(`maxHold   = input.int(${opt.maxHold}, "최대 보유 봉 수", minval=0)`);
     L.push(`dayClose  = input.bool(${opt.dayClose ? "true" : "false"}, "장 마감 전 청산 (분봉)")`);
     L.push("");
     L.push("// ===== 전략 =====");
-    let entry = "", exit = "";
+    let entry = "false", exit = "false";
     if (strategyId === "ma_cross") {
       const f = p.type === "EMA" ? "ta.ema" : "ta.sma";
-      L.push(`fastLen = input.int(${p.fast}, "단기")`);
-      L.push(`slowLen = input.int(${p.slow}, "장기")`);
-      L.push(`fast = ${f}(close, fastLen)`);
-      L.push(`slow = ${f}(close, slowLen)`);
-      L.push(`plot(fast, "단기", color.orange)`);
-      L.push(`plot(slow, "장기", color.blue)`);
+      L.push(`fast = ${f}(close, input.int(${p.fast}, "단기"))`, `slow = ${f}(close, input.int(${p.slow}, "장기"))`);
+      L.push(`plot(fast, "단기", color.orange)`, `plot(slow, "장기", color.blue)`);
       entry = "ta.crossover(fast, slow)"; exit = "ta.crossunder(fast, slow)";
     } else if (strategyId === "rsi") {
-      L.push(`len = input.int(${p.period}, "RSI 기간")`);
-      L.push(`lo  = input.float(${p.low}, "과매도")`);
-      L.push(`hi  = input.float(${p.high}, "과매수")`);
-      L.push(`r = ta.rsi(close, len)`);
+      L.push(`r = ta.rsi(close, input.int(${p.period}, "RSI 기간"))`, `lo = input.float(${p.low}, "과매도")`, `hi = input.float(${p.high}, "과매수")`);
       entry = "ta.crossover(r, lo)"; exit = "ta.crossover(r, hi)";
     } else if (strategyId === "bollinger") {
-      L.push(`len = input.int(${p.period}, "기간")`);
-      L.push(`mult = input.float(${p.k}, "표준편차 배수")`);
-      L.push(`basis = ta.sma(close, len)`);
-      L.push(`dev = mult * ta.stdev(close, len)`);
-      L.push(`upper = basis + dev`);
-      L.push(`lower = basis - dev`);
-      L.push(`plot(upper, "상단", color.gray)`);
-      L.push(`plot(basis, "중심", color.orange)`);
-      L.push(`plot(lower, "하단", color.gray)`);
+      L.push(`len = input.int(${p.period}, "기간")`, `mult = input.float(${p.k}, "표준편차 배수")`);
+      L.push(`basis = ta.sma(close, len)`, `dev = mult * ta.stdev(close, len)`, `upper = basis + dev`, `lower = basis - dev`);
+      L.push(`plot(upper, "상단", color.gray)`, `plot(basis, "중심", color.orange)`, `plot(lower, "하단", color.gray)`);
       entry = "close < lower"; exit = p.exitAt === "상단" ? "close > upper" : "close > basis";
     } else if (strategyId === "breakout") {
-      L.push(`lookback = input.int(${p.lookback}, "돌파 기준 봉 수")`);
-      L.push(`volLen   = input.int(${p.volLen}, "거래량 평균 기간")`);
-      L.push(`volMult  = input.float(${p.volMult}, "거래량 배수")`);
-      L.push(`exitLen  = input.int(${p.exitLen}, "이탈 기준 봉 수")`);
-      L.push(`hh = ta.highest(high, lookback)[1]`);
-      L.push(`ll = ta.lowest(low, exitLen)[1]`);
-      L.push(`va = ta.sma(volume, volLen)[1]`);
-      L.push(`plot(hh, "돌파선", color.red)`);
-      L.push(`plot(ll, "이탈선", color.blue)`);
+      L.push(`hh = ta.highest(high, input.int(${p.lookback}, "돌파 기준 봉 수"))[1]`, `ll = ta.lowest(low, input.int(${p.exitLen}, "이탈 기준 봉 수"))[1]`);
+      L.push(`va = ta.sma(volume, input.int(${p.volLen}, "거래량 평균 기간"))[1]`, `volMult = input.float(${p.volMult}, "거래량 배수")`);
+      L.push(`plot(hh, "돌파선", color.red)`, `plot(ll, "이탈선", color.blue)`);
       entry = "close > hh and volume > va * volMult"; exit = "close < ll";
+    } else if (strategyId === "custom") {
+      entry = pineRules(p.rules && p.rules.entry); exit = pineRules(p.rules && p.rules.exit);
     }
+    L.push(`buySig  = ${entry}`);
+    L.push(`sellSig = ${exit}`);
     L.push("");
     L.push("lastBar = dayClose and timeframe.isintraday and session.islastbar_regular");
-    L.push(`if (${entry}) and strategy.position_size == 0 and not lastBar`);
-    L.push(`    strategy.entry("L", strategy.long)`);
-    L.push(`if (${exit}) and strategy.position_size > 0`);
-    L.push(`    strategy.close("L", comment="신호")`);
+    L.push(`allowL = direction != "숏"`);
+    L.push(`allowS = direction != "롱"`);
+    L.push("if not lastBar");
+    L.push("    if buySig");
+    L.push("        if strategy.position_size < 0");
+    L.push(`            strategy.close("S", comment="신호")`);
+    L.push(`        if allowL and (strategy.position_size <= 0 or strategy.opentrades < ${Math.max(1, opt.pyrN)})`);
+    L.push(`            strategy.entry("L", strategy.long)`);
+    L.push("    if sellSig");
+    L.push("        if strategy.position_size > 0");
+    L.push(`            strategy.close("L", comment="신호")`);
+    L.push(`        if allowS and (strategy.position_size >= 0 or strategy.opentrades < ${Math.max(1, opt.pyrN)})`);
+    L.push(`            strategy.entry("S", strategy.short)`);
     L.push("");
-    L.push("if strategy.position_size > 0");
-    L.push("    ep = strategy.position_avg_price");
-    L.push("    sl = stopPct > 0 ? ep * (1 - stopPct / 100) : na");
-    L.push("    tp = tpPct > 0 ? ep * (1 + tpPct / 100) : na");
-    L.push("    trailTicks = trailPct > 0 ? ep * trailPct / 100 / syminfo.mintick : na");
-    L.push(`    strategy.exit("R", "L", stop=sl, limit=tp, trail_points=trailPct > 0 ? 0 : na, trail_offset=trailTicks)`);
+    L.push("ep = strategy.position_avg_price");
+    L.push("isL = strategy.position_size > 0");
+    L.push("sl = stopPct > 0 ? (isL ? ep * (1 - stopPct / 100) : ep * (1 + stopPct / 100)) : na");
+    L.push("tp = tpPct > 0 ? (isL ? ep * (1 + tpPct / 100) : ep * (1 - tpPct / 100)) : na");
+    L.push("tp1 = tp1Pct > 0 ? (isL ? ep * (1 + tp1Pct / 100) : ep * (1 - tp1Pct / 100)) : na");
+    L.push("trailTicks = trailPct > 0 ? ep * trailPct / 100 / syminfo.mintick : na");
+    L.push("if strategy.position_size != 0");
+    L.push(`    id = isL ? "L" : "S"`);
+    L.push(`    if tp1Pct > 0`);
+    L.push(`        strategy.exit("TP1", id, qty_percent=tp1Frac, limit=tp1, stop=sl)`);
+    L.push(`    strategy.exit("R", id, stop=sl, limit=tp, trail_points=trailPct > 0 ? 0 : na, trail_offset=trailTicks)`);
     L.push("    if maxHold > 0 and bar_index - strategy.opentrades.entry_bar_index(0) >= maxHold");
-    L.push(`        strategy.close("L", comment="보유기간", immediately=true)`);
+    L.push(`        strategy.close_all(comment="보유기간", immediately=true)`);
     L.push("    if lastBar");
-    L.push(`        strategy.close("L", comment="당일청산", immediately=true)`);
+    L.push(`        strategy.close_all(comment="당일청산", immediately=true)`);
     return L.join("\n");
   }
 
-  return { STRATEGIES, run, pine, sma, ema, rsi, stdev };
+  return {
+    STRATEGIES, IND, OPS, DEFAULTS, run, pine, stats, describeSpec, tickSize, roundTick,
+    sma, ema, rsi, stdev, atr,
+  };
 })();
+if (typeof module !== "undefined") module.exports = BT;
