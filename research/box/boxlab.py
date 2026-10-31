@@ -117,53 +117,126 @@ def targets(x, p):
 
 
 # ---------------------------------------------------------------- 수익 계산
-def pnl(x, w, cost):
-    """w[t]: 봉 t 종가에서 정한 목표 비중 → 봉 t+1 시가에 체결."""
+def pnl(x, w, cost, eod=False, day=None):
+    """w[t]: 봉 t 종가에서 정한 목표 비중 → 봉 t+1 시가에 체결.
+    eod=True 이면 매일 마지막 봉 종가에 전량 청산(밤사이 갭을 들고 가지 않음)."""
     o, c = x["o"], x["c"]
     gap = np.r_[0, o[1:] / c[:-1] - 1]          # 전 종가 → 시가
     intra = c / o - 1                            # 시가 → 종가
     held = np.r_[0, w[:-1]]                      # 봉 t 동안의 새 비중
     prev = np.r_[0, 0, w[:-2]]                   # 시가 전까지의 이전 비중
-    r = (1 + prev * gap) * (1 + held * intra) - 1 - np.abs(held - prev) * cost
-    return r, np.abs(held - prev)
+    close_cost = 0.0
+    if eod:
+        first = np.r_[True, day[1:] != day[:-1]]
+        last = np.r_[day[1:] != day[:-1], True]
+        prev = np.where(first, 0.0, prev)
+        close_cost = last * np.abs(held) * cost
+    turn = np.abs(held - prev)
+    r = (1 + prev * gap) * (1 + held * intra) - 1 - turn * cost - close_cost
+    return r, turn + (np.abs(held) * last if eod else 0)
 
 
-def run_symbol(x, xi, p, cost_s=0.0005, cost_i=0.0002):
-    wA, wL = targets(x, p)
-    rA, tA = pnl(x, wA, cost_s)
-    rC, tC = pnl(x, wL, cost_s)
+def run_symbol(x, xi, p, cost_s=0.0005, cost_i=0.0002, target_fn=None, beta_n=120):
+    wA, wL = (target_fn or targets)(x, p)
+    eod, day = bool(p.get("eod")), x["day"]
+    rA, tA = pnl(x, wA, cost_s, eod, day)
+    rC, tC = pnl(x, wL, cost_s, eod, day)
     # B: 롱 + 지수 숏 (지수 비중 = -β·w_L)
     rs = x["c"] / np.r_[x["c"][0], x["c"][:-1]] - 1
     ri = xi["c"] / np.r_[xi["c"][0], xi["c"][:-1]] - 1
-    beta = rolling_beta(rs, ri)
-    rH, tH = pnl(xi, -beta * wL, cost_i)
+    beta = np.r_[1.0, rolling_beta(rs, ri, beta_n)[:-1]]  # 어제까지의 데이터로 추정한 β
+    rH, tH = pnl(xi, -beta * wL, cost_i, eod, day)
     rB = rC + rH
     bh = np.r_[0, x["c"][1:] / x["c"][:-1] - 1]
     return {"A": rA, "B": rB, "C": rC, "BH": bh, "turnA": tA, "turnB": tC + tH, "expA": np.abs(np.r_[0, wA[:-1]]), "expB": np.r_[0, wL[:-1]]}
+
+
+# ---------------------------------------------------------------- 일봉: 박스 하단 분할매수
+@njit(cache=True)
+def _daily_loop(c, T, B, box, z1, z2, z3, s, H, cool_n):
+    """진입할 때의 박스를 고정해서 관리.
+    하단으로 갈수록 1/3→2/3→1 비중 늘리기, 중심으로 오면 비중 줄이다 0,
+    박스 하단보다 s·반폭 더 빠지면 손절, H일 지나면 시간 청산."""
+    n = len(c)
+    w = np.zeros(n)
+    inpos = False
+    T0 = 0.0
+    B0 = 0.0
+    ent = 0
+    cool = 0
+    for t in range(n):
+        if np.isnan(T[t]) or np.isnan(B[t]):
+            continue
+        if cool > 0:
+            cool -= 1
+            continue
+        if not inpos:
+            if not box[t] or T[t] <= B[t]:
+                continue
+            z = (c[t] - (T[t] + B[t]) / 2) / ((T[t] - B[t]) / 2)
+            if z > -z1:
+                continue
+            inpos, T0, B0, ent = True, T[t], B[t], t
+        z = (c[t] - (T0 + B0) / 2) / ((T0 - B0) / 2)
+        if z < -1 - s:
+            inpos = False
+            cool = cool_n
+            continue
+        if t - ent >= H or z >= 0:
+            inpos = False
+            continue
+        az = -z
+        if az >= z3:
+            w[t] = 1.0
+        elif az >= z2:
+            w[t] = 2 / 3
+        elif az >= z1:
+            w[t] = 1 / 3
+        else:
+            w[t] = 0.0
+            inpos = False
+    return w
+
+
+def daily_targets(x, p):
+    """반환 (A, 롱): A = 하단 롱 − 상단 숏 (상단은 가격을 뒤집어 같은 규칙 적용)."""
+    h, l, c = x["h"], x["l"], x["c"]
+    N = p["N"]
+    T, B = rolling_max(h, N), rolling_min(l, N)
+    M = (T + B) / 2
+    box = (eff_ratio(c, N) < p["er"]) & ((T - B) / M >= p["wmin"]) & ((T - B) / M <= p["wmax"])
+    box = np.nan_to_num(box).astype(np.bool_)
+    args = (p["z1"], p["z2"], p["z3"], p["s"], int(p["H"]), int(p["cool"]))
+    wL = _daily_loop(c, T, B, box, *args)
+    wS = _daily_loop(-c, -B, -T, box, *args)
+    return wL - wS, wL
 
 
 # ---------------------------------------------------------------- 성과
 BARS_PER_YEAR = 6 * 248
 
 
-def stats(r):
+def stats(r, bars_per_year=None):
+    bpy = bars_per_year or BARS_PER_YEAR
     r = np.asarray(r)
     if len(r) == 0:
         return {}
     eq = np.cumprod(1 + r)
     peak = np.maximum.accumulate(eq)
     sd = r.std()
-    yrs = len(r) / BARS_PER_YEAR
+    yrs = len(r) / bpy
     return {
         "ret": (eq[-1] - 1) * 100,
         "cagr": (eq[-1] ** (1 / yrs) - 1) * 100 if yrs > 0.2 and eq[-1] > 0 else np.nan,
-        "sharpe": r.mean() / sd * np.sqrt(BARS_PER_YEAR) if sd > 0 else 0.0,
+        "sharpe": r.mean() / sd * np.sqrt(bpy) if sd > 0 else 0.0,
         "mdd": (eq / peak - 1).min() * 100,
     }
 
 
 def load(interval="60m"):
     d = pd.read_parquet(D / f"bars_{interval}.parquet")
+    # 시가·고가·저가·종가 중 0 이하가 있는 봉(거래정지일 등)은 제외
+    d = d[(d[["o", "h", "l", "c"]] > 0).all(axis=1)].copy()
     d["day"] = d["ts"].dt.strftime("%Y-%m-%d")
     hedge = d[d.sym == HEDGE].set_index("ts")
     out = {}
