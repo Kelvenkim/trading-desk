@@ -329,5 +329,5 @@ const BT = (() => {
     return L.join("\n");
   }
 
-  return { STRATEGIES, run, pine, sma };
+  return { STRATEGIES, run, pine, sma, ema, rsi, stdev };
 })();

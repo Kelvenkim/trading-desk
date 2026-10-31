@@ -117,5 +117,55 @@ def main():
     print(f"meta.json 저장: {len(meta['symbols'])}개 종목, {meta['updated']}")
 
 
+US_LIST = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main/{0}/{0}_full_tickers.json"
+
+
+def build_symbols(force: bool = False):
+    """검색용 종목 목록 data/symbols.json (하루 한 번만 갱신)."""
+    path = DATA / "symbols.json"
+    today = datetime.now(KST).strftime("%Y-%m-%d")
+    if path.exists() and not force:
+        try:
+            if json.loads(path.read_text(encoding="utf-8")).get("updated") == today:
+                return
+        except Exception:
+            pass
+    rows = []
+    try:
+        l = fdr.StockListing("KRX")
+        l = l[l["Market"].isin(["KOSPI", "KOSDAQ", "KOSDAQ GLOBAL"])].sort_values("Marcap", ascending=False)
+        for _, r in l.iterrows():
+            mk = "KOSPI" if r["Market"] == "KOSPI" else "KOSDAQ"
+            rows.append([r["Code"] + (".KS" if mk == "KOSPI" else ".KQ"), r["Name"], mk])
+    except Exception as e:
+        print("[오류] 한국 종목 목록:", e)
+    try:
+        etf = fdr.StockListing("ETF/KR")
+        for _, r in etf.iterrows():
+            rows.append([str(r["Symbol"]) + ".KS", r["Name"], "ETF"])
+    except Exception as e:
+        print("[오류] ETF 목록:", e)
+    try:
+        import urllib.request
+        us = []
+        for ex in ("nasdaq", "nyse", "amex"):
+            with urllib.request.urlopen(US_LIST.format(ex), timeout=30) as f:
+                for r in json.loads(f.read().decode()):
+                    try:
+                        cap = float(r.get("marketCap") or 0)
+                    except ValueError:
+                        cap = 0
+                    if cap >= 3e8 and "^" not in r["symbol"]:  # 시가총액 3억 달러 이상
+                        us.append((cap, r["symbol"].replace("/", "-").replace(".", "-"), r["name"], ex.upper()))
+        us.sort(reverse=True)
+        rows += [[s, n.replace(" Common Stock", "").replace(" Class A", ""), ex] for _, s, n, ex in us]
+    except Exception as e:
+        print("[오류] 미국 종목 목록:", e)
+    if rows:
+        write_json(path, {"updated": today, "list": rows})
+        print(f"symbols.json 저장: {len(rows)}개")
+
+
 if __name__ == "__main__":
     main()
+    build_symbols()
