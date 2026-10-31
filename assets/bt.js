@@ -148,7 +148,7 @@ const BTUI = (() => {
     const opts = Object.entries(BT.IND).filter(([k]) => role === "b" || k !== "num")
       .map(([k, d]) => `<option value="${k}" ${k === s.ind ? "selected" : ""}>${d.label}</option>`).join("");
     const d = BT.IND[s.ind] || { args: [] };
-    const args = d.args.map((a) => `<input type="number" data-f="${a}" value="${s[a] ?? (d.def || {})[a] ?? ""}" step="${a === "k" ? 0.1 : a === "v" ? "any" : 1}" title="${a === "n" ? "기간" : a === "k" ? "배수" : "값"}" class="arg ${a}">`).join("");
+    const args = d.args.map((a) => `<input type="number" data-f="${a}" value="${s[a] ?? (d.def || {})[a] ?? ""}" step="${a === "k" ? 0.1 : a === "v" ? "any" : 1}" title="${a === "n" ? "기간" : a === "m" ? "긴 기간" : a === "k" ? "배수" : "값"}" class="arg ${a}">`).join("");
     return `<span class="spec" data-role="${role}"><select data-f="ind">${opts}</select>${args}</span>`;
   }
   function renderRules() {

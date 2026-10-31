@@ -12,7 +12,7 @@ const ChartView = (() => {
   };
   const MA = [[5, "#e7ecf5"], [20, "#f2b84b"], [60, "#7aa2ff"], [120, "#c792ea"]];
   const IND_KEY = "tradingdesk.indicators";
-  const DEFAULT_IND = { ma: true, bb: false, vol: true, rsi: false, macd: false };
+  const DEFAULT_IND = { ma: true, bb: false, vol: true, rsi: false, macd: false, spo: false };
 
   let chart, candle, vol, legendEl, markersApi;
   let bars = [], idxByTime = new Map(), sym = "", ivId = "1d", fmt = (v) => String(v);
@@ -129,6 +129,16 @@ const ChartView = (() => {
       const ml = chart.addSeries(LC.LineSeries, lineOpts("#f2b84b", 2), pane); ml.setData(line(m));
       const sl = chart.addSeries(LC.LineSeries, lineOpts("#7aa2ff", 2), pane); sl.setData(line(sig));
       sub.push(h, ml, sl); pane++;
+    }
+    if (ind.spo) {
+      const r = BT.spoCalc(bars, 10, 40, 100, 2);
+      const o = chart.addSeries(LC.LineSeries, { ...lineOpts("#4fd1a5", 2), lastValueVisible: true, priceFormat: { type: "price", precision: 2, minMove: 0.01 } }, pane);
+      o.setData(line(r.osc));
+      [1, -1].forEach((v) => o.createPriceLine({ price: v, color: "rgba(141,152,179,.45)", lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
+      o.createPriceLine({ price: 0, color: "rgba(141,152,179,.25)", lineWidth: 1, lineStyle: 0, axisLabelVisible: false });
+      const up = chart.addSeries(LC.LineSeries, lineOpts("rgba(240,82,92,.7)"), pane); up.setData(line(r.upper));
+      const lo = chart.addSeries(LC.LineSeries, lineOpts("rgba(61,139,253,.7)"), pane); lo.setData(line(r.lower));
+      sub.push(o, up, lo); pane++;
     }
     const panes = chart.panes();
     panes.forEach((p, i) => p.setStretchFactor(i === 0 ? 3.2 : 1));

@@ -87,6 +87,31 @@ const BT = (() => {
   };
   const shift1 = (a) => a.map((_, i) => (i === 0 ? NaN : a[i - 1]));
 
+  // John Ehlers SuperSmoother (2극 버터워스 필터)
+  const superSmoother = (a, len) => {
+    const out = new Array(a.length).fill(NaN);
+    const f = (1.414 * Math.PI) / len, a1 = Math.exp(-f), c2 = 2 * a1 * Math.cos(f), c3 = -a1 * a1, c1 = 1 - c2 - c3;
+    for (let i = 0; i < a.length; i++) {
+      if (i < 2) { out[i] = a[i]; continue; }
+      out[i] = (c1 * (a[i] + a[i - 1])) / 2 + c2 * out[i - 1] + c3 * out[i - 2];
+    }
+    return out;
+  };
+  /**
+   * Smooth Price Oscillator (BigBeluga 지표의 공개 설명을 바탕으로 재구성)
+   *  osc  = (SuperSmoother(종가, 짧은 기간) − SuperSmoother(종가, 긴 기간)) ÷ 종가 표준편차(긴 기간)
+   *  밴드 = ±EMA(k × osc 표준편차(밴드 기간), 밴드 기간)
+   */
+  function spoCalc(b, fast = 10, slow = 40, bandLen = 100, k = 2) {
+    const c = b.map((x) => x.c);
+    const f = superSmoother(c, fast), s = superSmoother(c, slow), sd = stdev(c, slow);
+    const osc = c.map((_, i) => (sd[i] > 0 ? (f[i] - s[i]) / sd[i] : NaN));
+    const clean = osc.map((v) => (isNaN(v) ? 0 : v));
+    const sdo = stdev(clean, bandLen).map((v) => (isNaN(v) ? 0 : k * v));
+    const band = ema(sdo, bandLen);
+    return { osc, upper: band, lower: band.map((v) => -v), fast: f, slow: s };
+  }
+
   // ================= 조건 조합용 지표 =================
   const IND = {
     close: { label: "종가", args: [] }, open: { label: "시가", args: [] }, high: { label: "고가", args: [] }, low: { label: "저가", args: [] },
@@ -103,6 +128,10 @@ const BT = (() => {
     roc: { label: "N봉 등락률(%)", args: ["n"], def: { n: 1 } },
     atr: { label: "ATR", args: ["n"], def: { n: 14 } },
     macd: { label: "MACD", args: [] }, macd_sig: { label: "MACD 시그널", args: [] }, macd_hist: { label: "MACD 히스토그램", args: [] },
+    spo: { label: "SPO 오실레이터", args: ["n", "m"], def: { n: 10, m: 40 } },
+    spo_up: { label: "SPO 과매수 밴드", args: ["n", "m"], def: { n: 10, m: 40 } },
+    spo_low: { label: "SPO 과매도 밴드", args: ["n", "m"], def: { n: 10, m: 40 } },
+    ss: { label: "SuperSmoother", args: ["n"], def: { n: 20 } },
     num: { label: "숫자", args: ["v"], def: { v: 0 } },
   };
   const OPS = { ">": "보다 크면", "<": "보다 작으면", ">=": "이상이면", "<=": "이하면", cross_up: "을 위로 뚫으면", cross_down: "을 아래로 뚫으면" };
@@ -137,6 +166,11 @@ const BT = (() => {
         out = s.ind === "macd" ? mm : s.ind === "macd_sig" ? sg : mm.map((v, i) => v - sg[i]);
         break;
       }
+      case "spo": case "spo_up": case "spo_low": {
+        const r = spoCalc(b, +s.n || 10, +s.m || 40);
+        out = s.ind === "spo" ? r.osc : s.ind === "spo_up" ? r.upper : r.lower; break;
+      }
+      case "ss": out = superSmoother(c, n); break;
       case "num": out = new Array(b.length).fill(+s.v || 0); break;
       default: out = new Array(b.length).fill(NaN);
     }
@@ -248,6 +282,37 @@ const BT = (() => {
           exit: c.map((x, i) => x < ll[i]),
           lines: [{ name: `${p.lookback}봉 최고`, data: hh, color: "#f0525c" }, { name: `${p.exitLen}봉 최저`, data: ll, color: "#3d8bfd" }],
         };
+      },
+    },
+    spo: {
+      name: "Smooth Price Oscillator",
+      desc: "Ehlers SuperSmoother 두 개의 차이로 만든 오실레이터. 역추세: 과매도(-기준선 또는 밴드 아래)에서 다시 올라오면 매수. 추세: 0선을 위로 넘으면 매수, 아래로 내려가면 매도.",
+      params: [
+        { key: "mode", label: "사용법", type: "select", options: ["역추세", "추세"], def: "역추세" },
+        { key: "fast", label: "짧은 기간", def: 10, min: 2, max: 200 },
+        { key: "slow", label: "긴 기간", def: 40, min: 3, max: 400 },
+        { key: "th", label: "기준선 (±)", def: 1, min: 0.1, max: 5, step: 0.1 },
+        { key: "bandLen", label: "밴드 기간", def: 100, min: 10, max: 500 },
+        { key: "k", label: "밴드 배수", def: 2, min: 0.5, max: 5, step: 0.1 },
+        { key: "strength", label: "신호 세기", type: "select", options: ["일반", "강한 신호만"], def: "일반" },
+        { key: "exitAt", label: "역추세 매도", type: "select", options: ["0선 회복", "과매수 반락"], def: "0선 회복" },
+      ],
+      signals(b, p) {
+        const r = spoCalc(b, p.fast, p.slow, p.bandLen, p.k), o = r.osc, n = b.length;
+        const crossUp = (i, lv) => i > 0 && o[i - 1] <= lv[i - 1] && o[i] > lv[i];
+        const crossDn = (i, lv) => i > 0 && o[i - 1] >= lv[i - 1] && o[i] < lv[i];
+        const cst = (v) => new Array(n).fill(v);
+        let entry, exit;
+        if (p.mode === "추세") {
+          const z = cst(0);
+          entry = o.map((_, i) => crossUp(i, z)); exit = o.map((_, i) => crossDn(i, z));
+        } else {
+          const lo = p.strength === "강한 신호만" ? r.lower : cst(-p.th);
+          const hi = p.strength === "강한 신호만" ? r.upper : cst(p.th);
+          entry = o.map((_, i) => crossUp(i, lo));
+          exit = p.exitAt === "과매수 반락" ? o.map((_, i) => crossDn(i, hi)) : o.map((_, i) => crossUp(i, cst(0)));
+        }
+        return { entry, exit, lines: [{ name: `SS${p.fast}`, data: r.fast, color: "#f2b84b" }, { name: `SS${p.slow}`, data: r.slow, color: "#7aa2ff" }] };
       },
     },
     custom: {
@@ -572,6 +637,10 @@ const BT = (() => {
       case "macd": return `(ta.ema(close, 12) - ta.ema(close, 26))`;
       case "macd_sig": return `ta.ema(ta.ema(close, 12) - ta.ema(close, 26), 9)`;
       case "macd_hist": return `((ta.ema(close, 12) - ta.ema(close, 26)) - ta.ema(ta.ema(close, 12) - ta.ema(close, 26), 9))`;
+      case "spo": return `spoOsc(${+s.n || 10}, ${+s.m || 40})`;
+      case "spo_up": return `spoBand(${+s.n || 10}, ${+s.m || 40})`;
+      case "spo_low": return `(-spoBand(${+s.n || 10}, ${+s.m || 40}))`;
+      case "ss": return `ss(close, ${n})`;
       case "num": return String(+s.v || 0);
     }
     return "na";
@@ -614,6 +683,21 @@ const BT = (() => {
     L.push(`maxHold   = input.int(${opt.maxHold}, "최대 보유 봉 수", minval=0)`);
     L.push(`dayClose  = input.bool(${opt.dayClose ? "true" : "false"}, "장 마감 전 청산 (분봉)")`);
     L.push("");
+    L.push("// ===== Ehlers SuperSmoother / Smooth Price Oscillator =====");
+    L.push("ss(src, len) =>");
+    L.push("    f = 1.414 * math.pi / len");
+    L.push("    a1 = math.exp(-f)");
+    L.push("    c2 = 2 * a1 * math.cos(f)");
+    L.push("    c3 = -a1 * a1");
+    L.push("    c1 = 1 - c2 - c3");
+    L.push("    float s = na");
+    L.push("    s := bar_index < 2 ? src : c1 * (src + src[1]) / 2 + c2 * nz(s[1], src) + c3 * nz(s[2], src)");
+    L.push("    s");
+    L.push("spoOsc(fast, slow) =>");
+    L.push("    sd = ta.stdev(close, slow)");
+    L.push("    sd > 0 ? (ss(close, fast) - ss(close, slow)) / sd : 0.0");
+    L.push(`spoBand(fast, slow) => ta.ema(${strategyId === "spo" ? p.k : 2} * ta.stdev(spoOsc(fast, slow), ${strategyId === "spo" ? p.bandLen : 100}), ${strategyId === "spo" ? p.bandLen : 100})`);
+    L.push("");
     L.push("// ===== 전략 =====");
     let entry = "false", exit = "false";
     if (strategyId === "ma_cross") {
@@ -634,6 +718,14 @@ const BT = (() => {
       L.push(`va = ta.sma(volume, input.int(${p.volLen}, "거래량 평균 기간"))[1]`, `volMult = input.float(${p.volMult}, "거래량 배수")`);
       L.push(`plot(hh, "돌파선", color.red)`, `plot(ll, "이탈선", color.blue)`);
       entry = "close > hh and volume > va * volMult"; exit = "close < ll";
+    } else if (strategyId === "spo") {
+      L.push(`osc = spoOsc(${p.fast}, ${p.slow})`, `band = spoBand(${p.fast}, ${p.slow})`, `th = input.float(${p.th}, "기준선")`);
+      L.push(`plot(ss(close, ${p.fast}), "SS 짧은", color.orange)`, `plot(ss(close, ${p.slow}), "SS 긴", color.blue)`);
+      if (p.mode === "추세") { entry = "ta.crossover(osc, 0)"; exit = "ta.crossunder(osc, 0)"; }
+      else {
+        const lo = p.strength === "강한 신호만" ? "-band" : "-th", hi = p.strength === "강한 신호만" ? "band" : "th";
+        entry = `ta.crossover(osc, ${lo})`; exit = p.exitAt === "과매수 반락" ? `ta.crossunder(osc, ${hi})` : "ta.crossover(osc, 0)";
+      }
     } else if (strategyId === "custom") {
       entry = pineRules(p.rules && p.rules.entry); exit = pineRules(p.rules && p.rules.exit);
     }
@@ -675,7 +767,7 @@ const BT = (() => {
 
   return {
     STRATEGIES, IND, OPS, DEFAULTS, run, pine, stats, describeSpec, tickSize, roundTick,
-    sma, ema, rsi, stdev, atr,
+    sma, ema, rsi, stdev, atr, superSmoother, spoCalc,
   };
 })();
 if (typeof module !== "undefined") module.exports = BT;
