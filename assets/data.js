@@ -135,10 +135,12 @@ const Data = (() => {
   async function viaProxy(url, decode) {
     const p = getProxy();
     if (!p) throw new NeedProxyError();
-    const full = p + (p.includes("?") ? "&" : "?") + "url=" + encodeURIComponent(url);
-    let r;
-    try { r = await fetch(full); }
-    catch (_) { throw new Error("시세 중계 서버에 연결하지 못했어요. ⚙ 설정의 주소가 맞는지 확인해주세요."); }
+    const mk = (base) => base + (base.includes("?") ? "&" : "?") + "url=" + encodeURIComponent(url);
+    let r = null;
+    try { r = await fetch(mk(p)); } catch (_) {}
+    // 이 브라우저에 저장된 주소가 틀렸으면 사이트 기본 주소로 한 번 더
+    if ((!r || !r.ok) && siteProxy && siteProxy !== p) { try { r = await fetch(mk(siteProxy)); } catch (_) {} }
+    if (!r) throw new Error("시세 중계 서버에 연결하지 못했어요. ⚙ 설정의 주소가 맞는지 확인해주세요.");
     if (!r.ok) throw new Error(`시세 서버 응답 오류 (${r.status})`);
     if (decode === "euc-kr") return new TextDecoder("euc-kr").decode(await r.arrayBuffer());
     return decode === "json" ? r.json() : r.text();
