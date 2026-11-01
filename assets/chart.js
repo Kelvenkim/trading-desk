@@ -12,11 +12,11 @@ const ChartView = (() => {
   };
   const MA = [[5, "#8a8a92"], [20, "#ffffff"], [60, "#7aa2ff"], [120, "#c792ea"]];
   const IND_KEY = "tradingdesk.indicators";
-  const DEFAULT_IND = { ma: true, bb: false, vol: true, rsi: false, macd: false, spo: false, vwap: false };
+  const DEFAULT_IND = { ma: true, bb: false, vol: true, rsi: false, macd: false, spo: false, vwap: false, plan: true };
 
   let chart, candle, vol, legendEl, markersApi;
   let bars = [], idxByTime = new Map(), sym = "", ivId = "1d", fmt = (v) => String(v);
-  let main = [], sub = [];
+  let main = [], sub = [], planDraw = null, planSeq = 0;
   let ind = { ...DEFAULT_IND };
   try { ind = { ...DEFAULT_IND, ...JSON.parse(localStorage.getItem(IND_KEY) || "{}") }; } catch (_) {}
 
@@ -87,6 +87,26 @@ const ChartView = (() => {
 
   function clearSeries(list) { list.forEach((s) => { try { chart.removeSeries(s); } catch (_) {} }); list.length = 0; }
 
+  // 지지·저항·추세선·매매 계획 (일봉만, 최근 6개월로 계산)
+  async function renderPlan() {
+    const seq = ++planSeq;
+    if (planDraw) { planDraw.remove(); planDraw = null; }
+    const box = document.getElementById("chart-plan");
+    const krStock = /\.(KS|KQ)$/.test(sym);
+    if (!ind.plan || ivId !== "1d" || !krStock || bars.length < 60 || typeof Levels === "undefined") {
+      if (box) box.innerHTML = ind.plan && ivId !== "1d" && krStock ? `<p class="hint">지지·저항·매매 계획은 일봉에서 보여요.</p>` : "";
+      return;
+    }
+    const off = Math.max(0, bars.length - Levels.WINDOW), part = bars.slice(off);
+    const up = await Levels.marketUp();
+    if (seq !== planSeq) return;
+    let A = null;
+    try { A = Levels.analyze(part, { marketUp: up }); } catch (e) { console.error(e); }
+    if (!A) { if (box) box.innerHTML = ""; return; }
+    planDraw = Levels.draw(chart, candle, part.map((b) => b.t), A, (mk) => markersApi.setMarkers(mk));
+    if (box) box.innerHTML = Levels.planHTML(A);
+  }
+
   function renderIndicators() {
     clearSeries(main); clearSeries(sub);
     if (vol) { try { chart.removeSeries(vol); } catch (_) {} vol = null; }
@@ -152,6 +172,7 @@ const ChartView = (() => {
     }
     const panes = chart.panes();
     panes.forEach((p, i) => p.setStretchFactor(i === 0 ? 3.2 : 1));
+    renderPlan();
   }
 
   function updateLegend(i) {

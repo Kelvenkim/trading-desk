@@ -487,3 +487,8 @@ pre { background: var(--bg); border: 1px solid var(--line); border-radius: var(-
 @media (max-width: 640px) { .rk-chart { height: 280px; } }
 .rk-tbl tr.detail .plan-tbl td { padding: 7px 8px; background: transparent; }
 .rk-tbl tr.detail .plan-tbl td:first-child { white-space: nowrap; }
+.chart-plan { padding: 0 14px 14px; }
+.chart-plan:empty { display: none; }
+.chart-plan .plan-tbl td { padding: 7px 8px; }
+.chart-plan .plan-tbl td:first-child { white-space: nowrap; }
+.chart-plan .plan-tbl td.sub { white-space: normal; }

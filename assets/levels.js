@@ -84,5 +84,72 @@ const Levels = (() => {
     }
     return { sup, res, up, down, plan, sig, atr: A, px };
   }
-  return { analyze, SETUP };
+  /**
+   * chart(lightweight-charts)·series(캔들)에 선을 그림. times[i] = 분석에 쓴 봉 i의 차트 시간
+   * setMarkers(list) 로 지난 신호 표시. 반환값.remove() 로 모두 지움
+   */
+  function draw(chart, series, times, A, setMarkers) {
+    const LC = LightweightCharts, lines = [], extra = [];
+    const PL = (price, color, title, style = 2, w = 1) => lines.push(series.createPriceLine({ price, color, lineWidth: w, lineStyle: style, axisLabelVisible: !!title, title }));
+    A.sup.forEach((x, k) => PL(x.p, "#a3a3ab", `지지${k + 1}${x.n > 1 ? ` (${x.n}번 닿음)` : ""}`, 0));
+    A.res.forEach((x, k) => PL(x.p, "#6e6e76", `저항${k + 1}${x.n > 1 ? ` (${x.n}번 닿음)` : ""}`, 0));
+    const P = A.plan;
+    if (P.ok) {
+      if (P.kind === "pullback") { PL(P.zoneHi, "rgba(255,255,255,.55)", "매수 구간", 1); PL(P.zoneLo, "rgba(255,255,255,.55)", "", 1); }
+      else PL(P.entry, "rgba(255,255,255,.7)", "돌파 매수", 1);
+      PL(P.stop, "#3d8bfd", "손절", 2, 2);
+      PL(P.target, "#f0525c", "목표 3R", 2, 2);
+    }
+    const tl = (t, color) => {
+      if (!t) return;
+      const s = chart.addSeries(LC.LineSeries, { color, lineWidth: 2, lineStyle: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+      s.setData([{ time: times[t.i1], value: t.p1 }, { time: times[t.i2], value: t.p2 }]);
+      extra.push(s);
+    };
+    tl(A.up, "rgba(255,255,255,.8)"); tl(A.down, "rgba(160,160,168,.8)");
+    const mk = [];
+    A.sig.forEach((g) => {
+      mk.push({ time: times[g.i], position: "belowBar", color: "#ffffff", shape: "arrowUp", text: "매수" });
+      if (g.out) mk.push({ time: times[g.out.k], position: "aboveBar", color: g.out.why === "목표" ? "#f0525c" : "#3d8bfd", shape: "arrowDown", text: g.out.why });
+    });
+    mk.sort((x, y) => (x.time < y.time ? -1 : x.time > y.time ? 1 : 0));
+    if (setMarkers) setMarkers(mk);
+    return { remove() { lines.forEach((l) => { try { series.removePriceLine(l); } catch (_) {} }); extra.forEach((x) => { try { chart.removeSeries(x); } catch (_) {} }); if (setMarkers) setMarkers([]); } };
+  }
+
+  function planHTML(A) {
+    if (!A) return "";
+    const P = A.plan;
+    const won = (v) => (v == null ? "—" : Math.round(v).toLocaleString("ko-KR"));
+    const pct = (v) => (v == null ? "—" : (v >= 0 ? "+" : "") + (v * 100).toFixed(1) + "%");
+    const big = P.stopPct < -0.08 ? " · 폭이 커요, 수량을 줄이세요" : "";
+    const done = A.sig.filter((g) => g.out), wins = done.filter((g) => g.out.why === "목표").length, hold = A.sig.find((g) => !g.out);
+    const rows = P.ok ? (P.kind === "pullback"
+      ? [["매수 구간", `${won(P.zoneLo)} ~ ${won(P.zoneHi)}`, `현재가 ${won(A.px)}${P.inZone ? " · 구간 안" : ` · ${pct(P.zoneHi / A.px - 1)} 아래`}`],
+         ["손절", won(P.stop), `매수가 대비 ${pct(P.stopPct)} · 지지선 아래 0.5ATR${big}`],
+         ["목표", won(P.target), `매수가 대비 ${pct(P.targetPct)} · 손절폭의 3배`]]
+        .concat(P.res1 ? [["중간 저항", won(P.res1), "여기서 한 번 막힐 수 있어요"]] : [])
+      : [["돌파 매수", won(P.entry), `현재가 대비 ${pct(P.entry / A.px - 1)} · 저항선을 종가로 넘으면`],
+         ["손절", won(P.stop), `매수가 대비 ${pct(P.stopPct)}${big}`],
+         ["목표", won(P.target), `매수가 대비 ${pct(P.targetPct)} · 손절폭의 3배`]]) : [];
+    return `<div class="plan">
+      <div class="plan-head"><b>매매 계획</b><span class="verdict ${P.ok && P.kind === "pullback" && P.mktOK && P.inZone ? "go" : ""}">${P.verdict}</span></div>
+      <div class="plan-checks small">
+        <span class="${P.trendOK ? "okc" : "noc"}">${P.trendOK ? "✓" : "✕"} 종목 추세 (종가>60일선, 20일선>60일선)</span>
+        <span class="${P.mktOK ? "okc" : "noc"}">${P.mktOK ? "✓" : "✕"} 시장 (코스피200 > 200일선)</span>
+      </div>
+      ${rows.length ? `<table class="tbl plan-tbl"><tbody>${rows.map(([k, v, s]) => `<tr><td>${k}</td><td class="r"><b>${v}</b></td><td class="sub">${s}</td></tr>`).join("")}</tbody></table>` : ""}
+      <p class="small muted">최근 6개월 같은 규칙 신호 ${A.sig.length}번${done.length ? ` · 끝난 ${done.length}번 중 목표 ${wins} / 손절 ${done.length - wins}` : ""}${hold ? " · 지금 보유 중인 신호 있음" : ""}.
+      과거 검증(150종목, 2014~2026): 승률 약 32%, 이기면 손절폭의 약 3배를 벌어 평균 +0.2R — 상승장일 때만 플러스였어요. 지지·저항은 자동 계산이라 참고용이에요.</p>
+    </div>`;
+  }
+
+  // 시장 상태(코스피200 > 200일선): 순위 자료에서 한 번만 읽음
+  let mkt = null;
+  function marketUp() {
+    if (!mkt) mkt = fetch("data/rank/latest.json").then((r) => r.json()).then((j) => j.market.ks_vs200 > 0).catch(() => true);
+    return mkt;
+  }
+
+  return { analyze, draw, planHTML, marketUp, SETUP, WINDOW: 130 };
 })();
