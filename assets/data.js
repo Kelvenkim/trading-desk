@@ -32,7 +32,9 @@ const Data = (() => {
   const kstDay = (ms) => new Date(ms + KST * 1000).toISOString().slice(0, 10);
 
   // ---------- 설정 ----------
-  function getProxy() { try { return (localStorage.getItem(PROXY_KEY) || "").trim(); } catch (_) { return ""; } }
+  // 기기마다 따로 넣지 않아도 되게: 이 브라우저에 저장한 주소 → 없으면 data/config.json 의 기본 주소
+  let siteProxy = "";
+  function getProxy() { let v = ""; try { v = (localStorage.getItem(PROXY_KEY) || "").trim(); } catch (_) {} return v || siteProxy; }
   function setProxy(v) { try { localStorage.setItem(PROXY_KEY, (v || "").trim()); } catch (_) {} cache.clear(); }
 
   async function getJSON(url) {
@@ -42,6 +44,7 @@ const Data = (() => {
   }
 
   async function init() {
+    try { siteProxy = ((await getJSON("data/config.json")).proxy || "").trim(); } catch (_) {}
     meta = await getJSON("data/meta.json");
     meta.symbols.forEach((s) => (bySym[s.symbol] = s));
     return meta;
@@ -169,13 +172,30 @@ const Data = (() => {
   }
 
   // ---------- 공개 함수 ----------
+  // 순위 화면 자료(시총 상위 300, 최근 6개월 일봉) — 중계 서버 없이도 볼 수 있게
+  let rankBars = null; const fromRank = new Set();
+  async function rankDaily(code) {
+    if (!rankBars) rankBars = getJSON("data/rank/bars.json").catch(() => null);
+    const B = await rankBars; if (!B || !B.bars[code]) return null;
+    const rows = B.bars[code].map((x, i) => x && [B.days[i], ...x]).filter(Boolean);
+    return rows.length ? fromDailyRows(rows) : null;
+  }
   async function daily(sym, fresh) {
     const loc = bySym[sym];
     if (loc && !fresh) {
       const j = await getJSON(`data/daily/${loc.file}`);
       return fromDailyRows(j.bars);
     }
-    return isKR(sym) ? naverDaily(sym.split(".")[0]) : yahoo(sym, "1d", "10y");
+    if (isKR(sym)) {
+      const code = sym.split(".")[0];
+      try { const b = await naverDaily(code); fromRank.delete(sym); return b; }
+      catch (e) {
+        const r = await rankDaily(code);   // 중계 서버가 없거나 안 될 때
+        if (r) { fromRank.add(sym); return r; }
+        throw e;
+      }
+    }
+    return yahoo(sym, "1d", "10y");
   }
   async function intraday(sym, iv, fresh) {
     const loc = bySym[sym];
@@ -224,7 +244,7 @@ const Data = (() => {
 
   return {
     INTERVALS, IV, init, search, info, getBars, quote, loadSymbols, getProxy, setProxy, isKR,
-    get meta() { return meta; }, isLocal: (s) => !!bySym[s], hasLocalIntraday: (s) => !!(bySym[s] && bySym[s].intraday),
+    get meta() { return meta; }, isLocal: (s) => !!bySym[s], fromRank: (s) => fromRank.has(s), hasLocalIntraday: (s) => !!(bySym[s] && bySym[s].intraday),
     kstDay, KST,
   };
 })();

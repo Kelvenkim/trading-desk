@@ -95,7 +95,8 @@
       Draw.redraw();
       chartMsg(null);
       const src = Data.isLocal(sym) && !opts.fresh && (Data.IV[cur.iv].daily || (Data.hasLocalIntraday(sym) && Data.IV[cur.iv].min >= 5))
-        ? `저장된 시세 · ${Data.meta.updated} 기준` : "중계 서버로 받은 시세 (최대 몇 분 지연될 수 있어요)";
+        ? `저장된 시세 · ${Data.meta.updated} 기준`
+        : Data.fromRank(sym) ? "순위 화면 자료 · 최근 6개월 일봉 (더 긴 기간·분봉은 ⚙ 설정에서 중계 서버 연결)" : "중계 서버로 받은 시세 (최대 몇 분 지연될 수 있어요)";
       $("#chart-foot").textContent = `${src} · ${bars.length.toLocaleString("ko-KR")}개 봉`;
       if (opts.fresh) toast("최신 시세로 바꿨어요.");
     } catch (e) {
