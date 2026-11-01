@@ -136,7 +136,9 @@ const Data = (() => {
     const p = getProxy();
     if (!p) throw new NeedProxyError();
     const full = p + (p.includes("?") ? "&" : "?") + "url=" + encodeURIComponent(url);
-    const r = await fetch(full);
+    let r;
+    try { r = await fetch(full); }
+    catch (_) { throw new Error("시세 중계 서버에 연결하지 못했어요. ⚙ 설정의 주소가 맞는지 확인해주세요."); }
     if (!r.ok) throw new Error(`시세 서버 응답 오류 (${r.status})`);
     if (decode === "euc-kr") return new TextDecoder("euc-kr").decode(await r.arrayBuffer());
     return decode === "json" ? r.json() : r.text();

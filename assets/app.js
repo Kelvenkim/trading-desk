@@ -101,6 +101,11 @@
       if (opts.fresh) toast("최신 시세로 바꿨어요.");
     } catch (e) {
       if (seq !== cur.seq) return;
+      // 분봉이 안 되면(중계 서버 없음·연결 실패) 일봉으로 자동 전환 — 다음에 열 때도 일봉
+      if (!Data.IV[cur.iv].daily && !opts.noFallback) {
+        toast(e.needProxy ? "분봉은 중계 서버가 있어야 볼 수 있어요. 일봉으로 보여드려요." : "분봉 시세를 받지 못해서 일봉으로 보여드려요.", true);
+        return openSymbol(sym, "1d", { ...opts, noFallback: true });
+      }
       if (e.needProxy) {
         chartMsg(`<div><b>${esc(info.name)}</b> 시세는 아직 볼 수 없어요.<br/>관심종목 외 종목이나 1분봉은 시세 중계 서버를 설정하면 볼 수 있어요.</div>
           <p><button class="btn primary" data-open-settings>중계 서버 설정</button></p>`);
