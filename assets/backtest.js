@@ -152,6 +152,106 @@ const BT = (() => {
     return out;
   }
 
+  // ---------- 차트 구조: 스윙 고점·저점 ----------
+  /**
+   * 좌우 L봉보다 높은(낮은) 봉을 스윙 고점(저점)으로 봄. j봉의 스윙은 j+L봉 종가가 나와야 확정되므로
+   * 반환 배열 confH[i], confL[i] 에는 'i봉까지 확정된' 스윙만 들어감 (미래 참조 없음).
+   */
+  function swings(b, L) {
+    const n = b.length, hs = [], ls = [];
+    const confH = new Array(n), confL = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const j = i - L;
+      if (j >= L) {
+        let isH = true, isL = true;
+        for (let k = j - L; k <= j + L; k++) {
+          if (k === j) continue;
+          if (b[k].h >= b[j].h) isH = false;
+          if (b[k].l <= b[j].l) isL = false;
+        }
+        if (isH) hs.push({ i: j, p: b[j].h });
+        if (isL) ls.push({ i: j, p: b[j].l });
+      }
+      confH[i] = hs.length; confL[i] = ls.length;
+    }
+    return { hs, ls, confH, confL };
+  }
+  // i봉 기준, 가격 px 바로 위의 확정된 스윙 고점(=다음 저항). 최근 lookback 봉 안에서만
+  function nextResistance(sw, i, px, lookback, b) {
+    let best = Infinity;
+    for (let k = sw.confH[i] - 1; k >= 0; k--) {
+      const h = sw.hs[k];
+      if (i - h.i > lookback) break;
+      if (h.p > px * 1.002 && h.p < best) best = h.p;
+    }
+    return best;
+  }
+
+  /**
+   * 차트 매매 셋업
+   *  돌파 후 되돌림 : 확정된 스윙 고점을 종가로 돌파 → K봉 안에 그 가격대까지 되돌림(저가가 저항선+허용폭 이내) 후
+   *                  양봉으로 저항선 위에서 마감하면 매수. 손절은 되돌림 저점 − 여유폭
+   *  추세 눌림목   : 최근 스윙 저점 2개·고점 2개가 모두 높아지는 상승 추세, EMA20 > EMA50,
+   *                  저가가 EMA20(+허용폭)까지 눌린 뒤 전 봉 고가를 넘겨 마감하면 매수. 손절은 최근 3봉 저점 − 여유폭
+   *  지지선 반등   : 확정된 스윙 저점(지지선) 근처까지 내려왔다가 전 봉 고가를 넘기며 지지선 위에서 마감하면 매수. 손절은 지지선 − 여유폭
+   *  목표가: '다음 저항'이면 바로 위 스윙 고점(없으면 3R), 손익비(목표까지 거리 ÷ 손절 폭)가 minRR 미만이면 진입하지 않음
+   */
+  function chartSetup(b, p) {
+    const n = b.length, L = p.pivot, a = atr(b, 14), c = b.map((x) => x.c);
+    const e20 = ema(c, 20), e50 = ema(c, 50), s200 = sma(c, 200);
+    const sw = swings(b, L);
+    const entry = new Array(n).fill(false), exit = new Array(n).fill(false), plan = new Array(n).fill(null);
+    const lookback = p.resLook || 250;
+    const trendOK = (i) => (p.filter === "200일선 위에서만" ? c[i] > s200[i] : true) && (!p.mkt || p.mkt[i]);
+    const mkPlan = (i, stop) => {
+      const px = c[i], risk = px - stop;
+      if (!(risk > 0) || risk / px > (p.maxStop || 15) / 100) return null;   // 손절 폭이 너무 크면 자리 아님
+      let target;
+      if (p.target === "다음 저항") {
+        const r = nextResistance(sw, i, px, lookback, b);
+        target = isFinite(r) ? r : px + 3 * risk;
+      } else target = px + (p.target === "3R" ? 3 : 2) * risk;
+      if ((target - px) / risk < p.minRR) return null;
+      return { stop, target };
+    };
+    let lvl = NaN, brokeAt = -1, lastUsedH = -1;
+    for (let i = 1; i < n; i++) {
+      if (!isFinite(a[i])) continue;
+      const tol = p.tol * a[i], buf = p.buf * a[i];
+      let pl = null;
+      if (p.setup === "돌파 후 되돌림") {
+        // 아직 쓰지 않은 가장 최근 확정 고점을 종가로 돌파하면 대기 상태
+        const hk = sw.confH[i] - 1;
+        if (hk >= 0 && hk !== lastUsedH && c[i] > sw.hs[hk].p && c[i - 1] <= sw.hs[hk].p) { lvl = sw.hs[hk].p; brokeAt = i; lastUsedH = hk; }
+        if (brokeAt >= 0 && i > brokeAt) {
+          if (i - brokeAt > p.window || c[i] < lvl - tol) { brokeAt = -1; }
+          else if (b[i].l <= lvl + tol && c[i] > lvl && c[i] > b[i].o && trendOK(i)) {
+            let lo = Infinity; for (let k = brokeAt; k <= i; k++) lo = Math.min(lo, b[k].l);
+            pl = mkPlan(i, Math.min(lo, lvl) - buf);
+            if (pl) brokeAt = -1;
+          }
+        }
+      } else if (p.setup === "추세 눌림목") {
+        const lk = sw.confL[i], hk = sw.confH[i];
+        const up = lk >= 2 && hk >= 2 && sw.ls[lk - 1].p > sw.ls[lk - 2].p && sw.hs[hk - 1].p > sw.hs[hk - 2].p && e20[i] > e50[i];
+        if (up && b[i].l <= e20[i] + tol && c[i] > e20[i] && c[i] > b[i - 1].h && trendOK(i)) {
+          const lo = Math.min(b[i].l, b[i - 1].l, i > 1 ? b[i - 2].l : Infinity);
+          pl = mkPlan(i, lo - buf);
+        }
+      } else if (p.setup === "지지선 반등") {
+        const lk = sw.confL[i];
+        for (let k = lk - 1; k >= 0 && k >= lk - 5; k--) {
+          const sp = sw.ls[k].p;
+          if (i - sw.ls[k].i < 2 * L || i - sw.ls[k].i > lookback) continue;
+          if (b[i].l <= sp + tol && b[i].l >= sp - tol && c[i] > sp && c[i] > b[i - 1].h && trendOK(i)) { pl = mkPlan(i, sp - buf); break; }
+        }
+      }
+      if (pl) { entry[i] = true; plan[i] = pl; }
+    }
+    const lines = [{ name: "EMA20", data: e20, color: "#f2b84b" }];
+    return { entry, exit, plan, lines, swings: sw };
+  }
+
   // John Ehlers SuperSmoother (2극 버터워스 필터)
   const superSmoother = (a, len) => {
     const out = new Array(a.length).fill(NaN);
@@ -430,6 +530,22 @@ const BT = (() => {
         return { entry, exit, lines };
       },
     },
+    chart: {
+      name: "차트 매매 (지지·저항 셋업)",
+      desc: "차트 트레이더처럼 자리를 골라 들어가요. 손절은 차트 구조(되돌림 저점·지지선 아래), 목표는 다음 저항선. 목표까지 거리가 손절 폭의 '최소 손익비'배 이상일 때만 진입. 비중 방식을 'ATR 위험 기준'으로 두면 손절 시 계좌의 '1회 위험 %'만 잃도록 수량을 맞춰요.",
+      params: [
+        { key: "setup", label: "셋업", type: "select", options: ["돌파 후 되돌림", "추세 눌림목", "지지선 반등"], def: "돌파 후 되돌림" },
+        { key: "pivot", label: "스윙 강도 (좌우 봉)", def: 5, min: 2, max: 20 },
+        { key: "window", label: "되돌림 대기 봉", def: 10, min: 2, max: 60 },
+        { key: "tol", label: "가격대 허용폭 (ATR 배수)", def: 0.5, min: 0, max: 3, step: 0.1 },
+        { key: "buf", label: "손절 여유폭 (ATR 배수)", def: 0.3, min: 0, max: 3, step: 0.1 },
+        { key: "target", label: "목표가", type: "select", options: ["다음 저항", "2R", "3R"], def: "다음 저항" },
+        { key: "minRR", label: "최소 손익비", def: 2, min: 0.5, max: 10, step: 0.5 },
+        { key: "maxStop", label: "최대 손절 폭 %", def: 15, min: 1, max: 50 },
+        { key: "filter", label: "추세 필터", type: "select", options: ["없음", "200일선 위에서만"], def: "200일선 위에서만" },
+      ],
+      signals(b, p) { return chartSetup(b, p); },
+    },
     confluence: {
       name: "종합 점수 (여러 조건 합의)",
       desc: "8가지 강세 조건 중 몇 개가 동시에 맞는지 점수로 세요. 점수가 '매수 점수' 이상이 되는 순간 사고, '매도 점수' 이하로 떨어지면 팔아요. 끈 조건은 점수에서 빠져요.",
@@ -509,6 +625,7 @@ const BT = (() => {
     direction: "long", sizing: "all", sizePct: 100, riskPct: 1, atrMult: 2,
     pyrN: 1, pyrMode: "down", pyrPct: 3, tp1Pct: 0, tp1Frac: 50,
     tick: false, etf: false, limit: false, volCap: 0,
+    beAfterR: 0,   // 수익이 손절 폭의 N배(R)에 닿으면 손절가를 본전으로 (차트 셋업용)
   };
 
   function run(bars, strategyId, p, o) {
@@ -521,7 +638,8 @@ const BT = (() => {
     const dirOK = (side) => opt.direction === "both" || (side > 0 ? opt.direction === "long" : opt.direction === "short");
 
     let cash = opt.capital, qty = 0, avg = 0, entryIdx = -1, lastFill = 0, tranches = 0, unit = 0, peak = 0, trough = 0, tp1Done = false;
-    let trade = null, pending = null, blocked = 0, capped = 0;
+    let trade = null, pending = null, blocked = 0, capped = 0, skippedGap = 0;
+    let tStop = NaN, tTarget = NaN, tRisk = NaN;   // 차트 셋업이 넘겨준 이번 거래의 손절가·목표가·1R 폭
     const equity = new Array(n), trades = [], fills = [];
 
     const mark = (i) => cash + qty * bars[i].c;
@@ -535,8 +653,9 @@ const BT = (() => {
         side: t.side, entryIdx: t.entryIdx, exitIdx: i, bars: i - t.entryIdx,
         entryPx: t.inVal / t.inQty, exitPx: t.outQty ? t.outVal / t.outQty : NaN,
         pnl: t.flow, ret: t.invested ? (t.flow / t.invested) * 100 : 0, reason, adds: t.adds, partial: t.partial,
+        r: t.riskCash > 0 ? t.flow / t.riskCash : NaN, stopPx: t.stopPx, targetPx: t.targetPx,
       });
-      trade = null; entryIdx = -1; tranches = 0; tp1Done = false;
+      trade = null; entryIdx = -1; tranches = 0; tp1Done = false; tStop = tTarget = tRisk = NaN;
     }
 
     /** 주문 체결. want: 부호 있는 수량(+매수, −매도). 반환: 실제 체결 수량(부호 포함) */
@@ -576,21 +695,32 @@ const BT = (() => {
       const eq = cash + qty * refPx;
       let notional;
       if (opt.sizing === "fixed") notional = eq * opt.sizePct / 100;
-      else if (opt.sizing === "risk") {
+      else if (opt.sizing === "risk" && isFinite(tStop) && tStop < refPx) {
+        // 차트 손절가까지의 거리로 수량 결정: 손절되면 계좌의 riskPct%만 잃게
+        const dist = (refPx * (1 + opt.slip / 100) - tStop * (1 - opt.slip / 100)) / refPx;
+        notional = Math.min(eq * opt.riskPct / 100 / dist, eq);
+      } else if (opt.sizing === "risk") {
         const a = A[i - 1] || A[i];
         const dist = isFinite(a) && a > 0 ? (opt.atrMult * a) / refPx : NaN;
         notional = isFinite(dist) ? Math.min(eq * opt.riskPct / 100 / dist, eq) : eq * opt.riskPct / 100 * 10;
       } else notional = eq;
       return notional / Math.max(1, opt.pyrN);
     }
-    function open(i, side, refPx) {
+    function open(i, side, refPx, plan) {
+      tStop = plan && isFinite(plan.stop) ? plan.stop : NaN;
+      tTarget = plan && isFinite(plan.target) ? plan.target : NaN;
+      // 시가가 이미 손절가 아래(갭 하락)거나 목표가 위(갭 상승)면 자리가 무너진 것 → 진입하지 않음
+      if (side > 0 && ((isFinite(tStop) && refPx <= tStop) || (isFinite(tTarget) && refPx >= tTarget))) { skippedGap++; tStop = tTarget = NaN; return false; }
       startTrade(i, side);
       unit = targetUnit(i, refPx);
       // 롱은 수수료·슬리피지까지 포함해 현금 안에서 살 수 있는 수량
       const q = side > 0 ? unit / (refPx * (1 + opt.slip / 100) * (1 + opt.buyFee / 100)) : unit / refPx;
       const got = exec(i, side * q, refPx, "open");
-      if (!got) { trade = null; return false; }
+      if (!got) { trade = null; tStop = tTarget = NaN; return false; }
       entryIdx = i; tranches = 1; peak = refPx; trough = refPx; tp1Done = false;
+      tRisk = isFinite(tStop) ? avg - tStop : NaN;
+      trade.stopPx = tStop; trade.targetPx = tTarget;
+      trade.riskCash = isFinite(tRisk) ? Math.abs(qty) * (tRisk + avg * (opt.buyFee + opt.sellFee) / 100) : NaN;
       return true;
     }
     function closeAll(i, refPx, reason) {
@@ -606,7 +736,7 @@ const BT = (() => {
         const pd = pending; pending = null;
         if (pd.kind === "close") closeAll(i, b.o, "신호");
         else if (pd.kind === "reverse") { closeAll(i, b.o, "신호(전환)"); if (!qty) open(i, pd.side, b.o); }
-        else if (pd.kind === "open" && !qty) open(i, pd.side, b.o);
+        else if (pd.kind === "open" && !qty) open(i, pd.side, b.o, pd.plan);
         else if (pd.kind === "add" && qty && tranches < opt.pyrN) {
           const side = Math.sign(qty);
           if (exec(i, side * unit / b.o, b.o, "add")) { tranches++; trade.adds++; }
@@ -622,14 +752,17 @@ const BT = (() => {
         const L = qty > 0;
         const slPx = opt.stopLoss > 0 ? avg * (1 - (L ? 1 : -1) * opt.stopLoss / 100) : NaN;
         const trPx = opt.trailing > 0 ? (L ? peak * (1 - opt.trailing / 100) : trough * (1 + opt.trailing / 100)) : NaN;
-        const stopPx = L ? Math.max(isNaN(slPx) ? -Infinity : slPx, isNaN(trPx) ? -Infinity : trPx)
+        const stPx = L && isFinite(tStop) ? tStop : NaN;
+        const stopPx = L ? Math.max(isNaN(slPx) ? -Infinity : slPx, isNaN(trPx) ? -Infinity : trPx, isNaN(stPx) ? -Infinity : stPx)
                          : Math.min(isNaN(slPx) ? Infinity : slPx, isNaN(trPx) ? Infinity : trPx);
         const hitStop = L ? b.l <= stopPx : b.h >= stopPx;
         if (isFinite(stopPx) && hitStop) {
           const px = L ? Math.min(b.o, stopPx) : Math.max(b.o, stopPx);
-          const isTrail = !isNaN(trPx) && (isNaN(slPx) || (L ? trPx > slPx : trPx < slPx));
-          closeAll(i, px, isTrail ? "트레일링" : "손절");
+          const isTrail = !isNaN(trPx) && (isNaN(slPx) || (L ? trPx > slPx : trPx < slPx)) && (isNaN(stPx) || trPx > stPx);
+          const isStruct = !isNaN(stPx) && stopPx === stPx;
+          closeAll(i, px, isStruct ? (isFinite(tRisk) && stPx >= avg - 1e-9 ? "본전 손절" : "차트 손절") : isTrail ? "트레일링" : "손절");
         }
+        if (qty && L && isFinite(tTarget) && b.h >= tTarget) closeAll(i, Math.max(b.o, tTarget), "목표가");
         if (qty && opt.tp1Pct > 0 && !tp1Done) {
           const tp1 = avg * (1 + (L ? 1 : -1) * opt.tp1Pct / 100);
           if (L ? b.h >= tp1 : b.l <= tp1) {
@@ -641,7 +774,11 @@ const BT = (() => {
           const tp = avg * (1 + (L ? 1 : -1) * opt.takeProfit / 100);
           if (L ? b.h >= tp : b.l <= tp) closeAll(i, L ? Math.max(b.o, tp) : Math.min(b.o, tp), "익절");
         }
-        if (qty) { peak = Math.max(peak, b.h); trough = Math.min(trough, b.l); }
+        if (qty) {
+          peak = Math.max(peak, b.h); trough = Math.min(trough, b.l);
+          // 1R 등 일정 수익에 닿으면 다음 봉부터 손절가를 본전으로
+          if (L && opt.beAfterR > 0 && isFinite(tRisk) && tRisk > 0 && peak >= avg + opt.beAfterR * tRisk) tStop = Math.max(tStop, avg);
+        }
       }
       // 3) 보유기간 초과 / 장 마감 청산 (종가)
       const lastOfDay = opt.dayClose && opt.dayKey && (i === n - 1 || opt.dayKey(i) !== opt.dayKey(i + 1));
@@ -656,7 +793,7 @@ const BT = (() => {
         } else if (qty < 0) {
           if (up) pending = dirOK(1) ? { kind: "reverse", side: 1 } : { kind: "close" };
         } else {
-          if (up && dirOK(1)) pending = { kind: "open", side: 1 };
+          if (up && dirOK(1)) pending = { kind: "open", side: 1, plan: sig.plan ? sig.plan[i] : null };
           else if (dn && dirOK(-1)) pending = { kind: "open", side: -1 };
         }
         // 분할매수
@@ -674,11 +811,13 @@ const BT = (() => {
     let openPos = null;
     if (qty && trade) {
       const last = bars[n - 1];
-      openPos = { side: Math.sign(qty), entryIdx: trade.entryIdx, entryPx: trade.inVal / trade.inQty, lastPx: last.c, qty,
+      openPos = { side: Math.sign(qty), entryIdx: trade.entryIdx, entryPx: trade.inVal / trade.inQty, lastPx: last.c, qty, stopPx: tStop, targetPx: tTarget,
         ret: trade.invested ? ((trade.flow + qty * last.c) / trade.invested) * 100 : 0 };
     }
     const st = stats(bars, equity, trades, opt, openPos);
-    st.blocked = blocked; st.capped = capped;
+    st.blocked = blocked; st.capped = capped; st.skippedGap = skippedGap;
+    const rs = trades.map((t) => t.r).filter((v) => isFinite(v));
+    st.avgR = rs.length ? rs.reduce((a, v) => a + v, 0) / rs.length : null;
     return { equity, trades, open: openPos, lines: sig.lines, fills, stats: st };
   }
 
@@ -932,7 +1071,7 @@ const BT = (() => {
 
   return {
     STRATEGIES, IND, OPS, DEFAULTS, run, pine, stats, describeSpec, tickSize, roundTick,
-    sma, ema, rsi, stdev, atr, superSmoother, spoCalc, vwapCalc, confluence, CONF_LIST,
+    sma, ema, rsi, stdev, atr, superSmoother, spoCalc, vwapCalc, confluence, CONF_LIST, swings, chartSetup,
   };
 })();
 if (typeof module !== "undefined") module.exports = BT;

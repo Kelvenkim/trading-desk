@@ -464,6 +464,7 @@ const BTUI = (() => {
       card("총이익÷총손실 (PF)", !isFinite(st.profitFactor) ? "∞" : st.profitFactor.toFixed(2)),
       card("플러스인 날", st.activeDays ? st.posDays.toFixed(1) + "%" : "—"),
       card("거래당 기대값", fmtPct(st.expectancy), cls(st.expectancy)),
+      ...(st.avgR != null ? [card("평균 R (손절 폭 대비)", (st.avgR >= 0 ? "+" : "") + st.avgR.toFixed(2) + "R", cls(st.avgR))] : []),
       card("최대 연속 손실", st.maxLoseStreak + "회"),
       card("평균 보유", st.avgHold.toFixed(1) + "봉"),
       card("시장 노출", st.exposure.toFixed(1) + "%"),
@@ -532,6 +533,16 @@ const BTUI = (() => {
     C.lines = r.lines.map((ln) => {
       const s = C.pc.addSeries(LC.LineSeries, { color: ln.color, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
       s.setData(bars.map((b, i) => ({ time: b.t, value: ln.data[i] })).filter((x) => isFinite(x.value))); return s;
+    });
+    // 차트 셋업: 거래마다 손절선(파랑)·목표선(빨강)을 진입~청산 구간에만 그림 (최근 80거래)
+    const planned = [...r.trades, ...(r.open ? [{ ...r.open, exitIdx: bars.length - 1 }] : [])].filter((t) => isFinite(t.stopPx)).slice(-80);
+    planned.forEach((t) => {
+      [["stopPx", "#3d8bfd"], ["targetPx", "#f0525c"]].forEach(([key, col]) => {
+        if (!isFinite(t[key])) return;
+        const s = C.pc.addSeries(LC.LineSeries, { color: col, lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+        s.setData([{ time: bars[t.entryIdx].t, value: t[key] }, ...(t.exitIdx > t.entryIdx ? [{ time: bars[t.exitIdx].t, value: t[key] }] : [])]);
+        C.lines.push(s);
+      });
     });
     const tradeAt = new Map(r.trades.map((t) => [t.exitIdx, t]));
     const marks = r.fills.map((f) => {
