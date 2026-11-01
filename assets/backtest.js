@@ -248,7 +248,7 @@ const BT = (() => {
       }
       if (pl) { entry[i] = true; plan[i] = pl; }
     }
-    const lines = [{ name: "EMA20", data: e20, color: "#f2b84b" }];
+    const lines = [{ name: "EMA20", data: e20, color: "#ffffff" }];
     return { entry, exit, plan, lines, swings: sw };
   }
 
@@ -396,7 +396,7 @@ const BT = (() => {
         return {
           entry: c.map((_, i) => i > 0 && fa[i - 1] <= sl[i - 1] && fa[i] > sl[i]),
           exit: c.map((_, i) => i > 0 && fa[i - 1] >= sl[i - 1] && fa[i] < sl[i]),
-          lines: [{ name: `${p.type}${p.fast}`, data: fa, color: "#f2b84b" }, { name: `${p.type}${p.slow}`, data: sl, color: "#7aa2ff" }],
+          lines: [{ name: `${p.type}${p.fast}`, data: fa, color: "#ffffff" }, { name: `${p.type}${p.slow}`, data: sl, color: "#7aa2ff" }],
         };
       },
     },
@@ -432,7 +432,7 @@ const BT = (() => {
         return {
           entry: c.map((v, i) => v < lo[i]),
           exit: c.map((v, i) => v > tgt[i]),
-          lines: [{ name: "상단", data: up, color: "#8d98b3" }, { name: "중심", data: mid, color: "#f2b84b" }, { name: "하단", data: lo, color: "#8d98b3" }],
+          lines: [{ name: "상단", data: up, color: "#9a9aa2" }, { name: "중심", data: mid, color: "#ffffff" }, { name: "하단", data: lo, color: "#9a9aa2" }],
         };
       },
     },
@@ -483,7 +483,7 @@ const BT = (() => {
           entry = o.map((_, i) => crossUp(i, lo));
           exit = p.exitAt === "과매수 반락" ? o.map((_, i) => crossDn(i, hi)) : o.map((_, i) => crossUp(i, cst(0)));
         }
-        return { entry, exit, lines: [{ name: `SS${p.fast}`, data: r.fast, color: "#f2b84b" }, { name: `SS${p.slow}`, data: r.slow, color: "#7aa2ff" }] };
+        return { entry, exit, lines: [{ name: `SS${p.fast}`, data: r.fast, color: "#ffffff" }, { name: `SS${p.slow}`, data: r.slow, color: "#7aa2ff" }] };
       },
     },
     vwap: {
@@ -573,7 +573,7 @@ const BT = (() => {
         const cache = {}, rules = p.rules || {};
         const entry = evalRules(b, rules.entry, cache), exit = evalRules(b, rules.exit, cache);
         const lines = [];
-        const colors = ["#f2b84b", "#7aa2ff", "#c792ea", "#4fd1a5"];
+        const colors = ["#ffffff", "#7aa2ff", "#c792ea", "#4fd1a5"];
         const seen = new Set();
         for (const g of [rules.entry, rules.exit]) for (const r of (g && g.rules) || []) for (const s of [r.a, r.b]) {
           // 가격 단위 지표만 차트에 표시

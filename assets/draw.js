@@ -21,7 +21,7 @@ const Draw = (() => {
   const HIT = 6;
 
   let host, cv, ctx, CV, onToolChange;
-  let sym = "", tool = null, items = [], sel = -1, temp = null, drag = null, color = "#f2b84b", magnet = true;
+  let sym = "", tool = null, items = [], sel = -1, temp = null, drag = null, color = "#ffffff", magnet = true;
   let downAt = null, sig = "", dirty = true, hover = -1;
 
   // ---------- 저장 ----------
@@ -72,7 +72,7 @@ const Draw = (() => {
     requestAnimationFrame(loop);
   }
 
-  function label(text, x, y, bg, fg = "#0e1422", align = "left") {
+  function label(text, x, y, bg, fg = "#000000", align = "left") {
     ctx.font = "600 11px Pretendard Variable, Pretendard, system-ui, sans-serif";
     const w = ctx.measureText(text).width + 10, h = 18;
     const lx = align === "right" ? x - w : align === "center" ? x - w / 2 : x;
@@ -102,7 +102,7 @@ const Draw = (() => {
       case "hline": {
         if (isNaN(P[0].y)) return;
         seg({ x: 0, y: P[0].y }, { x: W, y: P[0].y });
-        label(CV.fmt(d.pts[0].p), W - 2, P[0].y, c, "#0e1422", "right");
+        label(CV.fmt(d.pts[0].p), W - 2, P[0].y, c, "#000000", "right");
         break;
       }
       case "vline": if (!isNaN(P[0].x)) seg({ x: P[0].x, y: 0 }, { x: P[0].x, y: H }); break;
@@ -147,7 +147,7 @@ const Draw = (() => {
         if (d.type === "hline") x = isNaN(x) ? W / 2 : Math.min(Math.max(x, 8), W - 8);
         if (d.type === "vline") y = plotH() / 2;
         if (isNaN(x) || isNaN(y)) return;
-        ctx.fillStyle = "#0e1422"; ctx.strokeStyle = c; ctx.lineWidth = 2;
+        ctx.fillStyle = "#000000"; ctx.strokeStyle = c; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       });
     }

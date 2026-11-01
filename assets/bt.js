@@ -9,7 +9,7 @@
 const BTUI = (() => {
   const { $, $$, esc, krw, fmtPx, fmtWon, fmtPct, cls, store, toast, attachSearch, download, LC_OPTS } = U;
   const LC = LightweightCharts;
-  const UP = "#f0525c", DOWN = "#3d8bfd", GOLD = "#f2b84b", MUTED = "#8d98b3", MINT = "#4fd1a5";
+  const UP = "#f0525c", DOWN = "#3d8bfd", GOLD = "#ffffff", MUTED = "#9a9aa2", MINT = "#4fd1a5";
   const OPT_KEYS = ["direction", "sizing", "sizePct", "riskPct", "atrMult", "pyrN", "pyrMode", "pyrPct", "tp1Pct", "tp1Frac",
     "stopLoss", "takeProfit", "trailing", "maxHold", "dayClose", "capital", "buyFee", "sellFee", "slip", "borrowFee", "volCap", "tick", "limit"];
   const BOOL = new Set(["dayClose", "tick", "limit"]), STR = new Set(["direction", "sizing", "pyrMode"]);
@@ -893,7 +893,7 @@ const BTUI = (() => {
       S.cmpSeries = [];
     }
     S.cmpSeries.forEach((s) => S.cmpChart.removeSeries(s));
-    const colors = [GOLD, "#7aa2ff", MINT, "#c792ea", UP, "#e7ecf5"];
+    const colors = [GOLD, "#7aa2ff", MINT, "#c792ea", UP, "#f5f5f7"];
     S.cmpSeries = runs.map((r, i) => {
       const s = S.cmpChart.addSeries(LC.LineSeries, { color: colors[i % colors.length], lineWidth: 2, priceLineVisible: false });
       const pts = r.curve.filter((p, j, a) => j === 0 || p[0] > a[j - 1][0]).map(([t, v]) => ({ time: t + Data.KST, value: v }));

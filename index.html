@@ -4,9 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Trading Desk</title>
-  <meta name="theme-color" content="#0e1422" />
+  <meta name="theme-color" content="#000000" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="assets/style.css?v=ada0f6ca" />
+  <link rel="stylesheet" href="assets/style.css?v=f91ae0da" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -71,11 +71,11 @@
           <button class="tool" data-tool="text" title="텍스트"><svg><use href="#i-text"/></svg></button>
           <span class="sep"></span>
           <div class="swatches" id="swatches">
-            <button style="--c:#f2b84b" data-color="#f2b84b" class="on" title="금색"></button>
+            <button style="--c:#ffffff" data-color="#ffffff" class="on" title="흰색"></button>
             <button style="--c:#f0525c" data-color="#f0525c" title="빨강"></button>
             <button style="--c:#3d8bfd" data-color="#3d8bfd" title="파랑"></button>
             <button style="--c:#4fd1a5" data-color="#4fd1a5" title="초록"></button>
-            <button style="--c:#e7ecf5" data-color="#e7ecf5" title="흰색"></button>
+            <button style="--c:#9a9aa2" data-color="#9a9aa2" title="회색"></button>
           </div>
           <span class="sep"></span>
           <button class="tool on" id="magnet" title="자석: 시·고·저·종가에 붙이기"><svg><use href="#i-magnet"/></svg></button>
@@ -166,7 +166,7 @@
           </div>
           <div class="box" id="rk-report">
             <div class="box-head"><h2>우리 점수 성적표</h2></div>
-            <h3>과거 검증 <span class="muted">상위 20종목(금색) vs 300종목 평균(회색), 20일마다 갈아탄다고 가정 · 실적·뉴스는 중간값</span></h3>
+            <h3>과거 검증 <span class="muted">상위 20종목(흰색) vs 300종목 평균(회색), 20일마다 갈아탄다고 가정 · 실적·뉴스는 중간값</span></h3>
             <div id="rk-curve" class="rk-curve"></div>
             <div class="table-wrap"><table class="tbl" id="rk-grades"></table></div>
             <div class="rk-parts" id="rk-parts"></div>
@@ -410,7 +410,7 @@
             <div class="box">
               <div class="box-head">
                 <h2>자산 곡선</h2>
-                <div class="legend-inline"><span><i style="background:#f2b84b"></i>전략</span><span><i style="background:#8d98b3"></i>보유만 했을 때</span><span id="bench-legend" hidden><i style="background:#4fd1a5"></i>코스피200 (KODEX 200)</span></div>
+                <div class="legend-inline"><span><i style="background:#ffffff"></i>전략</span><span><i style="background:#9a9aa2"></i>보유만 했을 때</span><span id="bench-legend" hidden><i style="background:#4fd1a5"></i>코스피200 (KODEX 200)</span></div>
               </div>
               <div id="bt-equity" class="bt-chart short"></div>
               <div class="sub-head">낙폭 (고점 대비 하락)</div>
@@ -544,13 +544,13 @@
 
   <footer class="foot">개인 학습·연구용 도구입니다. 과거 수익률이 미래 수익을 보장하지 않습니다.</footer>
 
-  <script src="assets/util.js?v=3ac469f5"></script>
-  <script src="assets/backtest.js?v=01009e33"></script>
+  <script src="assets/util.js?v=47f52197"></script>
+  <script src="assets/backtest.js?v=04a79827"></script>
   <script src="assets/data.js?v=34e69e79"></script>
-  <script src="assets/chart.js?v=84f75d00"></script>
-  <script src="assets/draw.js?v=207665ac"></script>
-  <script src="assets/bt.js?v=fddcfd2f"></script>
-  <script src="assets/rank.js?v=4e91f303"></script>
+  <script src="assets/chart.js?v=84341145"></script>
+  <script src="assets/draw.js?v=f61bef61"></script>
+  <script src="assets/bt.js?v=f0ca857e"></script>
+  <script src="assets/rank.js?v=85015966"></script>
   <script src="assets/app.js?v=8e3e7414"></script>
 </body>
 </html>

@@ -7,10 +7,10 @@
 const ChartView = (() => {
   const LC = LightweightCharts;
   const COL = {
-    up: "#f0525c", down: "#3d8bfd", grid: "rgba(141,152,179,.07)", line: "#253049", text: "#8d98b3",
-    gold: "#f2b84b", upA: "rgba(240,82,92,.32)", downA: "rgba(61,139,253,.32)",
+    up: "#f0525c", down: "#3d8bfd", grid: "rgba(160, 160, 168,.07)", line: "#2a2a2e", text: "#9a9aa2",
+    gold: "#ffffff", upA: "rgba(240,82,92,.32)", downA: "rgba(61,139,253,.32)",
   };
-  const MA = [[5, "#e7ecf5"], [20, "#f2b84b"], [60, "#7aa2ff"], [120, "#c792ea"]];
+  const MA = [[5, "#8a8a92"], [20, "#ffffff"], [60, "#7aa2ff"], [120, "#c792ea"]];
   const IND_KEY = "tradingdesk.indicators";
   const DEFAULT_IND = { ma: true, bb: false, vol: true, rsi: false, macd: false, spo: false, vwap: false };
 
@@ -28,15 +28,15 @@ const ChartView = (() => {
       layout: {
         background: { color: "transparent" }, textColor: COL.text, fontSize: 11,
         fontFamily: "Pretendard Variable, Pretendard, system-ui, sans-serif",
-        panes: { separatorColor: COL.line, separatorHoverColor: "rgba(242,184,75,.25)", enableResize: true },
+        panes: { separatorColor: COL.line, separatorHoverColor: "rgba(255, 255, 255,.25)", enableResize: true },
       },
       grid: { vertLines: { color: COL.grid }, horzLines: { color: COL.grid } },
       rightPriceScale: { borderColor: COL.line },
       timeScale: { borderColor: COL.line, timeVisible: true, secondsVisible: false, rightOffset: 8, barSpacing: 8 },
       crosshair: {
         mode: 0,
-        vertLine: { color: "rgba(231,236,245,.35)", labelBackgroundColor: "#253049" },
-        horzLine: { color: "rgba(231,236,245,.35)", labelBackgroundColor: "#253049" },
+        vertLine: { color: "rgba(255, 255, 255,.35)", labelBackgroundColor: "#2a2a2e" },
+        horzLine: { color: "rgba(255, 255, 255,.35)", labelBackgroundColor: "#2a2a2e" },
       },
       localization: { locale: "ko-KR" },
     };
@@ -106,7 +106,7 @@ const ChartView = (() => {
     });
     if (ind.bb && bars.length >= 20) {
       const mid = BT.sma(closes, 20), sd = BT.stdev(closes, 20);
-      [[mid.map((m, i) => m + 2 * sd[i]), "rgba(141,152,179,.8)"], [mid, "rgba(242,184,75,.7)"], [mid.map((m, i) => m - 2 * sd[i]), "rgba(141,152,179,.8)"]]
+      [[mid.map((m, i) => m + 2 * sd[i]), "rgba(160, 160, 168,.8)"], [mid, "rgba(255, 255, 255,.7)"], [mid.map((m, i) => m - 2 * sd[i]), "rgba(160, 160, 168,.8)"]]
         .forEach(([arr, c]) => { const s = chart.addSeries(LC.LineSeries, { ...lineOpts(c), lineStyle: 0 }); s.setData(line(arr)); main.push(s); });
     }
 
@@ -125,7 +125,7 @@ const ChartView = (() => {
       const r = BT.rsi(closes, 14);
       const s = chart.addSeries(LC.LineSeries, { ...lineOpts("#c792ea", 2), lastValueVisible: true }, pane);
       s.setData(line(r));
-      [70, 30].forEach((v) => s.createPriceLine({ price: v, color: "rgba(141,152,179,.45)", lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
+      [70, 30].forEach((v) => s.createPriceLine({ price: v, color: "rgba(160, 160, 168,.45)", lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
       sub.push(s); pane++;
     }
     if (ind.macd) {
@@ -136,7 +136,7 @@ const ChartView = (() => {
       const sig = m.map((_, i) => (i < firstValid ? NaN : sigPart[i - firstValid]));
       const h = chart.addSeries(LC.HistogramSeries, { priceLineVisible: false, lastValueVisible: false, priceFormat: { type: "price", precision: 2, minMove: 0.01 } }, pane);
       h.setData(bars.map((b, i) => ({ time: b.t, value: m[i] - sig[i], color: m[i] - sig[i] >= 0 ? COL.upA : COL.downA })).filter((p) => isFinite(p.value)));
-      const ml = chart.addSeries(LC.LineSeries, lineOpts("#f2b84b", 2), pane); ml.setData(line(m));
+      const ml = chart.addSeries(LC.LineSeries, lineOpts("#ffffff", 2), pane); ml.setData(line(m));
       const sl = chart.addSeries(LC.LineSeries, lineOpts("#7aa2ff", 2), pane); sl.setData(line(sig));
       sub.push(h, ml, sl); pane++;
     }
@@ -144,8 +144,8 @@ const ChartView = (() => {
       const r = BT.spoCalc(bars, 10, 40, 100, 2);
       const o = chart.addSeries(LC.LineSeries, { ...lineOpts("#4fd1a5", 2), lastValueVisible: true, priceFormat: { type: "price", precision: 2, minMove: 0.01 } }, pane);
       o.setData(line(r.osc));
-      [1, -1].forEach((v) => o.createPriceLine({ price: v, color: "rgba(141,152,179,.45)", lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
-      o.createPriceLine({ price: 0, color: "rgba(141,152,179,.25)", lineWidth: 1, lineStyle: 0, axisLabelVisible: false });
+      [1, -1].forEach((v) => o.createPriceLine({ price: v, color: "rgba(160, 160, 168,.45)", lineWidth: 1, lineStyle: 2, axisLabelVisible: false }));
+      o.createPriceLine({ price: 0, color: "rgba(160, 160, 168,.25)", lineWidth: 1, lineStyle: 0, axisLabelVisible: false });
       const up = chart.addSeries(LC.LineSeries, lineOpts("rgba(240,82,92,.7)"), pane); up.setData(line(r.upper));
       const lo = chart.addSeries(LC.LineSeries, lineOpts("rgba(61,139,253,.7)"), pane); lo.setData(line(r.lower));
       sub.push(o, up, lo); pane++;

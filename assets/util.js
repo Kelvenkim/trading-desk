@@ -5,7 +5,7 @@ const U = (() => {
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const LC = LightweightCharts;
-  const UP = "#f0525c", DOWN = "#3d8bfd", GOLD = "#f2b84b", MUTED = "#8d98b3";
+  const UP = "#f0525c", DOWN = "#3d8bfd", GOLD = "#ffffff", MUTED = "#9a9aa2";
   const LAST_KEY = "tradingdesk.last", FAV_KEY = "tradingdesk.favs", PF_KEY = "tradingdesk.portfolio.v1";
 
   // ---------- 공통 ----------
@@ -65,10 +65,10 @@ const U = (() => {
 
   const LC_OPTS = () => ({
     autoSize: true,
-    layout: { background: { color: "transparent" }, textColor: "#8d98b3", fontSize: 11, fontFamily: "Pretendard Variable, Pretendard, system-ui, sans-serif" },
-    grid: { vertLines: { color: "rgba(141,152,179,.07)" }, horzLines: { color: "rgba(141,152,179,.07)" } },
-    rightPriceScale: { borderColor: "#253049" },
-    timeScale: { borderColor: "#253049", timeVisible: true, secondsVisible: false },
+    layout: { background: { color: "transparent" }, textColor: "#9a9aa2", fontSize: 11, fontFamily: "Pretendard Variable, Pretendard, system-ui, sans-serif" },
+    grid: { vertLines: { color: "rgba(160, 160, 168,.07)" }, horzLines: { color: "rgba(160, 160, 168,.07)" } },
+    rightPriceScale: { borderColor: "#2a2a2e" },
+    timeScale: { borderColor: "#2a2a2e", timeVisible: true, secondsVisible: false },
     crosshair: { mode: 0 }, localization: { locale: "ko-KR" },
   });
   return { $, $$, esc, krw, fmtPx, fmtWon, fmtPct, fmtVol, cls, store, toast, attachSearch, download, LC_OPTS };

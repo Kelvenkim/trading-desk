@@ -7,7 +7,7 @@ const RankUI = (() => {
   const cls = (v) => (v == null ? "" : v > 0 ? "up" : v < 0 ? "down" : "");
   const won = (v) => (v == null ? "—" : Math.round(v).toLocaleString("ko-KR"));
   const eok = (v) => (v == null ? "—" : (v / 1e8).toLocaleString("ko-KR", { maximumFractionDigits: 0 }) + "억");
-  const PART_COLOR = { trend: "#f2b84b", earn: "#5ac8a8", news: "#b48cf2", flow: "#f0525c", safe: "#3d8bfd" };
+  const PART_COLOR = { trend: "#ffffff", earn: "#cfcfd4", news: "#a3a3ab", flow: "#76767e", safe: "#4f4f56" };
   const sym = (r) => `${r.code}.${r.mkt === "KOSPI" ? "KS" : "KQ"}`;
 
   async function load() {
@@ -100,7 +100,7 @@ const RankUI = (() => {
       : `<p class="small muted">실적 자료 없음${L.sources.earn.includes("키 없음") ? " — DART 키를 넣으면 표시돼요" : ""}</p>`;
     return `<div class="rk-detail">
       <div class="rk-chartbox">
-        <div class="rk-chart-head"><b>${esc(r.name)}</b> <span class="muted small">최근 6개월 일봉 · 20일선(금색)·60일선(파랑)</span>
+        <div class="rk-chart-head"><b>${esc(r.name)}</b> <span class="muted small">최근 6개월 일봉 · 20일선(흰색)·60일선(파랑)</span>
           <button class="btn small" data-chart="${sym(r)}">차트 탭에서 크게 보기</button></div>
         <div class="rk-chart" id="rk-stock-chart"><span class="muted small">불러오는 중…</span></div>
       </div>
@@ -124,7 +124,7 @@ const RankUI = (() => {
     el.innerHTML = "";
     if (chart) { try { chart.remove(); } catch (_) {} }
     const LC = LightweightCharts;
-    chart = LC.createChart(el, { ...LC_OPTS(), timeScale: { borderColor: "#253049", timeVisible: false }, localization: { locale: "ko-KR", priceFormatter: (p) => Math.round(p).toLocaleString("ko-KR") } });
+    chart = LC.createChart(el, { ...LC_OPTS(), timeScale: { borderColor: "#2a2a2e", timeVisible: false }, localization: { locale: "ko-KR", priceFormatter: (p) => Math.round(p).toLocaleString("ko-KR") } });
     const cs = chart.addSeries(LC.CandlestickSeries, { upColor: "#f0525c", downColor: "#3d8bfd", borderVisible: false, wickUpColor: "#f0525c", wickDownColor: "#3d8bfd", priceLineVisible: false });
     cs.setData(rows);
     const vs = chart.addSeries(LC.HistogramSeries, { priceScaleId: "vol", priceFormat: { type: "volume" }, lastValueVisible: false, priceLineVisible: false });
@@ -134,7 +134,7 @@ const RankUI = (() => {
       const s = chart.addSeries(LC.LineSeries, { color, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
       s.setData(rows.map((b, i) => i >= n - 1 ? { time: b.time, value: rows.slice(i - n + 1, i + 1).reduce((a, x) => a + x.close, 0) / n } : null).filter(Boolean));
     };
-    ma(20, "#f2b84b"); ma(60, "#3d8bfd");
+    ma(20, "#ffffff"); ma(60, "#3d8bfd");
     chart.timeScale().fitContent();
   }
 
@@ -180,8 +180,8 @@ const RankUI = (() => {
     if (!curve || !curve.length || typeof LightweightCharts === "undefined") return;
     if (curveChart) curveChart.remove();
     curveChart = LightweightCharts.createChart(el, { ...LC_OPTS(), timeScale: { borderVisible: false, timeVisible: false } });
-    const a = curveChart.addSeries(LightweightCharts.LineSeries, { color: "#f2b84b", lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
-    const b = curveChart.addSeries(LightweightCharts.LineSeries, { color: "#8d98b3", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+    const a = curveChart.addSeries(LightweightCharts.LineSeries, { color: "#ffffff", lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
+    const b = curveChart.addSeries(LightweightCharts.LineSeries, { color: "#9a9aa2", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
     a.setData(curve.map(([t, x]) => ({ time: t, value: x })));
     b.setData(curve.map(([t, , y]) => ({ time: t, value: y })));
     curveChart.timeScale().fitContent();
