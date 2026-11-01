@@ -120,6 +120,38 @@ const BT = (() => {
     return { vwap: vw, sd };
   }
 
+  // ---------- 종합 점수용 강세 조건 ----------
+  const CONF_LIST = [
+    { key: "trend", label: "큰 추세 (종가 > 긴 VWAP)" },
+    { key: "vslope", label: "VWAP 기울기 상승" },
+    { key: "spo", label: "SPO 0선 위" },
+    { key: "ema", label: "이평 정배열 (EMA 짧은 > 긴)" },
+    { key: "brk", label: "최근 돌파 (직전 고점 위)" },
+    { key: "vol", label: "거래량 증가 (평균 1.2배↑)" },
+    { key: "rsi", label: "RSI 50~75 (힘 있되 과열 아님)" },
+    { key: "wvwap", label: "중기 VWAP 위 (분봉 주간 / 일봉 20봉)" },
+  ];
+  /** 각 봉에서 8가지 강세 조건이 맞는지. short·long: 짧은·긴 기간(봉) */
+  function confluence(b, short = 24, long = 240) {
+    const n = b.length, c = b.map((x) => x.c), h = b.map((x) => x.h), v = b.map((x) => x.v);
+    const intraday = b.length > 1 && b[1].ms - b[0].ms < 20 * 3600e3;
+    const lv = vwapCalc(b, "rolling", long).vwap, sv = vwapCalc(b, "rolling", short).vwap;
+    const mid = intraday ? vwapCalc(b, "week").vwap : vwapCalc(b, "rolling", 20).vwap;
+    const spo = spoCalc(b, 20, 90).osc, ef = ema(c, 20), es = ema(c, 60), r = rsi(c, 14);
+    const hh = prevHighest(h, short), va = shift1(sma(v, 20));
+    const brk = c.map((x, i) => x > hh[i]);
+    const out = {};
+    out.trend = c.map((x, i) => x > lv[i]);
+    out.vslope = sv.map((x, i) => i >= 3 && x > sv[i - 3]);
+    out.spo = spo.map((x) => x > 0);
+    out.ema = ef.map((x, i) => x > es[i]);
+    out.brk = brk.map((_, i) => brk[i] || (i > 0 && brk[i - 1]) || (i > 1 && brk[i - 2]));
+    out.vol = v.map((x, i) => va[i] > 0 && x > va[i] * 1.2);
+    out.rsi = r.map((x) => x >= 50 && x <= 75);
+    out.wvwap = c.map((x, i) => x > mid[i]);
+    return out;
+  }
+
   // John Ehlers SuperSmoother (2극 버터워스 필터)
   const superSmoother = (a, len) => {
     const out = new Array(a.length).fill(NaN);
@@ -396,6 +428,25 @@ const BT = (() => {
         const lines = [{ name: `VWAP(${p.kind})`, data: v, color: "#4fd1a5" }];
         if (tf) lines.push({ name: `VWAP ${p.trendN}봉`, data: tf, color: "#c792ea" });
         return { entry, exit, lines };
+      },
+    },
+    confluence: {
+      name: "종합 점수 (여러 조건 합의)",
+      desc: "8가지 강세 조건 중 몇 개가 동시에 맞는지 점수로 세요. 점수가 '매수 점수' 이상이 되는 순간 사고, '매도 점수' 이하로 떨어지면 팔아요. 끈 조건은 점수에서 빠져요.",
+      params: [
+        { key: "buyScore", label: "매수 점수 (이상)", def: 6, min: 1, max: 8 },
+        { key: "sellScore", label: "매도 점수 (이하)", def: 3, min: 0, max: 7 },
+        { key: "short", label: "짧은 기간 (봉)", def: 24, min: 3, max: 200 },
+        { key: "long", label: "긴 기간 (봉)", def: 240, min: 20, max: 1000 },
+        ...CONF_LIST.map((x) => ({ key: "use_" + x.key, label: x.label, type: "select", options: ["켬", "끔"], def: "켬" })),
+      ],
+      signals(b, p) {
+        const cf = confluence(b, p.short, p.long), n = b.length;
+        const keys = CONF_LIST.map((x) => x.key).filter((k) => p["use_" + k] !== "끔");
+        const score = new Array(n).fill(0).map((_, i) => keys.reduce((s, k) => s + (cf[k][i] ? 1 : 0), 0));
+        const entry = score.map((s, i) => i > 0 && s >= p.buyScore && score[i - 1] < p.buyScore);
+        const exit = score.map((s) => s <= p.sellScore);
+        return { entry, exit, lines: [{ name: `VWAP ${p.long}봉`, data: vwapCalc(b, "rolling", p.long).vwap, color: "#c792ea" }], score, cf };
       },
     },
     custom: {
@@ -822,6 +873,24 @@ const BT = (() => {
       if (p.trend !== "없음") { L.push(`tvw = math.sum(hlc3 * volume, ${p.trendN}) / math.sum(volume, ${p.trendN})`, `plot(tvw, "추세 VWAP", color.purple)`); filt = " and close > tvw"; }
       entry = `upRun == conf${filt}`; exit = "dnRun == conf";
       if (p.noLate > 0) L.push(`// 참고: 장 막판 ${p.noLate}봉 진입 금지는 Pine에서 생략했어요.`);
+    } else if (strategyId === "confluence") {
+      const S = p.short, Lg = p.long, on = (k) => p["use_" + k] !== "끔";
+      L.push(`vwN(n) => math.sum(hlc3 * volume, n) / math.sum(volume, n)`);
+      L.push(`lv = vwN(${Lg})`, `sv = vwN(${S})`, `mid = timeframe.isintraday ? ta.vwap(hlc3, timeframe.change("W")) : vwN(20)`);
+      L.push(`r = ta.rsi(close, 14)`, `hh = ta.highest(high, ${S})[1]`, `brk = close > hh`);
+      L.push(`plot(lv, "긴 VWAP", color.purple)`);
+      const parts = [];
+      if (on("trend")) parts.push("(close > lv ? 1 : 0)");
+      if (on("vslope")) parts.push("(sv > sv[3] ? 1 : 0)");
+      if (on("spo")) parts.push("(spoOsc(20, 90) > 0 ? 1 : 0)");
+      if (on("ema")) parts.push("(ta.ema(close, 20) > ta.ema(close, 60) ? 1 : 0)");
+      if (on("brk")) parts.push("(brk or brk[1] or brk[2] ? 1 : 0)");
+      if (on("vol")) parts.push("(volume > ta.sma(volume, 20)[1] * 1.2 ? 1 : 0)");
+      if (on("rsi")) parts.push("(r >= 50 and r <= 75 ? 1 : 0)");
+      if (on("wvwap")) parts.push("(close > mid ? 1 : 0)");
+      L.push(`score = ${parts.join(" + ") || "0"}`);
+      L.push(`plotchar(score, "점수", "", location.top)`);
+      entry = `score >= ${p.buyScore} and score[1] < ${p.buyScore}`; exit = `score <= ${p.sellScore}`;
     } else if (strategyId === "custom") {
       entry = pineRules(p.rules && p.rules.entry); exit = pineRules(p.rules && p.rules.exit);
     }
@@ -863,7 +932,7 @@ const BT = (() => {
 
   return {
     STRATEGIES, IND, OPS, DEFAULTS, run, pine, stats, describeSpec, tickSize, roundTick,
-    sma, ema, rsi, stdev, atr, superSmoother, spoCalc, vwapCalc,
+    sma, ema, rsi, stdev, atr, superSmoother, spoCalc, vwapCalc, confluence, CONF_LIST,
   };
 })();
 if (typeof module !== "undefined") module.exports = BT;
