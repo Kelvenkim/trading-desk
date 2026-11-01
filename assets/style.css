@@ -467,3 +467,23 @@ pre { background: var(--bg); border: 1px solid var(--line); border-radius: var(-
   .rk-tbl .sub { white-space: normal; }
   .rk-tbl td:nth-child(2) { white-space: normal; }
 }
+/* 매매 계획 */
+.rk-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--muted); margin: 8px 0 4px; }
+.rk-legend .lg { display: inline-block; width: 16px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
+.lg.sup { border-color: #a3a3ab; } .lg.res { border-color: #6e6e76; } .lg.tl { border-top-style: dashed; border-color: #fff; }
+.lg.zone { border-top-style: dotted; border-color: rgba(255,255,255,.6); } .lg.stop { border-top-style: dashed; border-color: var(--down); } .lg.tgt { border-top-style: dashed; border-color: var(--up); }
+.plan { margin-top: 10px; border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; background: var(--panel); }
+.plan-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.verdict { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.verdict.go { color: #000; background: #fff; border-color: #fff; font-weight: 600; }
+.plan-checks { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 6px; }
+.okc { color: var(--text); } .noc { color: var(--faint); }
+.plan-tbl td { padding: 7px 8px; } .plan-tbl td:first-child { color: var(--muted); width: 80px; }
+.plan-tbl td.sub { white-space: normal; }
+.plan p { margin: 8px 0 0; line-height: 1.6; }
+.btn.small.on { border-color: var(--text); }
+.rk-chart { height: 340px; }
+.plan-tbl td:first-child { white-space: nowrap; }
+@media (max-width: 640px) { .rk-chart { height: 280px; } }
+.rk-tbl tr.detail .plan-tbl td { padding: 7px 8px; background: transparent; }
+.rk-tbl tr.detail .plan-tbl td:first-child { white-space: nowrap; }

@@ -1,7 +1,7 @@
 /* 오늘의 순위 — 우리 점수(100점 고정 규칙) + 검증된 항목만 쓰는 검증 순위 */
 const RankUI = (() => {
   const { $, esc, LC_OPTS } = U;
-  let L = null, R = null, B = null, open = null, chart = null, loaded = false;
+  let L = null, R = null, B = null, open = null, chart = null, loaded = false, showLv = true;
   const filt = { mkt: "all", q: "", n: 50, grade: "all" };
   const pct = (v, d = 1) => (v == null ? "—" : (v >= 0 ? "+" : "") + (v * 100).toFixed(d) + "%");
   const cls = (v) => (v == null ? "" : v > 0 ? "up" : v < 0 ? "down" : "");
@@ -100,9 +100,12 @@ const RankUI = (() => {
       : `<p class="small muted">실적 자료 없음${L.sources.earn.includes("키 없음") ? " — DART 키를 넣으면 표시돼요" : ""}</p>`;
     return `<div class="rk-detail">
       <div class="rk-chartbox">
-        <div class="rk-chart-head"><b>${esc(r.name)}</b> <span class="muted small">최근 6개월 일봉 · 20일선(흰색)·60일선(파랑)</span>
+        <div class="rk-chart-head"><b>${esc(r.name)}</b> <span class="muted small">최근 6개월 일봉 · 20일선(흰색)·60일선(회색)</span>
+          <button class="btn small ${showLv ? "on" : ""}" data-lv>${showLv ? "선 숨기기" : "선 보이기"}</button>
           <button class="btn small" data-chart="${sym(r)}">차트 탭에서 크게 보기</button></div>
         <div class="rk-chart" id="rk-stock-chart"><span class="muted small">불러오는 중…</span></div>
+        <div class="rk-legend small"><span><i class="lg sup"></i>지지선</span><span><i class="lg res"></i>저항선</span><span><i class="lg tl"></i>추세선</span><span><i class="lg zone"></i>매수 구간</span><span><i class="lg stop"></i>손절</span><span><i class="lg tgt"></i>목표</span><span>▲ 지난 매수 신호</span></div>
+        <div id="rk-plan"></div>
       </div>
       <div>
         <h3>우리 점수 ${Math.floor(r.ours)}점 <span class="grade g-${r.grade}">${r.grade}</span></h3>${parts}
@@ -134,8 +137,63 @@ const RankUI = (() => {
       const s = chart.addSeries(LC.LineSeries, { color, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
       s.setData(rows.map((b, i) => i >= n - 1 ? { time: b.time, value: rows.slice(i - n + 1, i + 1).reduce((a, x) => a + x.close, 0) / n } : null).filter(Boolean));
     };
-    ma(20, "#ffffff"); ma(60, "#3d8bfd");
+    ma(20, "#ffffff"); ma(60, "#6e6e76");
+    const bb = rows.map((x) => ({ t: x.time, day: x.time, ms: Date.parse(x.time + "T00:00:00Z"), o: x.open, h: x.high, l: x.low, c: x.close, v: x.value }));
+    let A = null;
+    try { A = Levels.analyze(bb, { marketUp: L.market.ks_vs200 > 0 }); } catch (e) { console.error(e); }
+    if (A && showLv) {
+      const PL = (price, color, title, style = 2, w = 1) => cs.createPriceLine({ price, color, lineWidth: w, lineStyle: style, axisLabelVisible: !!title, title });
+      A.sup.forEach((x, k) => PL(x.p, "#a3a3ab", `지지${k + 1}${x.n > 1 ? ` (${x.n}번 닿음)` : ""}`, 0));
+      A.res.forEach((x, k) => PL(x.p, "#6e6e76", `저항${k + 1}${x.n > 1 ? ` (${x.n}번 닿음)` : ""}`, 0));
+      const P = A.plan;
+      if (P.ok) {
+        if (P.kind === "pullback") { PL(P.zoneHi, "rgba(255,255,255,.55)", "매수 구간", 1); PL(P.zoneLo, "rgba(255,255,255,.55)", "", 1); }
+        else PL(P.entry, "rgba(255,255,255,.7)", "돌파 매수", 1);
+        PL(P.stop, "#3d8bfd", "손절", 2, 2);
+        PL(P.target, "#f0525c", "목표 3R", 2, 2);
+      }
+      const tl = (t, color) => {
+        if (!t) return;
+        const s = chart.addSeries(LC.LineSeries, { color, lineWidth: 2, lineStyle: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+        s.setData([{ time: rows[t.i1].time, value: t.p1 }, { time: rows[t.i2].time, value: t.p2 }]);
+      };
+      tl(A.up, "rgba(255,255,255,.8)"); tl(A.down, "rgba(160,160,168,.8)");
+      const mk = [];
+      A.sig.forEach((g) => {
+        mk.push({ time: rows[g.i].time, position: "belowBar", color: "#ffffff", shape: "arrowUp", text: "매수" });
+        if (g.out) mk.push({ time: rows[g.out.k].time, position: "aboveBar", color: g.out.why === "목표" ? "#f0525c" : "#3d8bfd", shape: "arrowDown", text: g.out.why });
+      });
+      mk.sort((x, y) => (x.time < y.time ? -1 : 1));
+      if (mk.length && LC.createSeriesMarkers) LC.createSeriesMarkers(cs, mk);
+    }
+    renderPlan(A, r);
     chart.timeScale().fitContent();
+  }
+
+  function renderPlan(A, r) {
+    const el = $("#rk-plan"); if (!el) return;
+    if (!A) { el.innerHTML = ""; return; }
+    const P = A.plan, f = (v) => won(v);
+    const big = P.stopPct < -0.08 ? " · 폭이 커요, 수량을 줄이세요" : "";
+    const done = A.sig.filter((g) => g.out), wins = done.filter((g) => g.out.why === "목표").length, hold = A.sig.find((g) => !g.out);
+    const rows = P.ok ? (P.kind === "pullback"
+      ? [["매수 구간", `${f(P.zoneLo)} ~ ${f(P.zoneHi)}`, `현재가 ${f(A.px)}${P.inZone ? " · 구간 안" : ` · ${pct(P.zoneHi / A.px - 1)} 아래`}`],
+         ["손절", f(P.stop), `매수가 대비 ${pct(P.stopPct)} · 지지선 아래 0.5ATR${big}`],
+         ["목표", f(P.target), `매수가 대비 ${pct(P.targetPct)} · 손절폭의 3배`]]
+        .concat(P.res1 ? [["중간 저항", f(P.res1), "여기서 한 번 막힐 수 있어요"]] : [])
+      : [["돌파 매수", f(P.entry), `현재가 대비 ${pct(P.entry / A.px - 1)} · 저항선을 종가로 넘으면`],
+         ["손절", f(P.stop), `매수가 대비 ${pct(P.stopPct)}${big}`],
+         ["목표", f(P.target), `매수가 대비 ${pct(P.targetPct)} · 손절폭의 3배`]]) : [];
+    el.innerHTML = `<div class="plan">
+      <div class="plan-head"><b>매매 계획</b><span class="verdict ${P.ok && P.kind === "pullback" && P.mktOK && P.inZone ? "go" : ""}">${esc(P.verdict)}</span></div>
+      <div class="plan-checks small">
+        <span class="${P.trendOK ? "okc" : "noc"}">${P.trendOK ? "✓" : "✕"} 종목 추세 (종가>60일선, 20일선>60일선)</span>
+        <span class="${P.mktOK ? "okc" : "noc"}">${P.mktOK ? "✓" : "✕"} 시장 (코스피200 > 200일선)</span>
+      </div>
+      ${rows.length ? `<table class="tbl plan-tbl"><tbody>${rows.map(([k, v, s]) => `<tr><td>${k}</td><td class="r"><b>${v}</b></td><td class="sub">${s}</td></tr>`).join("")}</tbody></table>` : ""}
+      <p class="small muted">최근 6개월 같은 규칙 신호 ${A.sig.length}번${done.length ? ` · 끝난 ${done.length}번 중 목표 ${wins} / 손절 ${done.length - wins}` : ""}${hold ? " · 지금 보유 중인 신호 있음" : ""}.
+      과거 검증(150종목, 2014~2026): 승률 약 32%, 이기면 손절폭의 약 3배를 벌어 평균 +0.2R — 상승장일 때만 플러스였어요. 지지·저항은 자동 계산이라 참고용이에요.</p>
+    </div>`;
   }
 
   // ---------- 오른쪽: 점수 기준 + 검증 항목 ----------
@@ -191,6 +249,7 @@ const RankUI = (() => {
     $("#rk-body").addEventListener("click", (e) => {
       const btn = e.target.closest("[data-chart]");
       if (btn) { window.App && App.openChart(btn.dataset.chart); return; }
+      if (e.target.closest("[data-lv]")) { showLv = !showLv; renderTable(); return; }
       if (e.target.closest("a, .rk-chartbox")) return;
       const tr = e.target.closest("tr[data-code]"); if (!tr) return;
       open = open === tr.dataset.code ? null : tr.dataset.code;
