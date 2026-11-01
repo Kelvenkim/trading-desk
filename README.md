@@ -136,3 +136,9 @@ python -m http.server 8000        # http://localhost:8000 접속
 - GitHub Actions 예약 실행은 몇 분씩 늦어질 수 있어서 실시간 시세 용도는 아닙니다.
 
 개인 학습·연구용 도구입니다. 과거 수익률이 미래 수익을 보장하지 않습니다.
+
+## 오늘의 순위 (매일 자동)
+
+- `scripts/rank_daily.py` 가 평일 16:20(KST)에 시총 상위 300 종목을 항목별(추세·변동성·금리/환율 민감도·뉴스·실적 등)로 점수 매겨 `data/rank/latest.json` 에 저장해요.
+- 그날 순위는 `data/rank/snap/` 에 남고, 5일·20일 뒤 실제 수익률로 채점돼 `data/rank/live.json` 에 쌓여요. 항목별 비중은 이 채점 결과(+과거 검증)로 매일 다시 정해져요.
+- **DART 실적 켜기**: opendart.fss.or.kr 에서 인증키 발급 → 저장소 Settings → Secrets and variables → Actions → New repository secret → 이름 `DART_API_KEY`, 값에 키. 그 다음 Actions 탭에서 "순위 과거 검증 다시 계산"을 한 번 실행하면 실적 항목도 2014년부터 과거 공시로 검증돼요.

@@ -256,6 +256,7 @@
     if (location.hash !== "#" + name) history.replaceState(null, "", "#" + name);
     if (name === "portfolio") renderPF();
     if (name === "backtest") { try { BTUI.onShow(cur.sym); } catch (_) {} }
+    if (name === "rank") { try { RankUI.onShow(); } catch (e) { console.error(e); } }
   }
 
   // ================= 시작 =================
@@ -273,11 +274,13 @@
     const safe = (name, fn) => { try { fn(); } catch (e) { console.error(name, e); toast(`${name} 화면을 여는 중 문제가 생겼어요. 새로고침(Ctrl+Shift+R)을 해보세요.`, true); } };
     safe("차트", initChartTab); safe("설정", initSettings); safe("포트폴리오", initPF);
     safe("백테스트", () => BTUI.init({ current: () => cur.sym }));
+    safe("순위", () => RankUI.init());
+    window.App = { openChart: (sym) => { showTab("chart"); openSymbol(sym, "1d"); } };
     const last = store.get(LAST_KEY, null);
     const first = (last && last.sym) || (Data.meta.symbols[0] && Data.meta.symbols[0].symbol);
     if (first) openSymbol(first, (last && last.iv) || "1d");
     const h = location.hash.slice(1);
-    if (["portfolio", "backtest"].includes(h)) showTab(h);
+    if (["portfolio", "backtest", "rank"].includes(h)) showTab(h);
   }
   init();
 })();
