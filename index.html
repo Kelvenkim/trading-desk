@@ -6,7 +6,7 @@
   <title>Trading Desk</title>
   <meta name="theme-color" content="#0e1422" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="assets/style.css?v=b3226115" />
+  <link rel="stylesheet" href="assets/style.css?v=ada0f6ca" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -131,42 +131,49 @@
 
     <!-- ================= 오늘의 순위 ================= -->
     <section id="tab-rank" class="panel">
-      <div class="rk-head"><h2>오를 가능성 순위 <span class="muted small" id="rk-date"></span></h2></div>
+      <div class="rk-head"><h2>오늘의 순위 <span class="muted small" id="rk-date"></span></h2></div>
       <div class="summary rk-market" id="rk-market"></div>
       <div class="box trust" id="rk-trust"></div>
       <div class="grid-2">
         <div class="box">
-          <div class="box-head"><h2>순위</h2>
+          <div class="box-head"><h2>우리 점수 순</h2>
             <div class="rk-filters">
               <input id="rk-q" placeholder="종목 찾기" autocomplete="off" />
+              <select id="rk-grade"><option value="all">전체 등급</option><option value="SA">S·A</option><option value="SAB">B 이상</option></select>
               <select id="rk-mkt"><option value="all">전체</option><option value="KOSPI">코스피</option><option value="KOSDAQ">코스닥</option></select>
             </div>
           </div>
           <div class="table-wrap">
             <table class="tbl rk-tbl">
-              <thead><tr><th>#</th><th>종목</th><th>점수</th><th class="r">종가</th><th class="r">등락</th><th>높게 나온 이유</th></tr></thead>
-              <tbody id="rk-body"><tr class="empty-row"><td colspan="6">불러오는 중…</td></tr></tbody>
+              <thead><tr><th>#</th><th>종목</th><th>점수</th><th class="r"><span class="hide-m">최근 3개월 · </span>종가</th><th>한눈에</th></tr></thead>
+              <tbody id="rk-body"><tr class="empty-row"><td colspan="5">불러오는 중…</td></tr></tbody>
             </table>
           </div>
           <div class="rk-foot"><span class="muted small" id="rk-count"></span><button class="btn small" id="rk-more" hidden>더 보기</button></div>
-          <p class="hint">행을 누르면 항목별 점수·뉴스·실적이 나와요. 점수 100 = 300종목 중 1등. 매일 장 마감 후(16:20쯤) 갱신돼요.</p>
+          <p class="hint">종목을 누르면 바로 아래에 일봉 차트·점수 내역·뉴스가 펼쳐져요. 매일 장 마감 후(16:20쯤) 갱신돼요.</p>
         </div>
         <div>
           <div class="box">
-            <div class="box-head"><h2>항목별 비중</h2></div>
+            <div class="box-head"><h2>우리 점수 기준 <span class="muted small">100점</span></h2></div>
+            <div id="rk-def"></div>
+          </div>
+          <div class="box">
+            <div class="box-head"><h2>검증 대기 항목</h2></div>
             <div class="table-wrap"><table class="tbl rk-w">
-              <thead><tr><th>항목</th><th class="r">비중</th><th class="r">맞힌 정도</th><th class="r">확실성</th></tr></thead>
+              <thead><tr><th>항목</th><th class="r">맞힌 정도</th><th class="r">확실성</th><th class="r">상태</th></tr></thead>
               <tbody id="rk-weights"></tbody></table></div>
-            <p class="hint">맞힌 정도 = 이 항목 순위와 20일 뒤 실제 수익률 순위의 상관(IC). 0.03 이상이면 쓸 만한 편이에요. 확실성(t)이 2를 넘어야 우연이 아닐 가능성이 높아요. 데이터가 적은 항목은 기본값으로 시작해서, 채점이 쌓일수록 실제 성적대로 비중이 바뀌어요.</p>
+            <p class="hint">맞힌 정도(IC) = 이 항목 순위와 20일 뒤 실제 수익률 순위의 상관. 확실성(t)이 2 이상이고 1년치 이상 쌓인 항목만 '사용'으로 바뀌어 검증 순위에 들어가요. 채점은 매일 자동으로 쌓여요.</p>
           </div>
           <div class="box" id="rk-report">
-            <div class="box-head"><h2>신뢰도 성적표</h2></div>
-            <h3>과거 검증 <span class="muted">상위 20종목(금색) vs 300종목 평균(회색), 20일씩 갈아탄다고 가정</span></h3>
+            <div class="box-head"><h2>우리 점수 성적표</h2></div>
+            <h3>과거 검증 <span class="muted">상위 20종목(금색) vs 300종목 평균(회색), 20일마다 갈아탄다고 가정 · 실적·뉴스는 중간값</span></h3>
             <div id="rk-curve" class="rk-curve"></div>
+            <div class="table-wrap"><table class="tbl" id="rk-grades"></table></div>
+            <div class="rk-parts" id="rk-parts"></div>
             <div class="table-wrap"><table class="tbl" id="rk-years"></table></div>
             <h3>실제 운영 채점 <span class="muted" id="rk-live-sum"></span></h3>
             <div class="table-wrap"><table class="tbl" id="rk-live"></table></div>
-            <p class="hint">과거 검증은 '지금' 시총 상위 300 종목으로 해서 실제보다 좋게 나왔을 수 있고(그 사이 사라진 종목이 빠짐), 비용은 빼지 않았어요. 뉴스 항목은 과거 자료가 없어 매일 쌓이는 실제 운영 채점으로만 평가돼요. 순위는 투자 권유가 아니라 통계적 경향이에요.</p>
+            <p class="hint">과거 검증은 '지금' 시총 상위 300 종목으로 해서 실제보다 좋게 나왔을 수 있고(그 사이 사라진 종목이 빠짐), 비용은 빼지 않았어요. 우리 점수는 이해하기 쉬운 고정 규칙이라 맞는다는 보장이 없고, 성적은 위 숫자 그대로예요. 투자 권유가 아니에요.</p>
           </div>
         </div>
       </div>
@@ -543,7 +550,7 @@
   <script src="assets/chart.js?v=84f75d00"></script>
   <script src="assets/draw.js?v=207665ac"></script>
   <script src="assets/bt.js?v=fddcfd2f"></script>
-  <script src="assets/rank.js?v=7c10a867"></script>
+  <script src="assets/rank.js?v=4e91f303"></script>
   <script src="assets/app.js?v=8e3e7414"></script>
 </body>
 </html>

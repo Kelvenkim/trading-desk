@@ -85,6 +85,7 @@ def main():
     F = L.price_factors(C, H, V, L.macro_aligned(tnx, C.index), L.macro_aligned(krw, C.index))
     tl = earnings_timeline(list(C.columns))
     fwd = {h: C.shift(-h) / C - 1 for h in L.HORIZONS}
+    OI = L.ours_inputs(C, H, V)
     dates = [d for d in C.index[400::STEP] if d + pd.Timedelta(days=1) <= C.index[-1]]
     pos = {d: i for i, d in enumerate(C.index)}
     records, combo = [], []
@@ -92,8 +93,10 @@ def main():
         i = pos[d]
         cols = C.columns[C.loc[d].notna()]
         Z = {f: L.xrank(F[f].loc[d, cols]) for f in L.PRICE_FACTORS}
+        earn_raw = pd.Series({c: earn_on(tl, c, d) for c in cols}, dtype=float) if tl else None
         if tl:
-            Z["earn"] = L.xrank(pd.Series({c: earn_on(tl, c, d) for c in cols}))
+            Z["earn"] = L.xrank(earn_raw)
+        O = L.our_score(**{k: v.loc[d, cols] for k, v in OI.items()}, earn=earn_raw)
         rec = {"date": d.strftime("%Y-%m-%d"), "src": "backfill", "step": STEP, "ic": {}, "ic5": {}}
         have20 = i + 20 < len(C.index)
         for f, z in Z.items():
@@ -106,15 +109,25 @@ def main():
         known = [r for r in records if pos[pd.Timestamp(r["date"])] + 20 <= i]
         W = L.learn_weights(known, asof=d)
         s = L.combine(Z, W)
-        row = {"date": rec["date"], "n": int(len(cols))}
+        active = any(v["weight"] for v in W.values())
+        row = {"date": rec["date"], "n": int(len(cols)), "active": active}
         for h in L.HORIZONS:
             if i + h < len(C.index):
                 fr = fwd[h].loc[d, cols]
-                top = s.sort_values(ascending=False).index[:20]
-                row[f"ic{h}"] = L.spearman(s, fr)
-                row[f"top{h}"] = float(fr[top].mean())
                 row[f"all{h}"] = float(fr.mean())
-                row[f"hit{h}"] = float((fr[top] > fr.median()).mean())
+                if active:   # 검증된 항목이 하나도 없던 날은 '검증 순위' 없음
+                    top = s.sort_values(ascending=False).index[:20]
+                    row[f"ic{h}"] = L.spearman(s, fr)
+                    row[f"top{h}"] = float(fr[top].mean())
+                    row[f"hit{h}"] = float((fr[top] > fr.median()).mean())
+                # 우리 점수: 상위 20, 등급별 평균
+                ot = O["total"].sort_values(ascending=False, kind="stable").index[:20]
+                row[f"o_ic{h}"] = L.spearman(O["total"], fr)
+                row[f"o_top{h}"] = float(fr[ot].mean())
+                g = O["total"].map(L.grade_of)
+                row[f"o_grade{h}"] = {k: float(fr[g == k].mean()) for k in "SABCD" if (g == k).sum() >= 3}
+                if h == 20:
+                    row["o_part_ic"] = {k: L.spearman(O[k], fr) for k in L.OURS if O[k].nunique() > 2}
         combo.append(row)
         if have20:
             records.append(rec)

@@ -22,6 +22,57 @@ FACTORS = {
 }
 PRICE_FACTORS = ["mom", "hi52", "trend", "volx", "rev", "lowvol", "rate", "fx"]
 HORIZONS = (5, 20)
+T_MIN = 2.0      # 확실성(t) 이 2 이상이어야 순위에 씀 (우연일 가능성 약 5% 이하)
+N_MIN = 12.0     # 겹치지 않는 20일 관측이 12개(약 1년치) 이상
+
+
+# ---------- 우리 점수 (100점) : 사람이 읽을 수 있는 고정 규칙 ----------
+OURS = {  # key: (이름, 만점, 설명)
+    "trend": ("차트 추세", 25, "종가>20일선, 20일>60일선, 60일>120일선, 60일선 상승, 52주 고점의 85% 이상 — 각 5점"),
+    "earn":  ("실적",      25, "영업이익·매출 전년 대비: 크게 성장 25 · 성장 20 · 유지 14 · 소폭 감소 8 · 크게 감소 3 · 자료 없음 12"),
+    "news":  ("뉴스",      20, "최근 3일 기사 분위기: 매우 좋음 20 · 좋음 16 · 보통/없음 10 · 나쁨 5 · 매우 나쁨 1"),
+    "flow":  ("수급",      15, "최근 5일: 거래량 1.5배↑+상승 15 · 1.2배↑+상승 12 · 상승 9 · 보합/하락 6 · 거래량 1.5배↑+하락 2"),
+    "safe":  ("안정성",    15, "하루 변동폭이 300종목 중 작을수록 높음"),
+}
+GRADES = [(80, "S"), (70, "A"), (60, "B"), (45, "C"), (0, "D")]
+
+
+def our_score(c, m20, m60, m120, m60_20ago, hi52, ret5, volr, vol60, earn=None, news=None, news_n=None):
+    """모두 종목별 Series (같은 날짜). 반환: 항목별 점수 DataFrame + total"""
+    idx = c.index
+    t = (5 * (c > m20).astype(float) + 5 * (m20 > m60) + 5 * (m60 > m120) + 5 * (m60 > m60_20ago) + 5 * (hi52 >= 0.85))
+    t = t.where(m120.notna(), 12.5)
+    e = pd.Series(12.0, index=idx)
+    if earn is not None:
+        x = earn.reindex(idx)
+        e = pd.Series(np.select([x >= 0.3, x >= 0.1, x >= 0, x >= -0.2, x.notna()], [25, 20, 14, 8, 3], 12.0), index=idx)
+    nw = pd.Series(10.0, index=idx)
+    if news is not None:
+        x = news.reindex(idx)
+        nw = pd.Series(np.select([x >= 1, x >= 0.3, x > -0.3, x > -1, x.notna()], [20, 16, 10, 5, 1], 10.0), index=idx)
+    fl = pd.Series(np.select([(volr >= 1.5) & (ret5 > 0), (volr >= 1.2) & (ret5 > 0), ret5 > 0.005, (volr >= 1.5) & (ret5 < 0)],
+                             [15, 12, 9, 2], 6.0), index=idx)
+    vp = vol60.rank(pct=True)
+    sf = (15 * (1 - vp)).fillna(7.5)
+    D = pd.DataFrame({"trend": t, "earn": e, "news": nw, "flow": fl, "safe": sf})
+    D["total"] = D.sum(axis=1)
+    return D
+
+
+def grade_of(x):
+    for th, g in GRADES:
+        if x >= th:
+            return g
+    return "D"
+
+
+def ours_inputs(C, H, V):
+    """our_score 에 들어갈 날짜×종목 표들"""
+    m20, m60, m120 = (C.rolling(n, min_periods=n).mean() for n in (20, 60, 120))
+    return {"c": C, "m20": m20, "m60": m60, "m120": m120, "m60_20ago": m60.shift(20),
+            "hi52": C / H.rolling(250, min_periods=200).max(), "ret5": C / C.shift(5) - 1,
+            "volr": V.rolling(5).mean() / V.rolling(60).mean(),
+            "vol60": C.pct_change(fill_method=None).rolling(60, min_periods=50).std()}
 
 
 def wide(stocks, calendar):
@@ -133,9 +184,13 @@ def learn_weights(ic_records, asof=None, half_life_years=3.0, K=24.0):
         shrunk = (n_eff * mean + K * prior) / (n_eff + K)
         out[f] = {"name": name, "desc": desc, "prior": prior, "mean_ic": round(mean, 4), "t": round(t, 2),
                   "n_eff": round(n_eff, 1), "n_days": len(vals), "raw": shrunk}
-    tot = sum(abs(v["raw"]) for v in out.values()) or 1.0
     for v in out.values():
-        v["weight"] = round(v["raw"] / tot, 4)
+        v["active"] = bool(abs(v["t"]) >= T_MIN and v["n_eff"] >= N_MIN and np.sign(v["raw"]) == np.sign(v["mean_ic"]))
+        if not v["active"]:
+            v["raw"] = 0.0
+    tot = sum(abs(v["raw"]) for v in out.values())
+    for v in out.values():
+        v["weight"] = round(v["raw"] / tot, 4) if tot else 0.0
         del v["raw"]
     return out
 

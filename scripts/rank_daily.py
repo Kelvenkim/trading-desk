@@ -155,10 +155,19 @@ def grade(C, live):
                 if raw.notna().sum() >= 20 and raw.nunique() > 3:
                     ic[f] = L.spearman(raw, fr)
             sc = pd.Series({c: S["stocks"][c]["s"] for c in codes}, dtype=float)
+            active = any(S.get("weights", {}).values())
             top = sc.sort_values(ascending=False).index[:20]
-            live.append({"date": day, "h": h, "src": "live", "step": 1, "ic": ic, "combo_ic": L.spearman(sc, fr),
-                         "top": float(fr[top].mean()), "all": float(fr.mean()), "hit": float((fr[top] > fr.median()).mean()),
-                         "best": [[c, float(fr[c])] for c in top[:5]]})
+            rec = {"date": day, "h": h, "src": "live", "step": 1, "ic": ic, "all": float(fr.mean()), "active": active}
+            if active:
+                rec.update({"combo_ic": L.spearman(sc, fr), "top": float(fr[top].mean()), "hit": float((fr[top] > fr.median()).mean())})
+            if all("o" in S["stocks"][c] for c in codes):
+                o = pd.Series({c: S["stocks"][c]["o"] for c in codes}, dtype=float)
+                ot = o.sort_values(ascending=False, kind="stable").index[:20]
+                g = o.map(L.grade_of)
+                rec.update({"o_ic": L.spearman(o, fr), "o_top": float(fr[ot].mean()),
+                            "o_grade": {k: float(fr[g == k].mean()) for k in "SABCD" if (g == k).sum() >= 3},
+                            "o_best": [[c, S["stocks"][c].get("n", c), float(fr[c])] for c in ot[:5]]})
+            live.append(rec)
             added += 1
     return added
 
@@ -174,23 +183,22 @@ def summarize(bf, live):
     if bf:
         cb = pd.DataFrame(bf["combo"])
         cb["year"] = cb["date"].str[:4]
-        yrs = []
-        for y, g in cb.groupby("year"):
-            g = g.dropna(subset=["top20"])
-            if len(g) == 0:
-                continue
-            yrs.append({"year": y, "n": len(g), "ic": g["ic20"].mean(), "ex20": (g["top20"] - g["all20"]).mean(),
-                        "hit20": g["hit20"].mean(), "beat": ((g["top20"] - g["all20"]) > 0).mean(),
-                        "ex5": (g["top5"] - g["all5"]).mean()})
-        g = cb.dropna(subset=["top20"])
-        ex = g["top20"] - g["all20"]
+        g = cb.dropna(subset=["o_top20"])
+        ex = g["o_top20"] - g["all20"]
         # 겹치지 않게 20거래일(=4칸)마다 하나씩 뽑아 누적
         nonover = g.iloc[::4]
-        cum = (1 + nonover["top20"]).cumprod(), (1 + nonover["all20"]).cumprod()
+        cum = (1 + nonover["o_top20"]).cumprod(), (1 + nonover["all20"]).cumprod()
+        yrs = []
+        for y, gy in g.groupby("year"):
+            e = gy["o_top20"] - gy["all20"]
+            yrs.append({"year": y, "n": len(gy), "ic": gy["o_ic20"].mean(), "ex20": e.mean(), "beat": (e > 0).mean()})
+        grades = {k: nmean([r["o_grade20"].get(k, np.nan) - r["all20"] for r in bf["combo"] if r.get("o_grade20")]) for k in "SABCD"}
+        parts = {k: nmean([r["o_part_ic"].get(k) for r in bf["combo"] if r.get("o_part_ic")]) for k in L.OURS}
+        va = cb[(cb["active"] == True)].dropna(subset=["top20"]) if {"active", "top20"} <= set(cb.columns) else cb.iloc[0:0]
         rep["backfill"] = {
             "from": g["date"].iloc[0], "to": g["date"].iloc[-1], "n": len(g), "has_earn": bf.get("has_earn"),
-            "ic": g["ic20"].mean(), "ex20": ex.mean(), "beat": (ex > 0).mean(), "hit20": g["hit20"].mean(),
-            "ex5": (g["top5"] - g["all5"]).mean(), "beat5": ((g["top5"] - g["all5"]) > 0).mean(),
+            "ic": g["o_ic20"].mean(), "ex20": ex.mean(), "beat": (ex > 0).mean(), "grades": grades, "parts": parts,
+            "verified_days": int(len(va)), "verified_ex20": float((va["top20"] - va["all20"]).mean()) if len(va) else None,
             "years": yrs, "curve": [[d, a, b] for d, a, b in zip(nonover["date"], cum[0], cum[1])], "note": bf.get("note"),
             "factor_ic": {f: {"ic20": nmean([r["ic"].get(f) for r in bf["records"]]),
                               "ic5": nmean([r.get("ic5", {}).get(f) for r in bf["records"]])}
@@ -201,11 +209,13 @@ def summarize(bf, live):
         if not R:
             rep["live"][str(h)] = {"n": 0}
             continue
-        ex = [r["top"] - r["all"] for r in R]
-        rep["live"][str(h)] = {"n": len(R), "n_eff": round(len(R) / h, 1), "ic": nmean([r["combo_ic"] for r in R]),
-                               "ex": float(np.mean(ex)), "beat": float(np.mean([e > 0 for e in ex])),
-                               "hit": float(np.mean([r["hit"] for r in R])),
-                               "recent": [{"date": r["date"], "top": r["top"], "all": r["all"], "ic": r["combo_ic"], "best": r["best"]} for r in R[-30:]]}
+        RO = [r for r in R if "o_top" in r]
+        ex = [r["o_top"] - r["all"] for r in RO]
+        RV = [r for r in R if r.get("active")]
+        rep["live"][str(h)] = {"n": len(RO), "n_eff": round(len(RO) / h, 1), "ic": nmean([r["o_ic"] for r in RO]),
+                               "ex": nmean(ex), "beat": nmean([float(e > 0) for e in ex]),
+                               "verified_n": len(RV), "verified_ex": nmean([r["top"] - r["all"] for r in RV]),
+                               "recent": [{"date": r["date"], "top": r["o_top"], "all": r["all"], "best": r.get("o_best")} for r in RO[-30:]]}
     n20 = rep["live"].get("20", {}).get("n", 0)
     rep["stage"] = ("쌓는 중" if n20 < 20 else "초기" if n20 < 120 else "참고 가능" if n20 < 250 else "1년 이상 검증")
     return rep
@@ -259,9 +269,15 @@ def main(force=False):
     pct = score.rank(pct=True) * 100
     order = score.sort_values(ascending=False).index
 
+    OI = L.ours_inputs(C, H, V)
+    O = L.our_score(**{k: v.loc[d, cols] for k, v in OI.items()}, earn=raw["earn"] if earn else None, news=raw["news"])
+    O["grade"] = O["total"].map(L.grade_of)
+    verified = any(v["weight"] for v in W.values())
+    order = O["total"].sort_values(ascending=False, kind="stable").index
+
     day = d.strftime("%Y-%m-%d")
     dump(SNAP / f"{day}.json", {"date": day, "weights": {f: v["weight"] for f, v in W.items()},
-                                "stocks": {c: {"c": float(C.loc[d, c]), "s": float(score[c]),
+                                "stocks": {c: {"c": float(C.loc[d, c]), "s": float(score[c]), "o": float(O.loc[c, "total"]), "n": names.get(c, c),
                                                "raw": {f: (None if pd.isna(raw[f].get(c)) else float(raw[f][c])) for f in L.FACTORS}}
                                            for c in cols}})
     dump(OUT / "live.json", live)
@@ -283,7 +299,9 @@ def main(force=False):
         rows.append({
             "rank": rank, "code": c, "name": names.get(c, c), "mkt": mkts.get(c), "close": float(C.loc[d, c]),
             "chg": float(C.loc[d, c] / prev[c] - 1) if pd.notna(prev[c]) else None,
-            "score": float(pct[c]), "z": {f: float(Z[f][c]) for f in L.FACTORS},
+            "ours": float(O.loc[c, "total"]), "grade": O.loc[c, "grade"], "parts": {k: float(O.loc[c, k]) for k in L.OURS},
+            "spark": [float(x) for x in C[c].iloc[-60:].ffill().tolist()],
+            "score": float(pct[c]) if verified else None, "z": {f: float(Z[f][c]) for f in L.FACTORS},
             "v": {"mom": raw["mom"].get(c), "hi52": raw["hi52"].get(c), "trend": raw["trend"].get(c), "volx": raw["volx"].get(c),
                   "rev": raw["rev"].get(c), "lowvol": raw["lowvol"].get(c), "rate": raw["rate"].get(c), "fx": raw["fx"].get(c),
                   "news": raw["news"].get(c), "earn": raw["earn"].get(c)},
@@ -291,9 +309,17 @@ def main(force=False):
             "earn": ({"rep": f"{e['year']} {D.REPRT[e['reprt']]}", "date": e["rcept_date"], "op": e.get("op"), "op_prev": e.get("op_prev"),
                       "rev": e.get("rev"), "rev_prev": e.get("rev_prev")} if e else None),
         })
-    dump(OUT / "latest.json", {"date": day, "made": NOW.strftime("%Y-%m-%d %H:%M"), "market": market, "weights": W,
-                               "sources": {"news": ok_news, "earn": earn_msg, "universe": len(cols)}, "rows": rows})
+    dump(OUT / "latest.json", {"date": day, "made": NOW.strftime("%Y-%m-%d %H:%M"), "market": market, "weights": W, "verified": verified,
+                               "ours_def": {k: {"name": n, "max": m, "desc": ds} for k, (n, m, ds) in L.OURS.items()},
+                               "t_min": L.T_MIN, "sources": {"news": ok_news, "earn": earn_msg, "universe": len(cols)}, "rows": rows})
     dump(OUT / "report.json", summarize(bf, live))
+    # 종목 클릭 시 바로 보는 차트용: 최근 130거래일 일봉
+    days = cal[-130:]
+    bars = {}
+    for c in cols:
+        m = {r[0]: r for r in P.get(c, [])}
+        bars[c] = [([int(round(x)) for x in m[t][1:6]] if t in m else 0) for t in days]
+    (OUT / "bars.json").write_text(json.dumps({"days": days, "bars": bars}, separators=(",", ":")))
     print(f"완료 {day} · 채점 추가 {added} · {time.time() - t0:.0f}s")
 
 
