@@ -38,7 +38,16 @@
       if (confirm(`이 종목에 그린 ${Draw.count}개를 모두 지울까요?`)) Draw.clearAll();
     });
 
-    $("#fit-btn").addEventListener("click", () => ChartView.chart.timeScale().fitContent());
+    // 전체 화면: 차트 영역을 화면 가득 (아이폰 사파리도 되도록 CSS 방식)
+    const center = $("#chart-wrap").closest(".center");
+    const setFull = (on) => {
+      center.classList.toggle("full", on); document.body.classList.toggle("no-scroll", on);
+      $("#full-close").hidden = !on; $("#fit-btn").title = on ? "전체 화면 닫기" : "전체 화면 (Esc로 닫기)";
+    };
+    $("#fit-btn").addEventListener("click", () => setFull(!center.classList.contains("full")));
+    $("#full-close").addEventListener("click", () => setFull(false));
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && center.classList.contains("full")) setFull(false); });
+    $("#lines-btn").addEventListener("click", () => ChartView.setLines(!ChartView.linesOn));
     $("#fresh-btn").addEventListener("click", () => {
       if (!Data.getProxy()) { toast("최신 시세를 받으려면 ⚙ 설정에서 시세 중계 서버 주소를 넣어주세요.", true); return; }
       openSymbol(cur.sym, cur.iv, { fresh: true });

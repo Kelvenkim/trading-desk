@@ -6,7 +6,7 @@
   <title>Trading Desk</title>
   <meta name="theme-color" content="#000000" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="assets/style.css?v=89ad44fe" />
+  <link rel="stylesheet" href="assets/style.css?v=fbe65742" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -109,7 +109,7 @@
               <button data-ind="plan" title="지지·저항·추세선, 매수 구간·손절·목표 (한국 주식 일봉)">매매 계획</button>
             </div>
             <div class="bar-right">
-              <button class="icon-btn sm" id="fit-btn" title="전체 보기"><svg><use href="#i-fit"/></svg></button>
+              <button class="icon-btn sm" id="fit-btn" title="전체 화면 (Esc로 닫기)"><svg><use href="#i-fit"/></svg></button>
               <button class="icon-btn sm" id="fresh-btn" title="최신 시세 받기"><svg><use href="#i-refresh"/></svg></button>
             </div>
           </div>
@@ -118,6 +118,10 @@
             <div id="chart" class="chart-host"></div>
             <div class="legend" id="legend"></div>
             <div class="chart-msg" id="chart-msg" hidden></div>
+            <div class="chart-float">
+              <button class="float-btn" id="lines-btn" hidden>선 숨기기</button>
+              <button class="float-btn" id="full-close" hidden>✕ 닫기</button>
+            </div>
           </div>
           <div class="chart-foot" id="chart-foot"></div>
           <div id="chart-plan" class="chart-plan"></div>
@@ -549,11 +553,11 @@
   <script src="assets/util.js?v=47f52197"></script>
   <script src="assets/backtest.js?v=04a79827"></script>
   <script src="assets/data.js?v=009980a7"></script>
-  <script src="assets/chart.js?v=5b21b4c3"></script>
+  <script src="assets/chart.js?v=69a54c61"></script>
   <script src="assets/draw.js?v=f61bef61"></script>
   <script src="assets/bt.js?v=f0ca857e"></script>
   <script src="assets/levels.js?v=015b1f36"></script>
   <script src="assets/rank.js?v=b2aaf19e"></script>
-  <script src="assets/app.js?v=1d5cf2a2"></script>
+  <script src="assets/app.js?v=7f9a742a"></script>
 </body>
 </html>

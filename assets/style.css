@@ -492,3 +492,17 @@ pre { background: var(--bg); border: 1px solid var(--line); border-radius: var(-
 .chart-plan .plan-tbl td { padding: 7px 8px; }
 .chart-plan .plan-tbl td:first-child { white-space: nowrap; }
 .chart-plan .plan-tbl td.sub { white-space: normal; }
+/* 차트 전체 화면 + 떠 있는 버튼 */
+.chart-float { position: absolute; top: 8px; right: 70px; z-index: 6; display: flex; gap: 6px; }
+.float-btn { font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: rgba(10,10,11,.85); color: var(--text); backdrop-filter: blur(6px); }
+.float-btn:hover { border-color: var(--text); }
+.float-btn.off { color: var(--muted); }
+.center.full { position: fixed; inset: 0; z-index: 60; margin: 0; border-radius: 0; background: var(--bg); display: flex; flex-direction: column; padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+.center.full .quote { padding-top: 4px; padding-bottom: 4px; }
+.center.full .q-range { display: none; }
+.center.full .chart-wrap { flex: 1; min-height: 0; }
+.center.full .chart-foot, .center.full .chart-plan { display: none; }
+body.no-scroll { overflow: hidden; }
+@media (max-width: 640px) { .chart-float { right: 8px; top: 6px; } .center.full .chips { display: none; } }
+.ws .center.full, .center.full { height: 100vh; height: 100dvh; min-height: 0; max-height: none; width: 100vw; }
+@media (max-width: 640px) { .chart-float { top: auto; bottom: 34px; right: 70px; } }

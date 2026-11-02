@@ -16,7 +16,20 @@ const ChartView = (() => {
 
   let chart, candle, vol, legendEl, markersApi;
   let bars = [], idxByTime = new Map(), sym = "", ivId = "1d", fmt = (v) => String(v);
-  let main = [], sub = [], planDraw = null, planSeq = 0;
+  let main = [], sub = [], planDraw = null, planSeq = 0, planA = null, planPart = null;
+  let linesOn = true;
+  try { linesOn = localStorage.getItem("tradingdesk.planlines") !== "off"; } catch (_) {}
+  function drawLines() {
+    if (planDraw) { planDraw.remove(); planDraw = null; }
+    if (planA && linesOn) planDraw = Levels.draw(chart, candle, planPart.map((b) => b.t), planA, (mk) => markersApi.setMarkers(mk));
+    const btn = document.getElementById("lines-btn");
+    if (btn) { btn.hidden = !planA; btn.textContent = linesOn ? "선 숨기기" : "선 보이기"; btn.classList.toggle("off", !linesOn); }
+  }
+  function setLines(on) {
+    linesOn = on;
+    try { localStorage.setItem("tradingdesk.planlines", on ? "on" : "off"); } catch (_) {}
+    drawLines();
+  }
   let ind = { ...DEFAULT_IND };
   try { ind = { ...DEFAULT_IND, ...JSON.parse(localStorage.getItem(IND_KEY) || "{}") }; } catch (_) {}
 
@@ -90,7 +103,7 @@ const ChartView = (() => {
   // 지지·저항·추세선·매매 계획 (일봉만, 최근 6개월로 계산)
   async function renderPlan() {
     const seq = ++planSeq;
-    if (planDraw) { planDraw.remove(); planDraw = null; }
+    planA = null; drawLines();
     const box = document.getElementById("chart-plan");
     const krStock = /\.(KS|KQ)$/.test(sym);
     if (!ind.plan || ivId !== "1d" || !krStock || bars.length < 60 || typeof Levels === "undefined") {
@@ -103,7 +116,7 @@ const ChartView = (() => {
     let A = null;
     try { A = Levels.analyze(part, { marketUp: up }); } catch (e) { console.error(e); }
     if (!A) { if (box) box.innerHTML = ""; return; }
-    planDraw = Levels.draw(chart, candle, part.map((b) => b.t), A, (mk) => markersApi.setMarkers(mk));
+    planA = A; planPart = part; drawLines();
     if (box) box.innerHTML = Levels.planHTML(A);
   }
 
@@ -244,7 +257,7 @@ const ChartView = (() => {
   }
 
   return {
-    create, setData, setIndicator, msToLogical, logicalToMs,
+    create, setData, setIndicator, msToLogical, logicalToMs, setLines, get linesOn() { return linesOn; },
     get chart() { return chart; }, get candle() { return candle; }, get bars() { return bars; },
     get ind() { return { ...ind }; }, get sym() { return sym; }, get iv() { return ivId; },
     fmt: (v) => fmt(v),
