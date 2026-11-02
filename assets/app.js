@@ -272,6 +272,7 @@
     if (name === "portfolio") renderPF();
     if (name === "backtest") { try { BTUI.onShow(cur.sym); } catch (_) {} }
     if (name === "rank") { try { RankUI.onShow(); } catch (e) { console.error(e); } }
+    if (name === "theme") { try { ThemeUI.onShow(); } catch (e) { console.error(e); } }
   }
 
   // ================= 시작 =================
@@ -290,12 +291,14 @@
     safe("차트", initChartTab); safe("설정", initSettings); safe("포트폴리오", initPF);
     safe("백테스트", () => BTUI.init({ current: () => cur.sym }));
     safe("순위", () => RankUI.init());
-    window.App = { openChart: (sym) => { showTab("chart"); openSymbol(sym, "1d"); } };
+    safe("장기 테마", () => ThemeUI.init());
+    window.App = { openChart: (sym) => { showTab("chart"); openSymbol(sym, "1d"); },
+      showTheme: (key) => { showTab("theme"); ThemeUI.openKey(key); } };
     const last = store.get(LAST_KEY, null);
     const first = (last && last.sym) || (Data.meta.symbols[0] && Data.meta.symbols[0].symbol);
     if (first) openSymbol(first, (last && last.iv) || "1d");
     const h = location.hash.slice(1);
-    if (["portfolio", "backtest", "rank"].includes(h)) showTab(h);
+    if (["portfolio", "backtest", "rank", "theme"].includes(h)) showTab(h);
   }
   init();
 })();

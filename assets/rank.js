@@ -1,7 +1,7 @@
 /* 오늘의 순위 — 우리 점수(100점 고정 규칙) + 검증된 항목만 쓰는 검증 순위 */
 const RankUI = (() => {
   const { $, esc, LC_OPTS } = U;
-  let L = null, R = null, B = null, open = null, chart = null, loaded = false, showLv = true;
+  let NT = null, L = null, R = null, B = null, open = null, chart = null, loaded = false, showLv = true;
   const filt = { mkt: "all", q: "", n: 50, grade: "all" };
   const pct = (v, d = 1) => (v == null ? "—" : (v >= 0 ? "+" : "") + (v * 100).toFixed(d) + "%");
   const cls = (v) => (v == null ? "" : v > 0 ? "up" : v < 0 ? "down" : "");
@@ -15,6 +15,7 @@ const RankUI = (() => {
     try { [L, R] = await Promise.all([get("data/rank/latest.json"), get("data/rank/report.json")]); }
     catch (_) { $("#rk-body").innerHTML = `<tr class="empty-row"><td colspan="6">아직 순위 데이터가 없어요. GitHub Actions에서 '매일 순위'를 한 번 실행해주세요.</td></tr>`; return; }
     loaded = true;
+    try { const n = await get("data/narrative/latest.json"); NT = { primary: n.primary || {}, name: Object.fromEntries(n.rows.map((r) => [r.key, r.name])) }; } catch (_) {}
     renderTop(); renderTable(); renderSide(); renderReport();
   }
 
@@ -71,7 +72,7 @@ const RankUI = (() => {
     $("#rk-body").innerHTML = shown.map((r, i) => `
       <tr data-code="${r.code}" class="${open === r.code ? "open" : ""}">
         <td class="rk-n">${L.rows.indexOf(r) + 1}</td>
-        <td><b>${esc(r.name)}</b> <span class="sub">${r.code} · ${r.mkt === "KOSPI" ? "코스피" : "코스닥"}</span></td>
+        <td><b>${esc(r.name)}</b>${NT && NT.primary[r.code] ? `<span class="rk-theme" data-theme="${NT.primary[r.code]}" title="장기 테마로 보기">${esc(NT.name[NT.primary[r.code]])}</span>` : ""} <span class="sub">${r.code} · ${r.mkt === "KOSPI" ? "코스피" : "코스닥"}</span></td>
         <td class="rk-score"><span class="grade g-${r.grade}">${r.grade}</span><b>${Math.floor(r.ours)}</b><span class="stack">${stack(r)}</span></td>
         <td class="r rk-px">${spark(r.spark)}<span><b>${won(r.close)}</b><span class="${cls(r.chg)} small">${pct(r.chg, 2)}</span></span></td>
         <td class="why">${reasons(r).map(([t, c]) => `<span class="fchip ${c}">${t}</span>`).join("")}</td>
@@ -204,6 +205,7 @@ const RankUI = (() => {
       const btn = e.target.closest("[data-chart]");
       if (btn) { window.App && App.openChart(btn.dataset.chart); return; }
       if (e.target.closest("[data-lv]")) { showLv = !showLv; renderTable(); return; }
+      const th = e.target.closest("[data-theme]"); if (th) { window.App && App.showTheme(th.dataset.theme); return; }
       if (e.target.closest("a, .rk-chartbox")) return;
       const tr = e.target.closest("tr[data-code]"); if (!tr) return;
       open = open === tr.dataset.code ? null : tr.dataset.code;

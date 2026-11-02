@@ -6,7 +6,7 @@
   <title>Trading Desk</title>
   <meta name="theme-color" content="#000000" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="assets/style.css?v=fbe65742" />
+  <link rel="stylesheet" href="assets/style.css?v=31e0ec50" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -45,6 +45,7 @@
     <nav class="tabs">
       <button class="tab active" data-tab="chart">차트</button>
       <button class="tab" data-tab="rank">오늘의 순위</button>
+      <button class="tab" data-tab="theme">장기 테마</button>
       <button class="tab" data-tab="portfolio">포트폴리오</button>
       <button class="tab" data-tab="backtest">백테스트</button>
     </nav>
@@ -181,6 +182,22 @@
             <div class="table-wrap"><table class="tbl" id="rk-live"></table></div>
             <p class="hint">과거 검증은 '지금' 시총 상위 300 종목으로 해서 실제보다 좋게 나왔을 수 있고(그 사이 사라진 종목이 빠짐), 비용은 빼지 않았어요. 우리 점수는 이해하기 쉬운 고정 규칙이라 맞는다는 보장이 없고, 성적은 위 숫자 그대로예요. 투자 권유가 아니에요.</p>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 장기 테마 ================= -->
+    <section id="tab-theme" class="panel">
+      <div class="rk-head"><h2>장기 테마 <span class="muted small" id="th-date"></span></h2>
+        <p class="muted small th-intro">종목보다 먼저 "어떤 기술·트렌드·정책 이야기에 올라탈지"를 보는 곳이에요. 3개월~1년 관점이에요. 테마를 누르면 이야기·근거·지수 차트·종목·내 판단이 펼쳐져요.</p></div>
+      <div class="box trust" id="th-trust"></div>
+      <div class="grid-2">
+        <div class="box"><div id="th-list"><p class="muted">불러오는 중…</p></div></div>
+        <div>
+          <div class="box"><div class="box-head"><h2>테마 점수 기준 <span class="muted small">100점</span></h2></div><div id="th-parts"></div></div>
+          <div class="box"><div class="box-head"><h2>과거 검증 <span class="muted small">주가 추세 신호</span></h2></div>
+            <div class="table-wrap"><table class="tbl" id="th-bf"></table></div>
+            <p class="hint">매달 '주가 추세 점수' 상위 3개 테마를 골랐을 때 그 뒤 성적이에요. 지금 테마 구성으로 과거를 계산해서 실제보다 좋게 나왔을 수 있어요. 테마 점수가 높다고 오른다는 보장은 없어요.</p></div>
         </div>
       </div>
     </section>
@@ -557,7 +574,8 @@
   <script src="assets/draw.js?v=f61bef61"></script>
   <script src="assets/bt.js?v=f0ca857e"></script>
   <script src="assets/levels.js?v=015b1f36"></script>
-  <script src="assets/rank.js?v=b2aaf19e"></script>
-  <script src="assets/app.js?v=7f9a742a"></script>
+  <script src="assets/rank.js?v=102961ec"></script>
+  <script src="assets/theme.js?v=7544efd6"></script>
+  <script src="assets/app.js?v=e958ac28"></script>
 </body>
 </html>

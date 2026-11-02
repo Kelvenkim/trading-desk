@@ -47,11 +47,23 @@ def dump(path, obj):
 
 
 def universe():
+    """시총 상위 300 보통주. KRX 목록 서버가 가끔 실패해서 3번 시도, 그래도 안 되면 지난번 목록 사용"""
     import FinanceDataReader as fdr
-    U = fdr.StockListing("KRX")
-    U = U[~U["Name"].str.contains(r"(우|우B|우C|\(전환\))$|스팩", regex=True)]
-    U = U[U["Market"].isin(["KOSPI", "KOSDAQ", "KOSDAQ GLOBAL"])].sort_values("Marcap", ascending=False).head(N_UNIVERSE)
-    return U
+    cache = OUT / "universe.json"
+    for k in range(3):
+        try:
+            U = fdr.StockListing("KRX")
+            U = U[~U["Name"].str.contains(r"(우|우B|우C|\(전환\))$|스팩", regex=True)]
+            U = U[U["Market"].isin(["KOSPI", "KOSDAQ", "KOSDAQ GLOBAL"])].sort_values("Marcap", ascending=False).head(N_UNIVERSE)
+            if len(U) >= 200:
+                dump(cache, [[c, n, m] for c, n, m in zip(U.Code, U.Name, U.Market)])
+                return U[["Code", "Name", "Market"]]
+        except Exception as e:
+            print("KRX 목록 실패, 다시 시도", k + 1, str(e)[:80], flush=True)
+            time.sleep(10 * (k + 1))
+    rows = json.loads(cache.read_text())
+    print("KRX 목록을 받지 못해 지난번 목록 사용", flush=True)
+    return pd.DataFrame(rows, columns=["Code", "Name", "Market"])
 
 
 def fetch_prices(codes, start):
@@ -101,11 +113,24 @@ def fetch_news(code, name="", days=3):
             items.append({"t": t, "d": it.get("datetime"), "s": L.headline_score(t), "o": it.get("officeName"),
                           "u": f"https://n.news.naver.com/mnews/article/{it.get('officeId')}/{it.get('articleId')}"})
     if not items:
-        return {"tone": 0.0, "n": 0, "items": []}
+        return {"tone": 0.0, "n": 0, "items": [], "all": []}
     tone = float(np.mean([x["s"] for x in items]))
-    # 단어가 하나도 안 걸린 제목만 있으면 중립
-    items.sort(key=lambda x: -abs(x["s"]))
-    return {"tone": tone, "n": len(items), "items": items[:4]}
+    allx = sorted(items, key=lambda x: x["d"], reverse=True)
+    items = sorted(items, key=lambda x: -abs(x["s"]))
+    return {"tone": tone, "n": len(items), "items": items[:4], "all": allx}
+
+
+def fetch_consensus(code):
+    """증권사 컨센서스: 목표주가 평균, 투자의견(1~5, 높을수록 매수)"""
+    try:
+        req = urllib.request.Request(f"https://m.stock.naver.com/api/stock/{code}/integration",
+                                     headers={"User-Agent": "Mozilla/5.0", "Referer": "https://m.stock.naver.com/"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            c = json.loads(r.read()).get("consensusInfo") or {}
+        tp = float(str(c.get("priceTargetMean", "")).replace(",", "") or "nan")
+        return {"target": tp if tp > 0 else None, "opinion": float(c.get("recommMean") or "nan"), "date": c.get("createDate")}
+    except Exception:
+        return None
 
 
 def fetch_macro():
@@ -252,6 +277,9 @@ def main(force=False):
     ok_news = sum(1 for v in news.values() if v is not None)
     raw["news"] = pd.Series({c: (news[c]["tone"] if news[c] and news[c]["n"] else np.nan) for c in cols}, dtype=float)
     print(f"뉴스 {ok_news}종목 {time.time() - t0:.0f}s", flush=True)
+    with ThreadPoolExecutor(8) as ex:
+        cons = dict(zip(cols, ex.map(fetch_consensus, cols)))
+    print(f"목표가 {sum(1 for v in cons.values() if v and v.get('target'))}종목", flush=True)
 
     earn, earn_msg = earnings_now(cols)
     raw["earn"] = pd.Series({c: D.earn_raw(earn.get(c)) if earn else np.nan for c in cols}, dtype=float)
@@ -320,6 +348,13 @@ def main(force=False):
         m = {r[0]: r for r in P.get(c, [])}
         bars[c] = [([int(round(x)) for x in m[t][1:6]] if t in m else 0) for t in days]
     (OUT / "bars.json").write_text(json.dumps({"days": days, "bars": bars}, separators=(",", ":")))
+    # 장기 테마
+    try:
+        import narrative_build as NB
+        NB.daily(C, ks, cols, names, news, cons, raw["earn"] if earn else None, O, day, NOW)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        print("장기 테마 계산 실패:", e)
     print(f"완료 {day} · 채점 추가 {added} · {time.time() - t0:.0f}s")
 
 
