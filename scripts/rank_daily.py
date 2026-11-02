@@ -351,7 +351,7 @@ def main(force=False):
     # 장기 테마
     try:
         import narrative_build as NB
-        NB.daily(C, ks, cols, names, news, cons, raw["earn"] if earn else None, O, day, NOW)
+        NB.daily(C, ks, cols, names, news, cons, raw["earn"] if earn else None, O, day, NOW, fetch_prices=fetch_prices)
     except Exception as e:
         import traceback; traceback.print_exc()
         print("장기 테마 계산 실패:", e)

@@ -26,7 +26,10 @@ def main():
         page += 1
     def members(g):
         j = get(f"https://m.stock.naver.com/api/stocks/theme/{g['no']}?page=1&pageSize=100") or {}
-        return g["no"], [[s["itemCode"], s["stockName"]] for s in j.get("stocks", [])]
+        def mv(x):
+            try: return int(str(x.get("marketValue", "0")).replace(",", ""))   # 억원
+            except Exception: return 0
+        return g["no"], [[s["itemCode"], s["stockName"], mv(s)] for s in j.get("stocks", []) if s.get("stockEndType") == "stock"]
     with ThreadPoolExecutor(6) as ex:
         mem = dict(ex.map(members, groups))
     out = {"made": time.strftime("%Y-%m-%d"), "themes": [{"no": g["no"], "name": g["name"], "stocks": mem.get(g["no"], [])} for g in groups]}

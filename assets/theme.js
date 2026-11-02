@@ -21,7 +21,17 @@ const ThemeUI = (() => {
     renderList();
   }
 
+  function renderMacro() {
+    const el = $("#th-macro"); if (!el) return;
+    const m = T.macro || [], pr = T.pick_record;
+    el.innerHTML = `<div class="box-head"><h2>거시 전망 <span class="muted small">예측시장 · 돈을 건 사람들이 매긴 확률</span></h2></div>
+      ${m.length ? `<div class="mkts">${m.map(mktHTML).join("")}</div>` : `<p class="small muted">예측시장 자료를 받지 못했어요.</p>`}
+      <p class="hint">금리·경기 전망은 모든 테마에 영향을 줘요. 예: 금리 인상 확률이 높으면 성장주·바이오에 불리, 은행·보험에 유리한 경향.</p>
+      <div class="pick-rec small">지난 추천 성적: ${pr && pr.n ? `${pr.n}건 중 끝난 ${pr.done}건 — 목표 ${pr.win} / 손절 ${pr.done - pr.win}${pr.avg != null ? ` · 평균 ${pct(pr.avg)}` : ""} · 진행 중 ${pr.open}건` : "아직 없음 — 추천 다음 날 시가에 샀다고 보고, 손절·목표 중 먼저 닿은 결과를 매일 채점해요."}</div>`;
+  }
+
   function renderTop() {
+    renderMacro();
     $("#th-date").textContent = `${T.date} 기준 · 16개 이야기 · 시총 상위 300 종목`;
     const b = T.backfill || {}, h6 = b["126"] || {}, lv = (T.live || {})["126"] || {};
     $("#th-trust").innerHTML = `
@@ -89,6 +99,48 @@ const ThemeUI = (() => {
         <h3>종목 <span class="muted small">시총 순 · 등급은 오늘의 우리 점수</span></h3>
         <div class="table-wrap"><table class="tbl th-stocks"><thead><tr><th>종목</th><th>우리 점수</th><th class="r">3개월</th><th class="r">목표가 여력</th><th></th></tr></thead><tbody>${stocks}</tbody></table></div>
       </div>
+      <div class="th-full">
+        <h3>추천 기업 <span class="muted small">소형주 포함 · 테마 연관도·차트 자리·증권가·수급으로 골랐어요 · 매일 바뀌어요</span></h3>
+        ${(r.picks || []).length ? `<div class="picks">${r.picks.map(pickHTML).join("")}</div>` : `<p class="small muted">오늘은 조건(하루 거래대금 20억 이상, 손절 폭 15% 이내)에 맞는 종목이 없어요.</p>`}
+        <h3>이 이야기 관련 예측시장 <span class="muted small">Polymarket — 돈을 건 사람들이 매긴 확률</span></h3>
+        ${(r.markets || []).length ? `<div class="mkts">${r.markets.map(mktHTML).join("")}</div>` : `<p class="small muted">관련 예측시장을 찾지 못했어요. 한국 개별 기업·산업을 다루는 시장은 거의 없어요.</p>`}
+      </div>
+    </div>`;
+  }
+
+  const REC = { strong_buy: "적극 매수", buy: "매수", hold: "보유", underperform: "비중 축소", sell: "매도", none: "의견 없음" };
+  const eok = (v) => (v == null ? "—" : (v >= 0 ? "+" : "") + Math.round(v / 1e8).toLocaleString("ko-KR") + "억");
+  function mktHTML(m) {
+    const outs = (m.outs || []).map((o) => `<span class="mk-o"><b>${(o.p * 100).toFixed(o.p < 0.1 ? 1 : 0)}%</b> ${esc(m.single ? "예(Yes)" : o.label)}</span>`).join("");
+    return `<a class="mk" href="${esc(m.url)}" target="_blank" rel="noopener"><span class="mk-src">${esc(m.src)}</span><span class="mk-t">${esc(m.ko || m.title)}</span>${m.ko ? `<span class="sub">${esc(m.title)}</span>` : ""}<span class="mk-outs">${outs}</span>${m.vol ? `<span class="sub">거래액 $${Math.round(m.vol).toLocaleString("en-US")}</span>` : ""}</a>`;
+  }
+  function pickHTML(p) {
+    const P = p.plan, c = p.consensus || {}, y = p.yahoo || {}, cm = p.community, f = p.flows || {};
+    const pos = P.kind === "pullback";
+    const evPct = P.ev * 100;
+    const cmBar = cm && cm.ratio != null ? `<span class="cm-bar"><i style="width:${cm.ratio * 100}%"></i></span> 낙관 ${cm.bull} · 비관 ${cm.bear} <span class="sub">(최근 ${cm.n}개 글${cm.ratio > 0.75 ? " · 너무 낙관적이면 오히려 과열 신호일 수 있어요" : ""})</span>` : "자료 없음";
+    return `<div class="pick">
+      <div class="pick-head"><b>${esc(p.name)}</b><span class="sub">${p.code} · 시총 ${p.mv ? p.mv.toLocaleString("ko-KR") + "억" : "—"} · 현재가 ${won(p.px)}</span>
+        <span class="verdict ${P.ok && pos && P.in_zone && P.market_up ? "go" : ""}">${esc(P.verdict)}</span>
+        <button class="btn small" data-chartsym="${esc(p.sym)}">차트</button></div>
+      <div class="rr">
+        <div class="rr-row"><span>${pos ? "매수 구간" : "돌파 매수"}</span><b>${pos ? `${won(P.zone[0])} ~ ${won(P.zone[1])}` : won(P.entry)}</b></div>
+        <div class="rr-row up"><span>성공하면 (목표 ${won(P.target)})</span><b>${pct(P.gain)}</b></div>
+        <div class="rr-row down"><span>실패하면 (손절 ${won(P.stop)})</span><b>${pct(P.loss)}</b></div>
+        <div class="rr-row"><span>손익비</span><b>1 : ${P.rr ? P.rr.toFixed(1) : "—"}</b></div>
+        <div class="rr-row"><span>종합 기대값 <span class="sub">과거 승률 32%로 계산</span></span><b class="${cls(P.ev)}">${evPct >= 0 ? "+" : ""}${evPct.toFixed(1)}% / 1회</b></div>
+        ${c.up != null ? `<div class="rr-row"><span>증권사 목표가까지</span><b>${pct(c.up, 0)}</b></div>` : ""}
+        <div class="rr-note sub">10번 하면 약 3번 목표, 7번 손절이라는 뜻이에요. 계좌의 1%만 잃게 하려면 매수 금액 = 계좌 × 1% ÷ ${Math.abs(P.loss * 100).toFixed(1)}% = 계좌의 ${Math.min(100, 1 / Math.abs(P.loss)).toFixed(0)}%.</div>
+      </div>
+      <div class="pick-why"><h4>근거</h4><ul class="evid">${p.why.map((w) => `<li>${esc(w)}</li>`).join("")}</ul></div>
+      <div class="pick-op"><h4>시장 여론</h4>
+        <div class="op"><span class="tag">국내 증권사</span>${c.target ? `목표가 ${won(c.target)}원 (${pct(c.up, 0)}) · 의견 ${c.opinion || "—"}/5${c.date ? ` <span class="sub">${c.date}</span>` : ""}` : "집계 없음"}</div>
+        ${(p.reports || []).map((r) => `<div class="op sub">· ${esc(r.broker)} ${r.date ? r.date.slice(4, 6) + "/" + r.date.slice(6) : ""} "${esc(r.title)}"</div>`).join("")}
+        <div class="op"><span class="tag">해외 포함 애널리스트</span>${y.n ? `${y.n}명 · 목표가 평균 ${won(y.target)}원 (${pct(y.target / p.px - 1, 0)}) · ${REC[y.rec] || y.rec || "—"}` : "집계 없음"} <span class="sub">Yahoo Finance</span></div>
+        <div class="op"><span class="tag">수급 5일</span>외국인 <b class="${cls(f.foreign5)}">${eok(f.foreign5)}</b> · 기관 <b class="${cls(f.organ5)}">${eok(f.organ5)}</b>${f.fhold ? ` · 외국인 보유 ${esc(f.fhold)}` : ""}</div>
+        <div class="op"><span class="tag">투자 커뮤니티</span>${cmBar} <span class="sub">네이버 종목토론방</span></div>
+        ${(p.markets || []).length ? `<div class="op"><span class="tag">예측시장</span></div><div class="mkts">${p.markets.map(mktHTML).join("")}</div>` : ""}
+      </div>
     </div>`;
   }
 
@@ -140,6 +192,7 @@ const ThemeUI = (() => {
         Data.loadSymbols().then((list) => { const hit = list.find((x) => x.symbol.startsWith(code + ".")); window.App && App.openChart(hit ? hit.symbol : code + ".KS"); });
         return;
       }
+      const cs = e.target.closest("[data-chartsym]"); if (cs) { window.App && App.openChart(cs.dataset.chartsym); return; }
       const per = e.target.closest("[data-per]"); if (per) { period = +per.dataset.per; renderList(); return; }
       const vb = e.target.closest("[data-view]");
       if (vb) {
@@ -149,7 +202,7 @@ const ThemeUI = (() => {
         (V[key] = V[key] || []).push({ date: T.date, view: vb.dataset.view, memo, idx: i >= 0 ? Hh.idx[key][i] : null, ks: i >= 0 ? Hh.ks[i] : null });
         saveViews(V); toast("내 판단을 저장했어요."); renderList(); return;
       }
-      if (e.target.closest("a, input, .th-detail")) return;
+      if (e.target.closest("a, input, .th-detail, .th-full")) return;
       const card = e.target.closest(".th-card"); if (!card) return;
       open = open === card.dataset.key ? null : card.dataset.key; renderList();
       if (open) card.scrollIntoView({ block: "nearest" });

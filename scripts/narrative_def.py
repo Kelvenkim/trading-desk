@@ -78,3 +78,28 @@ POLICY_WORDS = ["정부", "정책", "예산", "법안", "특별법", "국회", "
 # 자동 분류가 어긋난 종목 손보기 (종목코드)
 EXCLUDE = {"ai_chip": ["010950", "078930"], "green": ["004020", "015760"]}
 INCLUDE = {"nuclear": ["015760"]}
+
+# 예측시장(Polymarket) 검색어: (검색어, 제목에 꼭 들어가야 할 단어들)
+PM = {
+    "ai_chip": [("nvidia", ["NVIDIA", "Nvidia", "NVDA"]), ("semiconductor tariff", ["semiconductor", "chip", "Chip"])],
+    "power": [("data center", ["data center", "Data center", "Data Center"]), ("electricity price", ["electric", "Electric"])],
+    "nuclear": [("nuclear power plant", ["nuclear power", "reactor", "SMR", "power plant"]), ("uranium price", ["uranium", "Uranium"])],
+    "defense": [("Russia Ukraine ceasefire", ["ceasefire", "Ceasefire"]), ("NATO defense spending", ["NATO", "defense"])],
+    "ship": [("shipbuilding", ["ship", "Ship"]), ("Strait of Hormuz", ["Hormuz"])],
+    "valueup": [("South Korea KOSPI", ["KOSPI", "Korea"]), ("South Korea", ["Korea", "Korean"])],
+    "robot": [("Tesla Optimus", ["Optimus", "humanoid", "Humanoid", "robot"]), ("humanoid robot", ["robot", "humanoid"])],
+    "battery": [("Tesla deliveries", ["Tesla"]), ("EV tax credit", ["EV", "electric vehicle"])],
+    "bio": [("FDA approval", ["FDA"]), ("GLP-1 obesity", ["GLP", "Ozempic", "Wegovy", "obesity", "Obesity"])],
+    "kculture": [("BTS", ["BTS"]), ("China South Korea", ["Korea"])],
+    "auto": [("auto tariffs", ["auto", "Auto", "car"]), ("Tesla robotaxi", ["robotaxi", "Robotaxi"])],
+    "digital": [("bitcoin price", ["Bitcoin", "BTC"]), ("stablecoin", ["stablecoin", "Stablecoin"])],
+    "infra": [("Ukraine reconstruction", ["Ukraine"]), ("Russia Ukraine ceasefire", ["ceasefire", "Ceasefire"])],
+    "software": [("OpenAI", ["OpenAI"]), ("best AI model", ["AI"])],
+    "green": [("solar energy", ["solar", "Solar"]), ("renewable energy", ["renewable", "energy"])],
+    "materials": [("steel tariff", ["steel", "Steel"]), ("copper price", ["copper", "Copper"]), ("rare earth", ["rare earth", "Rare earth"])],
+}
+PM_MACRO = [("Fed rate cuts 2026", ["Fed"]), ("US recession 2026", ["recession", "Recession"])]
+
+# 회사 이름 → 영어 검색어 (예측시장에 개별 기업 시장이 있을 때만 걸림)
+EN_NAME = [("삼성", "Samsung"), ("SK하이닉스", "SK Hynix"), ("현대", "Hyundai"), ("기아", "Kia"), ("한화", "Hanwha"), ("LG", "LG "),
+           ("NAVER", "Naver"), ("카카오", "Kakao"), ("셀트리온", "Celltrion"), ("하이브", "HYBE"), ("두산", "Doosan"), ("포스코", "POSCO")]

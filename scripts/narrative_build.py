@@ -72,7 +72,7 @@ def refresh_themes():
             print("테마 목록 갱신 실패(이전 목록 사용):", e)
 
 
-def daily(C, ks, cols, names, news, cons, earn, O, day, NOW):
+def daily(C, ks, cols, names, news, cons, earn, O, day, NOW, fetch_prices=None):
     refresh_themes()
     M, P = NL.members(cols)
     ksA = ks.reindex(C.index).ffill()
@@ -142,6 +142,12 @@ def daily(C, ks, cols, names, news, cons, earn, O, day, NOW):
                      "r1": I["r1"], "r3": I["r3"], "r6": I["r6"], "r12": I["r12"], "evidence": ev, "heads": I["heads"],
                      "stocks": I["stocks"], "n": I["n"]})
     rows.sort(key=lambda r: -r["score"])
+    # ---- 테마별 추천 종목 (소형주 포함) + 시장 여론 ----
+    macro = []
+    try:
+        macro, picks_all = make_picks(rows, C, ksA, names, news, earn, O, day, fetch_prices)
+    except Exception:
+        import traceback; traceback.print_exc(); picks_all = {}
     for i, r in enumerate(rows, 1):
         r["rank"] = i
 
@@ -172,14 +178,188 @@ def daily(C, ks, cols, names, news, cons, earn, O, day, NOW):
         dump(hp, Hh)
 
     # ---- 기록·채점 ----
-    dump(OUT / "snap" / f"{day}.json", {"date": day, "score": {r["key"]: r["score"] for r in rows}, "trend": {k: sig[k]["trend"] for k in sig}})
+    dump(OUT / "snap" / f"{day}.json", {"date": day, "score": {r["key"]: r["score"] for r in rows}, "trend": {k: sig[k]["trend"] for k in sig},
+                                        "picks": picks_all})
     live = grade(Hh)
     dump(OUT / "live.json", live)
     bf = json.loads((OUT / "backfill.json").read_text()) if (OUT / "backfill.json").exists() else None
     dump(OUT / "latest.json", {"date": day, "made": NOW.strftime("%Y-%m-%d %H:%M"), "parts": {p: {"name": a, "max": b} for p, (a, b) in PARTS.items()},
                                "rows": rows, "live": summarize_live(live),
-                               "primary": {c: k for c, k in P.items()}, "backfill": (bf or {}).get("summary")})
+                               "primary": {c: k for c, k in P.items()}, "macro": macro, "pick_record": pick_record(), "backfill": (bf or {}).get("summary")})
     print(f"장기 테마 {len(rows)}개 · 1위 {rows[0]['name']}")
+
+
+# ---------------- 추천 종목 ----------------
+def make_picks(rows, C, ksA, names, news, earn, O, day, fetch_prices, per_theme=5, min_mv=1000, min_val=2e9):
+    import plan_lib as PLN
+    import sentiment as SE
+    from narrative_def import PM, PM_MACRO, EN_NAME
+    from concurrent.futures import ThreadPoolExecutor
+    T = json.loads((OUT / "naver_themes.json").read_text())["themes"]
+    mkt_up = bool(ksA.iloc[-1] > ksA.rolling(200).mean().iloc[-1])
+    nmap = {n["key"]: n for n in NARRATIVES}
+    cand, tnames, mvs = {}, {}, {}
+    for r in rows:
+        n = nmap[r["key"]]
+        cnt = {}
+        for t in T:
+            if any(k in t["name"] for k in n["themes"]):
+                for x in t["stocks"]:
+                    c, nm, mv = x[0], x[1], (x[2] if len(x) > 2 else 0)
+                    if mv < min_mv or nm.endswith(("우", "우B")) or "스팩" in nm:
+                        continue
+                    cnt[c] = cnt.get(c, 0) + 1; names.setdefault(c, nm); mvs[c] = mv
+                    tnames.setdefault((r["key"], c), []).append(t["name"])
+        excl = set(__import__("narrative_def").EXCLUDE.get(r["key"], []))
+        cand[r["key"]] = [c for c in sorted(cnt, key=lambda c: (-cnt[c], -mvs[c])) if c not in excl][:30]
+    # 지난 추천 종목도 계속 채점하려면 가격이 필요
+    old = set()
+    for p in sorted((OUT / "snap").glob("*.json"))[-130:]:
+        for v in (json.loads(p.read_text()).get("picks") or {}).values():
+            old |= {x["code"] for x in v}
+    allc = sorted({c for v in cand.values() for c in v} | old)
+    start = (C.index[-1] - pd.Timedelta(days=420)).strftime("%Y-%m-%d")
+    bars = {c: v for c, v in (fetch_prices(allc, start) if fetch_prices else {}).items() if v}
+    print(f"추천 후보 {len(allc)}종목 시세 {len(bars)}", flush=True)
+    # 지난 추천 채점용 가격 (최근 160일)
+    dump(OUT / "pick_prices.json", {c: bars[c][-160:] for c in old if c in bars})
+    with ThreadPoolExecutor(8) as ex:
+        det = dict(zip(list(bars), ex.map(SE.naver_detail, list(bars))))
+    ks = ksA
+    picks_all, out_rows = {}, {}
+    for r in rows:
+        k, scored = r["key"], []
+        for c in cand[k]:
+            b = bars.get(c)
+            if not b or len(b) < 130:
+                continue
+            b = b[-130:]
+            val = np.mean([x[4] * x[5] for x in b[-20:]])
+            if val < min_val:          # 하루 거래대금 20억 미만 제외
+                continue
+            pl = PLN.analyze(b, mkt_up)
+            if not pl:
+                continue
+            px = b[-1][4]; p63 = b[-64][4]
+            d0 = pd.Timestamp(b[-64][0])
+            k0 = ks.asof(d0) if hasattr(ks, "asof") else np.nan
+            rs3 = (px / p63) / (ks.iloc[-1] / k0) - 1 if k0 and np.isfinite(k0) else np.nan
+            d = det.get(c) or {}
+            up = d["target"] / px - 1 if d.get("target") else None
+            recent = [x for x in d.get("reports", []) if x.get("date") and x["date"] >= (pd.Timestamp(day) - pd.Timedelta(days=45)).strftime("%Y%m%d")]
+            scored.append({"code": c, "name": names.get(c, c), "mv": mvs.get(c), "px": px, "rs3": rs3, "plan": pl, "det": d, "up": up,
+                           "nrep": len(recent), "purity": len(tnames.get((k, c), [])), "val": val, "themes": tnames.get((k, c), [])[:4]})
+        if not scored:
+            out_rows[k] = []; continue
+        rs_rank = pd.Series({x["code"]: x["rs3"] for x in scored}).rank(pct=True)
+        up_rank = pd.Series({x["code"]: (x["up"] if x["up"] is not None else np.nan) for x in scored}).rank(pct=True)
+        pu_rank = pd.Series({x["code"]: x["purity"] for x in scored}).rank(pct=True)
+        for x in scored:
+            pl, d = x["plan"], x["det"]
+            sc = 0.0
+            sc += (30 if pl["kind"] == "pullback" else 12) if pl["ok"] else 0
+            sc += 8 if pl["ok"] and pl["in_zone"] else 0
+            sc += 20 * (rs_rank.get(x["code"]) if pd.notna(rs_rank.get(x["code"])) else 0.5)
+            sc += 12 * (up_rank.get(x["code"]) if pd.notna(up_rank.get(x["code"])) else 0.4)
+            sc += 3 if (d.get("opinion") or 0) >= 4 else 0
+            sc += min(10, 3 * x["nrep"])
+            sc += 10 * (pu_rank.get(x["code"]) if pd.notna(pu_rank.get(x["code"])) else 0.5)
+            f = (d.get("foreign5") or 0) + (d.get("organ5") or 0)
+            sc += 7 if f > 0 and (d.get("foreign5") or 0) > 0 and (d.get("organ5") or 0) > 0 else 4 if f > 0 else 0
+            x["score"] = sc
+        top = sorted(scored, key=lambda x: -x["score"])[:per_theme]
+        out_rows[k] = top
+        picks_all[k] = [{"code": x["code"], "entry": x["plan"]["entry"], "stop": x["plan"]["stop"], "target": x["plan"]["target"],
+                         "kind": x["plan"]["kind"], "ok": x["plan"]["ok"], "score": x["score"]} for x in top]
+    # 고른 종목만 커뮤니티·해외 애널리스트·예측시장 (요청 수 줄이기)
+    sel = {x["code"]: x for v in out_rows.values() for x in v}
+    with ThreadPoolExecutor(6) as ex:
+        com = dict(zip(sel, ex.map(SE.community, list(sel))))
+    try:
+        symmap = {x[0].split(".")[0]: x[0] for x in json.loads((ROOT / "data/symbols.json").read_text())["list"]}
+    except Exception:
+        symmap = {}
+    yh = {}
+    for c in sel:
+        yh[c] = SE.yahoo(symmap.get(c, c + ".KS")); time.sleep(0.4)
+    mkt = {c: ("KOSDAQ" if symmap.get(c, "").endswith(".KQ") else "KOSPI") for c in sel}
+    pm_cache = {}
+    def pm(q, must, minv=20000):
+        if q not in pm_cache:
+            pm_cache[q] = SE.polymarket(q, minv, 6)
+        return [e for e in pm_cache[q] if any(m in (e["title"] or "") for m in must)]
+    for r in rows:
+        ev, seen = [], set()
+        for q, must in PM.get(r["key"], []):
+            for e in pm(q, must):
+                if e["title"] not in seen:
+                    seen.add(e["title"]); ev.append(e)
+        r["markets"] = sorted(ev, key=lambda e: -e["vol"])[:3]
+        r["picks"] = []
+        for x in out_rows.get(r["key"], []):
+            pl, d, cm, y = x["plan"], x["det"], com.get(x["code"]), yh.get(x["code"])
+            nm = x["name"]
+            co_pm = []
+            for ko, en in EN_NAME:
+                if nm.startswith(ko):
+                    co_pm = pm(en.strip(), [en.strip()], 5000)[:2]; break
+            why = []
+            why.append(f"테마 연관: 네이버 테마 {x['purity']}개 ({', '.join(t.split('(')[0] for t in x['themes'][:3])})")
+            if np.isfinite(x["rs3"]):
+                why.append(f"주가: 최근 3개월 코스피200 대비 {x['rs3']*100:+.1f}%p, " + ("상승 추세(종가>60일선, 20일선>60일선)" if pl["trend_ok"] else "아직 추세 전환 전"))
+            if x["up"] is not None:
+                old_c = d.get("cdate") and (pd.Timestamp(day) - pd.Timestamp(d["cdate"])).days > 90
+                why.append(f"증권가: 목표가 평균 {d['target']:,.0f}원 (현재가 대비 {x['up']*100:+.0f}%), 투자의견 {d.get('opinion') or '—'}/5"
+                           + (f" — {d['cdate']} 기준이라 오래됐을 수 있어요" if old_c else ""))
+            if d.get("reports"):
+                rp = d["reports"][0]
+                why.append(f"최근 리포트: {rp['broker']} {rp['date'][4:6]}/{rp['date'][6:]} \"{rp['title']}\"" + (f" 외 {x['nrep']-1}건(45일)" if x["nrep"] > 1 else ""))
+            if d.get("flow_days"):
+                why.append(f"수급(최근 5일): 외국인 {d['foreign5']/1e8:+,.0f}억 · 기관 {d['organ5']/1e8:+,.0f}억")
+            if x["mv"] and x["mv"] < 5000:
+                why.append(f"주의: 시총 {x['mv']:,}억 소형주 — 하루 변동이 크고 손절이 밀릴 수 있어요")
+            r["picks"].append({"code": x["code"], "sym": symmap.get(x["code"], x["code"] + ".KS"), "name": nm, "mv": x["mv"], "px": x["px"], "score": x["score"], "plan": pl, "why": why,
+                               "reports": d.get("reports", [])[:3], "consensus": {"target": d.get("target"), "opinion": d.get("opinion"), "up": x["up"], "date": d.get("cdate")},
+                               "flows": {"foreign5": d.get("foreign5"), "organ5": d.get("organ5"), "fhold": d.get("fhold")},
+                               "yahoo": y, "community": cm, "markets": co_pm, "val": x["val"]})
+    macro = []
+    try:
+        macro = SE.kalshi_macro()
+        for q, must in PM_MACRO:
+            macro += pm(q, must, 100000)[:1]
+    except Exception:
+        pass
+    return macro, picks_all
+
+
+def pick_record():
+    """지난 추천의 결과: 다음 날 시가 매수 가정, 손절·목표 중 먼저 닿은 것 (최대 60거래일)"""
+    pr = OUT / "pick_prices.json"
+    if not pr.exists():
+        return None
+    PX = json.loads(pr.read_text())
+    res = []
+    for p in sorted((OUT / "snap").glob("*.json")):
+        S = json.loads(p.read_text())
+        for k, v in (S.get("picks") or {}).items():
+            for x in v:
+                if not x.get("ok"):
+                    continue
+                b = [r for r in PX.get(x["code"], []) if r[0] > S["date"]][:60]
+                if not b:
+                    continue
+                e = b[0][1]
+                if e <= x["stop"] or e >= x["target"]:
+                    continue
+                out = None
+                for r in b:
+                    if r[3] <= x["stop"]: out = ("손절", x["stop"] / e - 1); break
+                    if r[2] >= x["target"]: out = ("목표", x["target"] / e - 1); break
+                res.append({"date": S["date"], "theme": k, "code": x["code"], "res": out[0] if out else "진행 중",
+                            "ret": out[1] if out else b[-1][4] / e - 1})
+    done = [r for r in res if r["res"] != "진행 중"]
+    return {"n": len(res), "done": len(done), "win": sum(r["res"] == "목표" for r in done), "avg": float(np.mean([r["ret"] for r in done])) if done else None,
+            "open": len(res) - len(done), "recent": res[-20:]}
 
 
 def grade(Hh):

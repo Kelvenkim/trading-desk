@@ -16,7 +16,8 @@ def members(universe, themes_path=ROOT / "data/narrative/naver_themes.json"):
     for n in NARRATIVES:
         for t in T:
             if any(k in t["name"] for k in n["themes"]):
-                for c, _ in t["stocks"]:
+                for x in t["stocks"]:
+                    c = x[0]
                     if c in uni:
                         cnt.setdefault(c, {}).setdefault(n["key"], 0)
                         cnt[c][n["key"]] += 1
