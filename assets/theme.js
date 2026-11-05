@@ -21,13 +21,20 @@ const ThemeUI = (() => {
     renderList();
   }
 
+  function recLine(name, r) {
+    if (!r || !r.n) return `${name}: 체결된 매매 없음`;
+    return `${name}: 체결 ${r.n}건 — 끝난 ${r.done}건 중 목표 ${r.win} / 손절 ${r.done - r.win}${r.avg != null ? ` (평균 <b class="${cls(r.avg)}">${pct(r.avg)}</b>)` : ""} · 보유 중 ${r.open}건${r.open_avg != null ? ` (평균 ${pct(r.open_avg)})` : ""}`;
+  }
+
   function renderMacro() {
     const el = $("#th-macro"); if (!el) return;
     const m = T.macro || [], pr = T.pick_record;
     el.innerHTML = `<div class="box-head"><h2>거시 전망 <span class="muted small">예측시장 · 돈을 건 사람들이 매긴 확률</span></h2></div>
       ${m.length ? `<div class="mkts">${m.map(mktHTML).join("")}</div>` : `<p class="small muted">예측시장 자료를 받지 못했어요.</p>`}
       <p class="hint">금리·경기 전망은 모든 테마에 영향을 줘요. 예: 금리 인상 확률이 높으면 성장주·바이오에 불리, 은행·보험에 유리한 경향.</p>
-      <div class="pick-rec small">지난 추천 성적: ${pr && pr.n ? `${pr.n}건 중 끝난 ${pr.done}건 — 목표 ${pr.win} / 손절 ${pr.done - pr.win}${pr.avg != null ? ` · 평균 ${pct(pr.avg)}` : ""} · 진행 중 ${pr.open}건` : "아직 없음 — 추천 다음 날 시가에 샀다고 보고, 손절·목표 중 먼저 닿은 결과를 매일 채점해요."}</div>`;
+      ${T.market_up === false ? `<div class="mkt-warn">지금은 코스피200이 200일선 아래예요. 추천 기업의 매수 규칙(눌림목·목표 3R)은 과거에 <b>상승장에서만</b> 플러스였어서, 지금 추천은 <b>매수 신호가 아니라 관심 목록</b>이에요.</div>` : ""}
+      <div class="pick-rec small">${recLine("규칙대로 (상승장에서만 매수)", pr)}<br>${recLine("시장 필터를 무시했다면", pr && pr.nofilter)}
+        <div class="sub">추천 뒤 5거래일 안에 매수 구간까지 내려오면(돌파는 그 가격을 넘으면) 체결, 그 뒤 손절·목표 중 먼저 닿은 결과. 같은 종목 중복 추천은 한 번만 세요.</div></div>`;
   }
 
   function renderTop() {

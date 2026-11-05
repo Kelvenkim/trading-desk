@@ -155,8 +155,36 @@ def earnings_now(codes):
     return best, f"DART {len(best)}개 회사 실적"
 
 
-def grade(C, live):
-    """지난 기록 중 5일·20일이 지난 것 채점"""
+VARIANTS = {"td": "추천 바구니 (테마당 5개)", "t": "테마 눌림", "o": "우리 점수", "th": "강한 테마"}
+CAP = 5
+
+
+def top20(S, codes, k):
+    """상위 20종목. td = 테마 눌림 순서대로 담되 한 테마는 최대 5개 (한 테마 쏠림 방지)"""
+    sc = snap_series(S, codes, "t" if k == "td" else k)
+    if sc.notna().sum() < 50:
+        return None, None
+    order = sc.sort_values(ascending=False, kind="stable").index
+    if k != "td":
+        return list(order[:20]), sc
+    out, cnt = [], {}
+    for c in order:
+        th = S["stocks"][c].get("k") or "-"
+        if th != "-" and cnt.get(th, 0) >= CAP:
+            continue
+        out.append(c); cnt[th] = cnt.get(th, 0) + 1
+        if len(out) == 20:
+            break
+    return out, sc
+GRADE_H = (1, 5, 20)
+
+
+def snap_series(S, codes, key):
+    return pd.Series({c: S["stocks"][c].get(key) for c in codes}, dtype=float)
+
+
+def grade(C, Op, live):
+    """지난 순위 채점: 순위 다음 날 시가에 사서 h일째 종가까지 (순위가 밤에 올라와도 실제로 살 수 있는 가격)"""
     done = {(r["date"], r["h"]) for r in live}
     pos = {d.strftime("%Y-%m-%d"): i for i, d in enumerate(C.index)}
     added = 0
@@ -166,35 +194,47 @@ def grade(C, live):
             continue
         i = pos[day]
         S = None
-        for h in L.HORIZONS:
+        for h in GRADE_H:
             if (day, h) in done or i + h >= len(C.index):
                 continue
             S = S or json.loads(p.read_text())
-            codes = [c for c in S["stocks"] if c in C.columns]
-            c0 = pd.Series({c: S["stocks"][c]["c"] for c in codes})
-            c1 = C.iloc[i + h][codes]
-            fr = c1 / c0 - 1
-            ic = {}
+            codes = [c for c in S["stocks"] if c in C.columns and pd.notna(Op.iloc[i + 1].get(c))]
+            fr = C.iloc[i + h][codes] / Op.iloc[i + 1][codes] - 1
+            rec = {"date": day, "h": h, "src": "live", "step": 1, "all": float(fr.mean()), "ic": {}, "var": {}}
             for f in L.FACTORS:
                 raw = pd.Series({c: S["stocks"][c]["raw"].get(f) for c in codes}, dtype=float)
                 if raw.notna().sum() >= 20 and raw.nunique() > 3:
-                    ic[f] = L.spearman(raw, fr)
-            sc = pd.Series({c: S["stocks"][c]["s"] for c in codes}, dtype=float)
-            active = any(S.get("weights", {}).values())
-            top = sc.sort_values(ascending=False).index[:20]
-            rec = {"date": day, "h": h, "src": "live", "step": 1, "ic": ic, "all": float(fr.mean()), "active": active}
-            if active:
-                rec.update({"combo_ic": L.spearman(sc, fr), "top": float(fr[top].mean()), "hit": float((fr[top] > fr.median()).mean())})
-            if all("o" in S["stocks"][c] for c in codes):
-                o = pd.Series({c: S["stocks"][c]["o"] for c in codes}, dtype=float)
-                ot = o.sort_values(ascending=False, kind="stable").index[:20]
-                g = o.map(L.grade_of)
-                rec.update({"o_ic": L.spearman(o, fr), "o_top": float(fr[ot].mean()),
-                            "o_grade": {k: float(fr[g == k].mean()) for k in "SABCD" if (g == k).sum() >= 3},
-                            "o_best": [[c, S["stocks"][c].get("n", c), float(fr[c])] for c in ot[:5]]})
+                    rec["ic"][f] = L.spearman(raw, fr)
+            for k in VARIANTS:
+                top, sc = top20(S, codes, k)
+                if top is None:
+                    continue
+                rec["var"][k] = {"top": float(fr[top].mean()), "ic": L.spearman(sc, fr), "hit": float((fr[top] > fr.median()).mean()),
+                                 "best": [[c, S["stocks"][c].get("n", c), float(fr[c])] for c in top[:5]]}
             live.append(rec)
             added += 1
     return added
+
+
+def track(C, Op):
+    """아직 채점 전인 것까지 포함해, 각 날 올린 상위 20이 지금까지 어떻게 됐는지 (다음 날 시가 → 최근 종가)"""
+    pos = {d.strftime("%Y-%m-%d"): i for i, d in enumerate(C.index)}
+    out = []
+    for p in sorted(SNAP.glob("*.json"))[-60:]:
+        day = p.stem
+        if day not in pos or pos[day] + 1 >= len(C.index):
+            continue
+        i = pos[day]; S = json.loads(p.read_text())
+        codes = [c for c in S["stocks"] if c in C.columns and pd.notna(Op.iloc[i + 1].get(c))]
+        fr = C.iloc[-1][codes] / Op.iloc[i + 1][codes] - 1
+        row = {"date": day, "days": len(C.index) - 1 - i, "all": float(fr.mean())}
+        for k in VARIANTS:
+            top, sc = top20(S, codes, k)
+            if top is not None:
+                row[k] = float(fr[top].mean())
+                row[k + "_best"] = [[S["stocks"][c].get("n", c), float(fr[c])] for c in fr[top].sort_values(ascending=False).index[:3]]
+        out.append(row)
+    return out
 
 
 def nmean(xs):
@@ -229,8 +269,20 @@ def summarize(bf, live):
                               "ic5": nmean([r.get("ic5", {}).get(f) for r in bf["records"]])}
                           for f in L.FACTORS if any(f in r["ic"] for r in bf["records"])},
         }
+    rep["variants"] = {}
+    for h in GRADE_H:
+        R = [r for r in live if r["h"] == h and r.get("var")]
+        for k, nm in VARIANTS.items():
+            ex = [r["var"][k]["top"] - r["all"] for r in R if k in r["var"]]
+            if not ex:
+                continue
+            a = np.array(ex); n_eff = max(1.0, len(a) / h)
+            rep["variants"].setdefault(k, {"name": nm})[str(h)] = {"n": len(a), "ex": float(a.mean()), "beat": float((a > 0).mean()),
+                                                                 "t": float(a.mean() / a.std() * np.sqrt(n_eff)) if len(a) > 2 and a.std() > 0 else None}
+    vb = OUT / "variants_backfill.json"
+    rep["variants_backfill"] = json.loads(vb.read_text()) if vb.exists() else None
     for h in L.HORIZONS:
-        R = [r for r in live if r["h"] == h]
+        R = [r for r in live if r["h"] == h and "o_top" in r]
         if not R:
             rep["live"][str(h)] = {"n": 0}
             continue
@@ -241,7 +293,7 @@ def summarize(bf, live):
                                "ex": nmean(ex), "beat": nmean([float(e > 0) for e in ex]),
                                "verified_n": len(RV), "verified_ex": nmean([r["top"] - r["all"] for r in RV]),
                                "recent": [{"date": r["date"], "top": r["o_top"], "all": r["all"], "best": r.get("o_best")} for r in RO[-30:]]}
-    n20 = rep["live"].get("20", {}).get("n", 0)
+    n20 = rep["variants"].get("td", {}).get("20", {}).get("n", 0)
     rep["stage"] = ("쌓는 중" if n20 < 20 else "초기" if n20 < 120 else "참고 가능" if n20 < 250 else "1년 이상 검증")
     return rep
 
@@ -256,8 +308,9 @@ def main(force=False):
     ks = fdr.DataReader("KS200", start)["Close"]
     cal = [d.strftime("%Y-%m-%d") for d in ks.index]
     last = cal[-1]
-    if (SNAP / f"{last}.json").exists() and last != NOW.strftime("%Y-%m-%d") and not force:
-        print("오늘은 장이 열리지 않았어요 (마지막 거래일", last, "기록 있음)")
+    if (SNAP / f"{last}.json").exists() and not force and (last != NOW.strftime("%Y-%m-%d") or
+            json.loads((SNAP / f"{last}.json").read_text()).get("made", "") >= last + " 15:40"):
+        print("이미 계산했거나 장이 열리지 않았어요 (마지막 거래일", last, "기록 있음)")
         return
     # 지난 기록에 있었지만 지금 300위 밖인 종목도 채점하려면 가격이 필요
     old = set()
@@ -266,6 +319,7 @@ def main(force=False):
     P = fetch_prices(sorted(set(codes) | old), start)
     print(f"시세 {sum(1 for v in P.values() if v)}종목 {time.time() - t0:.0f}s", flush=True)
     C, H, V = L.wide(P, cal)
+    Op = L.opens(P, cal)
     tnx, krw = fetch_macro()
     F = L.price_factors(C, H, V, L.macro_aligned(tnx, C.index), L.macro_aligned(krw, C.index))
     d = C.index[-1]
@@ -287,7 +341,7 @@ def main(force=False):
 
     # 채점 → 가중치
     live = json.loads((OUT / "live.json").read_text()) if (OUT / "live.json").exists() else []
-    added = grade(C, live)
+    added = grade(C, Op, live)
     bf = json.loads((OUT / "backfill.json").read_text()) if (OUT / "backfill.json").exists() else None
     recs = (bf["records"] if bf else []) + [r for r in live if r["h"] == 20]
     W = L.learn_weights(recs, asof=d)
@@ -301,11 +355,29 @@ def main(force=False):
     O = L.our_score(**{k: v.loc[d, cols] for k, v in OI.items()}, earn=raw["earn"] if earn else None, news=raw["news"])
     O["grade"] = O["total"].map(L.grade_of)
     verified = any(v["weight"] for v in W.values())
-    order = O["total"].sort_values(ascending=False, kind="stable").index
+    # 테마 눌림 점수 (기본 정렬) — 강한 장기 테마 소속 + 최근 5일 눌림
+    try:
+        import narrative_lib as NL
+        theme_pct, primary, theme_raw = NL.theme_trend(C, ks, cols)
+    except Exception as e:
+        print("테마 추세 계산 실패:", e); theme_pct, primary, theme_raw = {}, {}, {}
+    TP, TH = L.theme_pullback(C, d, cols, theme_pct, primary)
+    tpct = TP.rank(pct=True) * 100
+    order = TP.sort_values(ascending=False, kind="stable").index
+    basket, cntk = [], {}
+    for c in order:
+        kk = primary.get(c) or "-"
+        if kk != "-" and cntk.get(kk, 0) >= CAP:
+            continue
+        basket.append(c); cntk[kk] = cntk.get(kk, 0) + 1
+        if len(basket) == 20:
+            break
+    basket = set(basket)
 
     day = d.strftime("%Y-%m-%d")
-    dump(SNAP / f"{day}.json", {"date": day, "weights": {f: v["weight"] for f, v in W.items()},
+    dump(SNAP / f"{day}.json", {"date": day, "made": NOW.strftime("%Y-%m-%d %H:%M"), "weights": {f: v["weight"] for f, v in W.items()},
                                 "stocks": {c: {"c": float(C.loc[d, c]), "s": float(score[c]), "o": float(O.loc[c, "total"]), "n": names.get(c, c),
+                                               "t": float(TP[c]), "th": float(TH[c]), "k": primary.get(c),
                                                "raw": {f: (None if pd.isna(raw[f].get(c)) else float(raw[f][c])) for f in L.FACTORS}}
                                            for c in cols}})
     dump(OUT / "live.json", live)
@@ -327,6 +399,7 @@ def main(force=False):
         rows.append({
             "rank": rank, "code": c, "name": names.get(c, c), "mkt": mkts.get(c), "close": float(C.loc[d, c]),
             "chg": float(C.loc[d, c] / prev[c] - 1) if pd.notna(prev[c]) else None,
+            "tp": float(tpct[c]), "theme": primary.get(c), "basket": c in basket, "theme_pct": theme_pct.get(primary.get(c)), "rev5": float(C.loc[d, c] / C.iloc[-6][c] - 1),
             "ours": float(O.loc[c, "total"]), "grade": O.loc[c, "grade"], "parts": {k: float(O.loc[c, k]) for k in L.OURS},
             "spark": [float(x) for x in C[c].iloc[-60:].ffill().tolist()],
             "score": float(pct[c]) if verified else None, "z": {f: float(Z[f][c]) for f in L.FACTORS},
@@ -340,7 +413,9 @@ def main(force=False):
     dump(OUT / "latest.json", {"date": day, "made": NOW.strftime("%Y-%m-%d %H:%M"), "market": market, "weights": W, "verified": verified,
                                "ours_def": {k: {"name": n, "max": m, "desc": ds} for k, (n, m, ds) in L.OURS.items()},
                                "t_min": L.T_MIN, "sources": {"news": ok_news, "earn": earn_msg, "universe": len(cols)}, "rows": rows})
-    dump(OUT / "report.json", summarize(bf, live))
+    rep = summarize(bf, live)
+    rep["track"] = track(C, Op)
+    dump(OUT / "report.json", rep)
     # 종목 클릭 시 바로 보는 차트용: 최근 130거래일 일봉
     days = cal[-130:]
     bars = {}

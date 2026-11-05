@@ -185,7 +185,7 @@ def daily(C, ks, cols, names, news, cons, earn, O, day, NOW, fetch_prices=None):
     bf = json.loads((OUT / "backfill.json").read_text()) if (OUT / "backfill.json").exists() else None
     dump(OUT / "latest.json", {"date": day, "made": NOW.strftime("%Y-%m-%d %H:%M"), "parts": {p: {"name": a, "max": b} for p, (a, b) in PARTS.items()},
                                "rows": rows, "live": summarize_live(live),
-                               "primary": {c: k for c, k in P.items()}, "macro": macro, "pick_record": pick_record(), "backfill": (bf or {}).get("summary")})
+                               "primary": {c: k for c, k in P.items()}, "macro": macro, "pick_record": pick_record_both(), "market_up": bool(ksA.iloc[-1] > ksA.rolling(200).mean().iloc[-1]), "backfill": (bf or {}).get("summary")})
     print(f"장기 테마 {len(rows)}개 · 1위 {rows[0]['name']}")
 
 
@@ -332,34 +332,76 @@ def make_picks(rows, C, ksA, names, news, earn, O, day, fetch_prices, per_theme=
     return macro, picks_all
 
 
-def pick_record():
-    """지난 추천의 결과: 다음 날 시가 매수 가정, 손절·목표 중 먼저 닿은 것 (최대 60거래일)"""
+def pick_record_both():
+    try:
+        Hh = json.loads((OUT / "history.json").read_text())
+        ks = pd.Series(Hh["ks"], index=Hh["dates"], dtype=float)
+        up = (ks > ks.rolling(200).mean()).to_dict()
+    except Exception:
+        up = {}
+    a = pick_record(lambda d: up.get(d, True))
+    b = pick_record(None)
+    if a is None:
+        return None
+    a["nofilter"] = {k: b[k] for k in ("n", "done", "win", "avg", "open", "open_avg")} if b else None
+    return a
+
+
+def pick_record(mkt_ok=None):
+    """지난 추천을 실제 주문처럼 채점
+       매수 구간(눌림): 5거래일 안에 그 가격까지 내려오면 체결(지정가) / 돌파 매수: 5거래일 안에 그 가격을 넘으면 체결
+       체결 뒤 손절·목표 중 먼저 닿은 것(같은 날 둘 다면 손절), 최대 60거래일. 같은 종목은 앞의 거래가 끝나기 전 새 추천을 세지 않음"""
     pr = OUT / "pick_prices.json"
     if not pr.exists():
         return None
     PX = json.loads(pr.read_text())
-    res = []
+    sig = []
     for p in sorted((OUT / "snap").glob("*.json")):
         S = json.loads(p.read_text())
         for k, v in (S.get("picks") or {}).items():
             for x in v:
-                if not x.get("ok"):
-                    continue
-                b = [r for r in PX.get(x["code"], []) if r[0] > S["date"]][:60]
-                if not b:
-                    continue
-                e = b[0][1]
-                if e <= x["stop"] or e >= x["target"]:
-                    continue
-                out = None
-                for r in b:
-                    if r[3] <= x["stop"]: out = ("손절", x["stop"] / e - 1); break
-                    if r[2] >= x["target"]: out = ("목표", x["target"] / e - 1); break
-                res.append({"date": S["date"], "theme": k, "code": x["code"], "res": out[0] if out else "진행 중",
-                            "ret": out[1] if out else b[-1][4] / e - 1})
-    done = [r for r in res if r["res"] != "진행 중"]
-    return {"n": len(res), "done": len(done), "win": sum(r["res"] == "목표" for r in done), "avg": float(np.mean([r["ret"] for r in done])) if done else None,
-            "open": len(res) - len(done), "recent": res[-20:]}
+                if x.get("ok"):
+                    sig.append((S["date"], k, x))
+    busy, res, seen = {}, [], set()
+    for date, k, x in sorted(sig, key=lambda z: z[0]):
+        c = x["code"]
+        if mkt_ok is not None and not mkt_ok(date):      # 검증된 규칙: 코스피200이 200일선 위일 때만 매수
+            continue
+        if (date, c) in seen or (busy.get(c) and busy[c] >= date):
+            continue
+        seen.add((date, c))
+        b = [r for r in PX.get(c, []) if r[0] > date]
+        if not b:
+            continue
+        fill = None
+        for j, r in enumerate(b[:5]):
+            o, h, l = r[1], r[2], r[3]
+            if x["kind"] == "pullback" and l <= x["entry"]:
+                if o <= x["stop"]:
+                    break
+                fill = (j, min(o, x["entry"])); break
+            if x["kind"] == "breakout" and h >= x["entry"]:
+                if o >= x["target"]:
+                    break
+                fill = (j, max(o, x["entry"])); break
+        if not fill:
+            if len(b) >= 5:
+                res.append({"date": date, "theme": k, "code": c, "kind": x["kind"], "res": "미체결", "ret": None})
+            continue
+        j0, e = fill
+        out, ex_date = None, None
+        for r in b[j0:j0 + 60]:
+            if r[3] <= x["stop"]: out = ("손절", min(r[1], x["stop"]) / e - 1 if r[0] != b[j0][0] else x["stop"] / e - 1); ex_date = r[0]; break
+            if r[2] >= x["target"]: out = ("목표", x["target"] / e - 1); ex_date = r[0]; break
+        last = b[min(len(b), j0 + 60) - 1]
+        res.append({"date": date, "theme": k, "code": c, "kind": x["kind"], "res": out[0] if out else "보유 중",
+                    "ret": out[1] if out else last[4] / e - 1})
+        busy[c] = ex_date or "9999"
+    done = [r for r in res if r["res"] in ("손절", "목표")]
+    op = [r["ret"] for r in res if r["res"] == "보유 중"]
+    return {"n": len([r for r in res if r["res"] != "미체결"]), "nofill": sum(r["res"] == "미체결" for r in res), "done": len(done),
+            "win": sum(r["res"] == "목표" for r in done), "avg": float(np.mean([r["ret"] for r in done])) if done else None,
+            "open": len(op), "open_avg": float(np.mean(op)) if op else None, "recent": res[-30:]}
 
 
 def grade(Hh):

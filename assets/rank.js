@@ -2,7 +2,7 @@
 const RankUI = (() => {
   const { $, esc, LC_OPTS } = U;
   let NT = null, L = null, R = null, B = null, open = null, chart = null, loaded = false, showLv = true;
-  const filt = { mkt: "all", q: "", n: 50, grade: "all" };
+  const filt = { mkt: "all", q: "", n: 50, grade: "all", sort: "t" };
   const pct = (v, d = 1) => (v == null ? "—" : (v >= 0 ? "+" : "") + (v * 100).toFixed(d) + "%");
   const cls = (v) => (v == null ? "" : v > 0 ? "up" : v < 0 ? "down" : "");
   const won = (v) => (v == null ? "—" : Math.round(v).toLocaleString("ko-KR"));
@@ -30,20 +30,24 @@ const RankUI = (() => {
       st("미국 10년 금리", m.tnx.toFixed(2) + "%", `20일 ${m.tnx_20d_bp >= 0 ? "+" : ""}${m.tnx_20d_bp.toFixed(0)}bp`) +
       st("원/달러", won(m.krw), `20일 ${pct(m.krw_20d)}`) +
       st("60일선 위 종목", (m.breadth60 * 100).toFixed(0) + "%", "300종목 중 상승 추세 비율");
-    const bf = R.backfill, lv = R.live["20"] || {};
-    const nAct = Object.values(L.weights).filter((w) => w.active).length;
+    const VB = (R.variants_backfill || {}).variants || {};
+    const vt = (VB["V3 강한 테마 + 단기 눌림"] || {})["20"] || {}, vo = (VB["V0 우리 점수(현재)"] || {})["20"] || {};
+    const lt = ((R.variants || {}).t || {})["5"] || {}, tr = (R.track || []).slice(-1)[0];
     $("#rk-trust").innerHTML = `
-      <div class="trust-stage"><span class="k">검증된 항목</span><b>${nAct}개 / ${Object.keys(L.weights).length}</b></div>
+      <div class="trust-stage"><span class="k">기본</span><b>테마 눌림</b><span class="k">강한 장기 테마 + 최근 5일 눌림 · 바구니는 테마당 5개</span></div>
       <div class="trust-txt">
-        ${nAct ? `확실성(t) ${L.t_min} 이상으로 검증된 항목만 써서 <b>검증 순위</b>를 만들었어요.` : `아직 <b>확실하게 맞는다고 검증된 항목이 없어서</b> 검증 순위는 비워 뒀어요. 아래 목록은 '우리 점수' 규칙으로 정렬한 거예요.`}
-        ${bf ? `<br>우리 점수 상위 20종목의 과거 성적(${bf.from.slice(0, 4)}~${bf.to.slice(0, 4)}, 실적·뉴스 제외): 20일 뒤 300종목 평균 대비 <b class="${cls(bf.ex20)}">${pct(bf.ex20, 2)}</b>, 평균을 이긴 때 ${(bf.beat * 100).toFixed(0)}%.` : ""}
-        <br>실제 운영 채점: 20일 결과 <b>${lv.n || 0}회</b>${lv.n ? ` · 평균 대비 <b class="${cls(lv.ex)}">${pct(lv.ex, 2)}</b>` : " (첫 채점은 20거래일 뒤)"}.
+        과거 검증(2015~2026, 다음 날 시가 매수): 상위 20종목이 20일 뒤 300종목 평균보다 <b class="${cls(vt.ex)}">${pct(vt.ex, 2)}</b>,
+        12년 중 <b>${vt.years_pos || "—"}년</b> 플러스, 설정을 바꿔도 27개 모두 플러스였어요. 이전 기본이던 우리 점수는 ${pct(vo.ex, 2)}였어요.
+        <br>실제 운영 추적: ${(R.track || []).length}일치 순위를 매일 따라가는 중${lt.n ? ` · 5일 채점 ${lt.n}회 평균 대비 <b class="${cls(lt.ex)}">${pct(lt.ex, 2)}</b>` : " · 5일 채점은 곧 시작"}.
+        <br><span class="muted small">첫 주 실제 결과는 나빴어요(상위 20이 AI 반도체에 몰린 채 그 테마가 급락). 그래서 테마당 5개로 나눈 '추천 바구니 20'을 기본으로 추적해요(과거 평균 +0.59%, 흔들림 더 작음). 상대 순위라 시장 전체가 빠지면 같이 빠져요.</span>
       </div>`;
   }
 
   // ---------- 목록 ----------
   function reasons(r) {
     const p = r.parts, out = [];
+    if (r.theme_pct != null && r.theme_pct >= 0.8) out.push(["강한 테마", ""]); else if (r.theme_pct != null && r.theme_pct <= 0.25) out.push(["약한 테마", "neg"]);
+    if (r.rev5 != null && r.rev5 <= -0.03) out.push([`5일 눌림 ${pct(r.rev5, 0)}`, ""]);
     if (p.trend >= 20) out.push(["추세 좋음", ""]); else if (p.trend <= 5) out.push(["추세 꺾임", "neg"]);
     if (p.earn >= 20) out.push(["실적 성장", ""]); else if (p.earn <= 8) out.push(["실적 감소", "neg"]);
     if (p.news >= 16) out.push(["뉴스 호재", ""]); else if (p.news <= 5) out.push(["뉴스 악재", "neg"]);
@@ -61,7 +65,8 @@ const RankUI = (() => {
 
   function list() {
     const q = filt.q.trim();
-    return L.rows.filter((r) => (filt.mkt === "all" || (filt.mkt === "KOSPI" ? r.mkt === "KOSPI" : r.mkt !== "KOSPI")) &&
+    const rows = filt.sort === "o" ? L.rows.slice().sort((a, b) => b.ours - a.ours) : filt.sort === "basket" ? L.rows.filter((r) => r.basket) : L.rows;
+    return rows.filter((r) => (filt.mkt === "all" || (filt.mkt === "KOSPI" ? r.mkt === "KOSPI" : r.mkt !== "KOSPI")) &&
       (filt.grade === "all" || filt.grade.includes(r.grade)) && (!q || r.name.includes(q) || r.code.includes(q)));
   }
 
@@ -71,9 +76,10 @@ const RankUI = (() => {
     $("#rk-more").hidden = shown.length >= all.length;
     $("#rk-body").innerHTML = shown.map((r, i) => `
       <tr data-code="${r.code}" class="${open === r.code ? "open" : ""}">
-        <td class="rk-n">${L.rows.indexOf(r) + 1}</td>
-        <td><b>${esc(r.name)}</b>${NT && NT.primary[r.code] ? `<span class="rk-theme" data-theme="${NT.primary[r.code]}" title="장기 테마로 보기">${esc(NT.name[NT.primary[r.code]])}</span>` : ""} <span class="sub">${r.code} · ${r.mkt === "KOSPI" ? "코스피" : "코스닥"}</span></td>
-        <td class="rk-score"><span class="grade g-${r.grade}">${r.grade}</span><b>${Math.floor(r.ours)}</b><span class="stack">${stack(r)}</span></td>
+        <td class="rk-n">${i + 1}</td>
+        <td>${r.basket ? `<span class="basket" title="오늘의 추천 바구니 20 (테마당 최대 5개)">바구니</span>` : ""}<b>${esc(r.name)}</b>${NT && NT.primary[r.code] ? `<span class="rk-theme" data-theme="${NT.primary[r.code]}" title="장기 테마로 보기">${esc(NT.name[NT.primary[r.code]])}</span>` : ""} <span class="sub">${r.code} · ${r.mkt === "KOSPI" ? "코스피" : "코스닥"}</span></td>
+        <td class="rk-score">${r.tp != null ? `<span class="tp ${filt.sort === "t" ? "on" : ""}" title="테마 눌림 점수 (300종목 중 위치)"><b>${Math.floor(r.tp)}</b><span class="sub">테마 눌림</span></span>` : ""}
+          <span class="ours ${filt.sort === "o" ? "on" : ""}"><span class="grade g-${r.grade}">${r.grade}</span><b>${Math.floor(r.ours)}</b><span class="stack">${stack(r)}</span></span></td>
         <td class="r rk-px">${spark(r.spark)}<span><b>${won(r.close)}</b><span class="${cls(r.chg)} small">${pct(r.chg, 2)}</span></span></td>
         <td class="why">${reasons(r).map(([t, c]) => `<span class="fchip ${c}">${t}</span>`).join("")}</td>
       </tr>${open === r.code ? `<tr class="detail"><td colspan="5">${detail(r)}</td></tr>` : ""}`).join("")
@@ -167,7 +173,32 @@ const RankUI = (() => {
     }).join("");
   }
 
+  function renderTrack() {
+    const el = $("#rk-track"); if (!el) return;
+    const T = (R.track || []).slice().reverse();
+    const V = R.variants || {}, VB = (R.variants_backfill || {}).variants || {};
+    const st = (k, h) => { const x = (V[k] || {})[h]; return x ? `${pct(x.ex, 2)} <span class="sub">${x.n}회 · 이김 ${(x.beat * 100).toFixed(0)}%${x.t != null ? ` · t ${x.t.toFixed(1)}` : ""}</span>` : `<span class="muted">채점 전</span>`; };
+    el.innerHTML = `
+      <table class="tbl"><thead><tr><th>올린 날</th><th class="r">경과</th><th class="r">추천 바구니 20</th><th class="r">테마 눌림 상위20</th><th class="r">우리 점수 상위20</th><th class="r">300 평균</th></tr></thead><tbody>
+      ${T.map((t) => `<tr><td>${t.date}</td><td class="r">${t.days}일</td>
+        <td class="r ${cls(t.td)}"><b>${pct(t.td)}</b> <span class="sub ${cls(t.td - t.all)}">(${pct(t.td - t.all)})</span></td>
+        <td class="r ${cls(t.t)}" title="${(t.t_best || []).map((b) => b[0] + " " + pct(b[1])).join(", ")}">${pct(t.t)} <span class="sub ${cls(t.t - t.all)}">(${pct(t.t - t.all)})</span></td>
+        <td class="r ${cls(t.o)}">${pct(t.o)} <span class="sub ${cls(t.o - t.all)}">(${pct(t.o - t.all)})</span></td>
+        <td class="r ${cls(t.all)}">${pct(t.all)}</td></tr>`).join("") || `<tr class="empty-row"><td colspan="6">다음 거래일부터 추적이 시작돼요.</td></tr>`}
+      </tbody></table>
+      <p class="hint">올린 다음 날 시가에 상위 20종목을 똑같이 샀다고 보고 최근 종가까지의 수익률이에요. 괄호는 300종목 평균 대비. 매일 갱신돼요.</p>
+      <h3>채점 결과 <span class="muted small">상위 20 − 300 평균</span></h3>
+      <table class="tbl"><thead><tr><th>방식</th><th class="r">1일</th><th class="r">5일</th><th class="r">20일</th><th class="r">과거 검증 20일</th></tr></thead><tbody>
+        <tr><td>추천 바구니 <span class="sub">기본 · 테마당 5개</span></td><td class="r">${st("td", "1")}</td><td class="r">${st("td", "5")}</td><td class="r">${st("td", "20")}</td><td class="r">+0.59%</td></tr>
+        <tr><td>테마 눌림 <span class="sub">분산 없음</span></td><td class="r">${st("t", "1")}</td><td class="r">${st("t", "5")}</td><td class="r">${st("t", "20")}</td><td class="r">${pct(((VB["V3 강한 테마 + 단기 눌림"] || {})["20"] || {}).ex, 2)}</td></tr>
+        <tr><td>우리 점수</td><td class="r">${st("o", "1")}</td><td class="r">${st("o", "5")}</td><td class="r">${st("o", "20")}</td><td class="r">${pct(((VB["V0 우리 점수(현재)"] || {})["20"] || {}).ex, 2)}</td></tr>
+        <tr><td>강한 테마만</td><td class="r">${st("th", "1")}</td><td class="r">${st("th", "5")}</td><td class="r">${st("th", "20")}</td><td class="r">${pct(((VB["V1 강한 테마 소속"] || {})["20"] || {}).ex, 2)}</td></tr>
+      </tbody></table>
+      <p class="hint">세 방식을 매일 같이 기록하고 채점해요. 실제 운영에서 20일 채점이 40번 이상 쌓이고 다른 방식이 확실성(t) 2 이상으로 앞서면 기본 정렬을 바꿔요. 하루·며칠 결과는 운이 커서 판단에 쓰지 않아요.</p>`;
+  }
+
   function renderReport() {
+    renderTrack();
     const bf = R.backfill;
     if (!bf) { $("#rk-years").innerHTML = ""; return; }
     const G = bf.grades || {};
@@ -217,6 +248,7 @@ const RankUI = (() => {
     $("#rk-mkt").addEventListener("change", (e) => { filt.mkt = e.target.value; renderTable(); });
     $("#rk-grade").addEventListener("change", (e) => { filt.grade = e.target.value; renderTable(); });
     $("#rk-more").addEventListener("click", () => { filt.n += 100; renderTable(); });
+    $("#rk-sort").addEventListener("change", (e) => { filt.sort = e.target.value; renderTable(); });
   }
   return { init, onShow: () => { if (!loaded) load(); } };
 })();

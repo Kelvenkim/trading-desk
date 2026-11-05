@@ -53,3 +53,18 @@ def theme_index(C, codes):
 def policy_hits(title, extra=()):
     t = title
     return any(w in t for w in POLICY_WORDS) or any(w in t for w in extra)
+
+
+def theme_trend(C, ks, universe):
+    """테마별 주가 추세(코스피200 대비 3·6개월 평균) 순위(0~1) + 종목의 주력 테마"""
+    M, P = members(universe)
+    ksA = ks.reindex(C.index).ffill()
+    tr = {}
+    for k, mem in M.items():
+        idx = theme_index(C, mem)
+        if idx is None or len(idx) < 130:
+            continue
+        r = [np.log(idx.iloc[-1] / idx.iloc[-1 - n]) - np.log(ksA.iloc[-1] / ksA.iloc[-1 - n]) for n in (63, 126)]
+        tr[k] = float(np.nanmean(r))
+    pct = pd.Series(tr).rank(pct=True).to_dict()
+    return pct, P, tr

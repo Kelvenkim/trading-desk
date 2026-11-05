@@ -93,6 +93,23 @@ def wide(stocks, calendar):
     return C, H, V
 
 
+def opens(stocks, calendar):
+    """날짜×종목 시가 표"""
+    Op = {}
+    for code, rows in stocks.items():
+        if rows:
+            Op[code] = pd.Series([r[1] for r in rows], pd.to_datetime([r[0] for r in rows]))
+    return pd.DataFrame(Op).reindex(pd.DatetimeIndex(calendar))
+
+
+def theme_pullback(C, d, cols, theme_pct, primary, rev_days=5, w=0.5):
+    """테마 눌림 점수 = 강한 테마 소속(순위) + 0.5 × 최근 5일 하락(순위). 과거 검증: research/rank/variants.py"""
+    th = pd.Series({c: theme_pct.get(primary.get(c), 0.5) for c in cols}, dtype=float)
+    i = C.index.get_loc(d)
+    rev = -(C.loc[d, cols] / C.iloc[i - rev_days][cols] - 1)
+    return xrank(th) + w * xrank(rev), th
+
+
 def macro_aligned(series, calendar):
     """미국 시장 값(금리·환율)을 한국 거래일에 맞춤. 한국 D일 장 마감 시점엔 미국 D일 종가가 아직 없으므로 D-1까지만 사용."""
     s = pd.Series(series).sort_index()
