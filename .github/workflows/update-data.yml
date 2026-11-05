@@ -32,6 +32,9 @@ jobs:
       - name: 시세 받기
         run: python scripts/fetch_data.py
 
+      - name: 뉴스·인물 발언 단어
+        run: python scripts/news_build.py || echo "뉴스 갱신 실패 (다음에 다시)"
+
       - name: 변경사항 커밋
         run: |
           git config user.name "github-actions[bot]"

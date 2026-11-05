@@ -6,7 +6,7 @@
   <title>Trading Desk</title>
   <meta name="theme-color" content="#000000" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="assets/style.css?v=1767827c" />
+  <link rel="stylesheet" href="assets/style.css?v=5c0f66b3" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -46,6 +46,7 @@
       <button class="tab active" data-tab="chart">차트</button>
       <button class="tab" data-tab="rank">오늘의 순위</button>
       <button class="tab" data-tab="theme">장기 테마</button>
+      <button class="tab" data-tab="news">뉴스</button>
       <button class="tab" data-tab="portfolio">포트폴리오</button>
       <button class="tab" data-tab="backtest">백테스트</button>
     </nav>
@@ -204,6 +205,24 @@
           <div class="box"><div class="box-head"><h2>과거 검증 <span class="muted small">주가 추세 신호</span></h2></div>
             <div class="table-wrap"><table class="tbl" id="th-bf"></table></div>
             <p class="hint">매달 '주가 추세 점수' 상위 3개 테마를 골랐을 때 그 뒤 성적이에요. 지금 테마 구성으로 과거를 계산해서 실제보다 좋게 나왔을 수 있어요. 테마 점수가 높다고 오른다는 보장은 없어요.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 뉴스 ================= -->
+    <section id="tab-news" class="panel">
+      <div class="rk-head"><h2>뉴스 <span class="muted small" id="nw-made"></span></h2></div>
+      <div class="grid-2 nw-grid">
+        <div class="box">
+          <div class="box-head"><h2>시장 주요 뉴스 <span class="muted small" id="nw-count"></span></h2>
+            <div class="rk-filters"><input id="nw-q" placeholder="검색" autocomplete="off" /><select id="nw-theme"></select></div></div>
+          <div class="seg small nw-kinds" id="nw-kinds"><button class="on" data-kind="all">전체</button><button data-kind="pol">정책</button><button data-kind="up">호재</button><button data-kind="down">악재</button><button data-kind="who">인물 관련</button></div>
+          <div id="nw-list"><p class="muted">불러오는 중…</p></div>
+        </div>
+        <div class="box">
+          <div class="box-head"><h2>인물이 자주 쓰는 단어</h2></div>
+          <div class="seg small nw-people" id="nw-people"></div>
+          <div id="nw-person"></div>
         </div>
       </div>
     </section>
@@ -582,6 +601,7 @@
   <script src="assets/levels.js?v=015b1f36"></script>
   <script src="assets/rank.js?v=a3dd2d59"></script>
   <script src="assets/theme.js?v=4325f537"></script>
-  <script src="assets/app.js?v=e958ac28"></script>
+  <script src="assets/news.js?v=e74f4445"></script>
+  <script src="assets/app.js?v=8dabe5a9"></script>
 </body>
 </html>

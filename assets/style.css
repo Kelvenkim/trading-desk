@@ -589,3 +589,24 @@ body.no-scroll { overflow: hidden; }
 @media (max-width: 640px) { .rk-score .ours .stack { display: none; } .rk-score .tp .sub { display: none; } }
 .mkt-warn { margin: 10px 0 4px; padding: 10px 12px; border: 1px solid var(--down); border-radius: var(--r); font-size: 13px; line-height: 1.6; background: rgba(61,139,253,.08); }
 .basket { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 6px; margin-right: 6px; border-radius: 5px; background: #fff; color: #000; vertical-align: 1px; }
+/* ---------- 뉴스 ---------- */
+.nw-grid { grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); }
+.nw-kinds, .nw-people { margin: 4px 0 10px; flex-wrap: wrap; display: inline-flex; }
+.nw { padding: 11px 2px; border-bottom: 1px solid var(--line-soft); }
+.nw-meta { display: flex; gap: 8px; align-items: center; font-size: 11.5px; color: var(--faint); margin-bottom: 3px; }
+.nw-t { color: var(--text); text-decoration: none; font-size: 14px; font-weight: 600; line-height: 1.45; }
+.nw-t:hover { text-decoration: underline; }
+.nw-b { color: var(--muted); font-size: 12.5px; margin-top: 3px; line-height: 1.5; overflow-wrap: anywhere; }
+.nw-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.nw-tags .rk-theme { margin: 0; background: none; }
+.nw-stock { font-size: 11px; padding: 0 7px; border-radius: 6px; border: 1px solid var(--text); background: none; color: var(--text); }
+.nw-who { font-size: 11px; padding: 0 7px; border-radius: 6px; background: var(--line); color: var(--text); }
+.nw-role { margin: 0 0 4px; }
+#nw-person h3 { font-size: 13.5px; margin: 14px 0 6px; } #nw-person h4 { margin: 10px 0 4px; font-weight: 600; }
+.wl { display: grid; gap: 2px; }
+.w { display: grid; grid-template-columns: minmax(70px, 1.1fr) minmax(40px, 1fr) 28px 62px; gap: 6px; align-items: center; font-size: 12.5px; padding: 2px 0; }
+.w-name { overflow-wrap: anywhere; } .w-n { text-align: right; font-variant-numeric: tabular-nums; } .w-chg { font-size: 11px; }
+.w-bar { height: 6px; background: var(--line-soft); border-radius: 3px; overflow: hidden; } .w-bar i { display: block; height: 100%; background: #fff; }
+.w-th { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 3px; } .w-th:empty { display: none; } .w-th .rk-theme { margin: 0; background: none; }
+.new { font-size: 10.5px; color: #000; background: #fff; border-radius: 4px; padding: 0 4px; }
+@media (max-width: 960px) { .nw-grid { grid-template-columns: minmax(0, 1fr); } }
