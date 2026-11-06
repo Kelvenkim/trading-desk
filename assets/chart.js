@@ -201,7 +201,7 @@ const ChartView = (() => {
       return isFinite(val) ? `<span style="color:${s.options().color}">${s._label} ${fmt(val)}</span>` : "";
     }).join("");
     legendEl.innerHTML =
-      `<span class="lg-time">${typeof b.t === "string" ? b.t : new Date(b.ms + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " ")}</span>` +
+      `<span class="lg-time">${typeof b.t === "string" ? b.t : new Date(b.t * 1000).toISOString().slice(0, 16).replace("T", " ") + (/\.(KS|KQ)$/.test(sym) ? "" : " 뉴욕")}</span>` +
       `<span>시 <b class="${cls}">${fmt(b.o)}</b></span><span>고 <b class="${cls}">${fmt(b.h)}</b></span>` +
       `<span>저 <b class="${cls}">${fmt(b.l)}</b></span><span>종 <b class="${cls}">${fmt(b.c)}</b></span>` +
       `<span class="${cls}">${chg > 0 ? "+" : ""}${chg.toFixed(2)}%</span><span>거래량 <b>${v}</b></span>` +
