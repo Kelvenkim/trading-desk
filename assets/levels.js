@@ -56,12 +56,13 @@ const Levels = (() => {
       plan = { kind: "breakout", entry, stop, target: entry + 3 * risk, stopPct: stop / entry - 1, targetPct: 3 * risk / entry, ok: risk > 0 && risk / entry <= 0.15 };
     }
     // 한국 호가 단위로 맞춤 (매수·목표는 위로, 손절은 아래로)
-    const tick = (x) => (x < 2000 ? 1 : x < 5000 ? 5 : x < 20000 ? 10 : x < 50000 ? 50 : x < 200000 ? 100 : x < 500000 ? 500 : 1000);
-    const rUp = (x) => Math.ceil(x / tick(x)) * tick(x), rDn = (x) => Math.floor(x / tick(x)) * tick(x);
+    const tick = opt.us === false ? (x) => (x < 2000 ? 1 : x < 5000 ? 5 : x < 20000 ? 10 : x < 50000 ? 50 : x < 200000 ? 100 : x < 500000 ? 500 : 1000) : () => 0.01;
+    const fix = (x) => Math.round(x * 100) / 100;
+    const rUp = (x) => fix(Math.ceil(x / tick(x) - 1e-9) * tick(x)), rDn = (x) => fix(Math.floor(x / tick(x) + 1e-9) * tick(x));
     ["zoneHi", "entry", "target"].forEach((k) => { if (plan[k] != null) plan[k] = rUp(plan[k]); });
     ["zoneLo", "stop"].forEach((k) => { if (plan[k] != null) plan[k] = rDn(plan[k]); });
-    if (plan.res1 != null) plan.res1 = Math.round(plan.res1 / tick(plan.res1)) * tick(plan.res1);
-    sup.forEach((x) => (x.p = Math.round(x.p / tick(x.p)) * tick(x.p))); res.forEach((x) => (x.p = Math.round(x.p / tick(x.p)) * tick(x.p)));
+    if (plan.res1 != null) plan.res1 = fix(Math.round(plan.res1 / tick(plan.res1)) * tick(plan.res1));
+    sup.forEach((x) => (x.p = fix(Math.round(x.p / tick(x.p)) * tick(x.p)))); res.forEach((x) => (x.p = fix(Math.round(x.p / tick(x.p)) * tick(x.p))));
     plan.trendOK = trendOK; plan.mktOK = mktOK;
     plan.verdict = !plan.ok ? "손절 폭이 너무 커서 자리 아님"
       : plan.kind === "breakout" ? "관망 — 추세가 아니에요. 저항선을 넘으면 그때 고려"
@@ -117,10 +118,10 @@ const Levels = (() => {
     return { remove() { lines.forEach((l) => { try { series.removePriceLine(l); } catch (_) {} }); extra.forEach((x) => { try { chart.removeSeries(x); } catch (_) {} }); if (setMarkers) setMarkers([]); } };
   }
 
-  function planHTML(A) {
+  function planHTML(A, opt = {}) {
     if (!A) return "";
     const P = A.plan;
-    const won = (v) => (v == null ? "—" : Math.round(v).toLocaleString("ko-KR"));
+    const won = opt.us === false ? (v) => (v == null ? "—" : Math.round(v).toLocaleString("ko-KR")) : (v) => (v == null ? "—" : "$" + v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
     const pct = (v) => (v == null ? "—" : (v >= 0 ? "+" : "") + (v * 100).toFixed(1) + "%");
     const big = P.stopPct < -0.08 ? " · 폭이 커요, 수량을 줄이세요" : "";
     const done = A.sig.filter((g) => g.out), wins = done.filter((g) => g.out.why === "목표").length, hold = A.sig.find((g) => !g.out);
@@ -136,17 +137,21 @@ const Levels = (() => {
       <div class="plan-head"><b>매매 계획</b><span class="verdict ${P.ok && P.kind === "pullback" && P.mktOK && P.inZone ? "go" : ""}">${P.verdict}</span></div>
       <div class="plan-checks small">
         <span class="${P.trendOK ? "okc" : "noc"}">${P.trendOK ? "✓" : "✕"} 종목 추세 (종가>60일선, 20일선>60일선)</span>
-        <span class="${P.mktOK ? "okc" : "noc"}">${P.mktOK ? "✓" : "✕"} 시장 (코스피200 > 200일선)</span>
+        <span class="${P.mktOK ? "okc" : "noc"}">${P.mktOK ? "✓" : "✕"} 시장 (${opt.us === false ? "코스피200" : "S&P500"} > 200일선)</span>
       </div>
       ${rows.length ? `<table class="tbl plan-tbl"><tbody>${rows.map(([k, v, s]) => `<tr><td>${k}</td><td class="r"><b>${v}</b></td><td class="sub">${s}</td></tr>`).join("")}</tbody></table>` : ""}
       <p class="small muted">최근 6개월 같은 규칙 신호 ${A.sig.length}번${done.length ? ` · 끝난 ${done.length}번 중 목표 ${wins} / 손절 ${done.length - wins}` : ""}${hold ? " · 지금 보유 중인 신호 있음" : ""}.
-      과거 검증(150종목, 2014~2026): 승률 약 32%, 이기면 손절폭의 약 3배를 벌어 평균 +0.2R — 상승장일 때만 플러스였어요. 지지·저항은 자동 계산이라 참고용이에요.</p>
+      ${opt.us === false ? "과거 검증(한국 150종목, 2014~2026): 승률 약 32%, 이기면 손절폭의 약 3배를 벌어 평균 +0.2R — 상승장일 때만 플러스였어요." : "이 규칙의 승률 약 32%는 한국 시장 검증값이에요(상승장에서만 플러스). 미국은 매일 채점하며 쌓는 중이에요."} 지지·저항은 자동 계산이라 참고용이에요.</p>
     </div>`;
   }
 
-  // 시장 상태(코스피200 > 200일선): 순위 자료에서 한 번만 읽음
+  // 시장 상태(S&P500 > 200일선): 미국 시장 자료에서 한 번만 읽음
   let mkt = null;
   function marketUp() {
+    if (!mkt) mkt = fetch("data/us/market.json").then((r) => r.json()).then((j) => j.regime.up).catch(() => true);
+    return mkt;
+  }
+  function marketUpKR() {
     if (!mkt) mkt = fetch("data/rank/latest.json").then((r) => r.json()).then((j) => j.market.ks_vs200 > 0).catch(() => true);
     return mkt;
   }

@@ -11,9 +11,16 @@ def tick(x):
     return 1 if x < 2000 else 5 if x < 5000 else 10 if x < 20000 else 50 if x < 50000 else 100 if x < 200000 else 500 if x < 500000 else 1000
 
 
-def r_up(x): t = tick(x); return float(np.ceil(x / t) * t)
-def r_dn(x): t = tick(x); return float(np.floor(x / t) * t)
-def r_nr(x): t = tick(x); return float(round(x / t) * t)
+TICK = [tick]     # 미국 주식은 set_us() 로 0.01달러
+
+
+def set_us():
+    TICK[0] = lambda x: 0.01
+
+
+def r_up(x): t = TICK[0](x); return float(round(np.ceil(x / t - 1e-9) * t, 4))
+def r_dn(x): t = TICK[0](x); return float(round(np.floor(x / t + 1e-9) * t, 4))
+def r_nr(x): t = TICK[0](x); return float(round(round(x / t) * t, 4))
 
 
 def atr(h, l, c, n=14):

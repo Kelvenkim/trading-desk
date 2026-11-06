@@ -105,7 +105,7 @@ const ChartView = (() => {
     const seq = ++planSeq;
     planA = null; drawLines();
     const box = document.getElementById("chart-plan");
-    const krStock = /\.(KS|KQ)$/.test(sym);
+    const krStock = !/^\^|=|-USD$/.test(sym);   // 지수·환율·코인 빼고 주식이면
     if (!ind.plan || ivId !== "1d" || !krStock || bars.length < 60 || typeof Levels === "undefined") {
       if (box) box.innerHTML = ind.plan && ivId !== "1d" && krStock ? `<p class="hint">지지·저항·매매 계획은 일봉에서 보여요.</p>` : "";
       return;
@@ -221,6 +221,20 @@ const ChartView = (() => {
     updateLegend(bars.length - 1);
   }
 
+  // 실시간 갱신: 보고 있던 구간을 유지한 채 막대만 바꿈
+  function refresh(newBars) {
+    if (!newBars || !newBars.length) return;
+    const range = chart.timeScale().getVisibleLogicalRange();
+    const atEnd = range && range.to >= bars.length - 3;
+    const grow = newBars.length - bars.length;
+    bars = newBars;
+    idxByTime = new Map(bars.map((b, i) => [b.t, i]));
+    candle.setData(bars.map((b) => ({ time: b.t, open: b.o, high: b.h, low: b.l, close: b.c })));
+    renderIndicators();
+    if (range) chart.timeScale().setVisibleLogicalRange(atEnd ? { from: range.from + grow, to: range.to + grow } : range);
+    updateLegend(bars.length - 1);
+  }
+
   function setIndicator(key, on) {
     ind[key] = on;
     try { localStorage.setItem(IND_KEY, JSON.stringify(ind)); } catch (_) {}
@@ -257,7 +271,7 @@ const ChartView = (() => {
   }
 
   return {
-    create, setData, setIndicator, msToLogical, logicalToMs, setLines, get linesOn() { return linesOn; },
+    create, setData, refresh, setIndicator, msToLogical, logicalToMs, setLines, get linesOn() { return linesOn; },
     get chart() { return chart; }, get candle() { return candle; }, get bars() { return bars; },
     get ind() { return { ...ind }; }, get sym() { return sym; }, get iv() { return ivId; },
     fmt: (v) => fmt(v),

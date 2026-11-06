@@ -142,3 +142,12 @@ python -m http.server 8000        # http://localhost:8000 접속
 - `scripts/rank_daily.py` 가 평일 16:20(KST)에 시총 상위 300 종목을 항목별(추세·변동성·금리/환율 민감도·뉴스·실적 등)로 점수 매겨 `data/rank/latest.json` 에 저장해요.
 - 그날 순위는 `data/rank/snap/` 에 남고, 5일·20일 뒤 실제 수익률로 채점돼 `data/rank/live.json` 에 쌓여요. 항목별 비중은 이 채점 결과(+과거 검증)로 매일 다시 정해져요.
 - **DART 실적 켜기**: opendart.fss.or.kr 에서 인증키 발급 → 저장소 Settings → Secrets and variables → Actions → New repository secret → 이름 `DART_API_KEY`, 값에 키. 그 다음 Actions 탭에서 "순위 과거 검증 다시 계산"을 한 번 실행하면 실적 항목도 2014년부터 과거 공시로 검증돼요.
+
+
+## 미국 주식 중심 개편 (2026-11-06)
+
+- 첫 화면은 **홈**: 지수·금리·환율·유가·금·비트코인(장중 1분마다 실시간), 섹터 흐름, 많이 오른/내린 종목, 시장 체력, 강한 테마, 추천 바구니, 주요 뉴스, 거시 예측시장
+- 차트: 미국 종목은 열 때 최신 시세, 열어두면 1분마다 자동 갱신(장 밖은 15분), 분봉 시각은 뉴욕 시각, 아래에 미국장 상태·마지막 갱신 시각
+- `scripts/us_daily.py` (Actions `us-daily.yml`, 미국장 마감 후): S&P500+나스닥100 순위(테마 눌림·추천 바구니·모멘텀·우리 점수, 다음 날 시가 기준 채점·추적), 미국 장기 테마 16개(`scripts/us_narr_def.py`), 추천 기업(월가 애널리스트·StockTwits·예측시장)
+- 과거 검증: `research/us/variants.py`, `research/us/theme_backfill.py`
+- 한국 순위 자동 실행(`rank-daily.yml`)은 멈춤 (코드는 남겨둠)

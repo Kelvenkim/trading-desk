@@ -33,7 +33,7 @@ const NewsUI = (() => {
   function words(list, showChg) {
     if (!list || !list.length) return `<p class="small muted">이 기간에 시장 관련 단어가 거의 없었어요.</p>`;
     const mx = Math.max(...list.map((w) => w.n), 1);
-    return `<div class="wl">${list.map((w) => {
+    return `<div class="wlist">${list.map((w) => {
       const chg = !showChg ? "" : w.prev === 0 ? `<span class="new">새로</span>` : `<span class="${w.n > w.prev ? "up" : w.n < w.prev ? "down" : "muted"}">${w.n > w.prev ? "▲" : w.n < w.prev ? "▼" : "–"} ${w.prev}→${w.n}</span>`;
       const ex = (w.ex || []).map((e) => `<li><a href="${esc(e.u)}" target="_blank" rel="noopener">${esc(e.t)}</a> <span class="sub">${ago(e.at)}</span></li>`).join("");
       return `<details class="w-item"><summary class="w"><span class="w-name">${esc(w.w)}</span>

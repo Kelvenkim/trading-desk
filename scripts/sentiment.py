@@ -127,3 +127,17 @@ def kalshi_macro():
                     "outs": outs[:3], "single": len(ev.get("markets", [])) == 1})
         time.sleep(0.5)
     return out
+
+
+def stocktwits(sym):
+    """StockTwits(미국 투자자 커뮤니티) 최근 30개 글의 강세·약세 표시 비율 + 관심 등록 수"""
+    j = _get(f"https://api.stocktwits.com/api/2/streams/symbol/{urllib.parse.quote(sym)}.json")
+    if not j or not j.get("messages"):
+        return None
+    m = j["messages"]
+    bull = sum(1 for x in m if ((x.get("entities") or {}).get("sentiment") or {}).get("basic") == "Bullish")
+    bear = sum(1 for x in m if ((x.get("entities") or {}).get("sentiment") or {}).get("basic") == "Bearish")
+    ts = sorted(x.get("created_at", "") for x in m)
+    return {"n": len(m), "bull": bull, "bear": bear, "ratio": bull / (bull + bear) if bull + bear else None,
+            "watch": (j.get("symbol") or {}).get("watchlist_count"), "span": (ts[0][:16].replace("T", " ") + " ~ " + ts[-1][:16].replace("T", " ")) if ts else None,
+            "src": "StockTwits"}

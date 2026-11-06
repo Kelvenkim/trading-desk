@@ -620,7 +620,7 @@ const BT = (() => {
 
   // ================= 엔진 =================
   const DEFAULTS = {
-    capital: 10000000, buyFee: 0.015, sellFee: 0.215, slip: 0.05, borrowFee: 0,
+    capital: 10000000, buyFee: 0.02, sellFee: 0.02, slip: 0.05, borrowFee: 0,
     stopLoss: 0, takeProfit: 0, trailing: 0, maxHold: 0, dayClose: false, dayKey: null,
     direction: "long", sizing: "all", sizePct: 100, riskPct: 1, atrMult: 2,
     pyrN: 1, pyrMode: "down", pyrPct: 3, tp1Pct: 0, tp1Frac: 50,

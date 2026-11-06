@@ -240,42 +240,38 @@ def main():
             info["whitehouse"] = [{"t": x["t"], "u": x["u"], "at": x["at"]} for x in wh[:6]]
         people.append(info)
 
-    # ---- 시장 뉴스 ----
+    # ---- 시장 뉴스 (미국 증시, 국내 기사) ----
     try:
-        from narrative_def import NARRATIVES, POLICY_WORDS
+        from narrative_def import POLICY_WORDS
+        from us_narr_def import NARR, EXTRA_KO
         import rank_lib as L
     except Exception:
-        NARRATIVES, POLICY_WORDS, L = [], [], None
+        NARR, EXTRA_KO, POLICY_WORDS, L = [], {}, [], None
     try:
-        rows = json.loads((ROOT / "data/rank/latest.json").read_text())["rows"]
-        names = sorted({(r["name"], r["code"]) for r in rows}, key=lambda x: -len(x[0]))
+        U = json.loads((ROOT / "data/us/universe.json").read_text())
+        ko = {**U.get("ko", {}), **EXTRA_KO}
     except Exception:
-        names = []
+        ko = dict(EXTRA_KO)
+    names = sorted(((v, k) for k, v in ko.items() if len(v) >= 2 and "ETF" not in v), key=lambda x: -len(x[0]))
     news = []
-    for page in (1, 2, 3):
-        j = get(f"https://m.stock.naver.com/front-api/news/category?category=mainnews&pageSize=40&page={page}") or {}
-        for it in j.get("result") or []:
-            t = html.unescape(it.get("titleFull") or it.get("title") or "")
-            dt = it.get("datetime", "")
-            at = f"{dt[:4]}-{dt[4:6]}-{dt[6:8]} {dt[8:10]}:{dt[10:12]}" if len(dt) >= 12 else ""
-            text = t + " " + (it.get("body") or "")[:120]
+    for q in ("뉴욕증시", "미국 증시", "나스닥", "월가", "연준 금리", "미국 국채"):
+        for it in rss_items(get("https://news.google.com/rss/search?" + urllib.parse.urlencode({"q": q + " when:2d", "hl": "ko", "gl": "KR", "ceid": "KR:ko"}), raw=True)):
+            t = re.sub(r"\s-\s[^-]+$", "", it["t"]); o = it.get("src") or (it["t"].rsplit(" - ", 1)[-1] if " - " in it["t"] else "")
             stocks = []
             for nm, cd in names:
-                if len(nm) >= 2 and nm in t and all(nm not in s[0] for s in stocks):
+                if nm in t and all(nm not in x[0] for x in stocks):
                     stocks.append([nm, cd])
-            themes = sorted({k for w, ks in KO_MARKET.items() if w in text for k in ks})
-            who = [p["key"] for p in PEOPLE if p["gnews"].split()[0] in text or p["name"].split()[-1] in text]
-            news.append({"t": t, "b": (it.get("body") or "")[:140], "o": it.get("officeName"), "at": at,
-                         "u": f"https://n.news.naver.com/mnews/article/{it.get('officeId')}/{it.get('articleId')}",
-                         "s": L.headline_score(t) if L else 0, "pol": any(w in text for w in POLICY_WORDS), "stocks": stocks[:4],
-                         "themes": themes[:3], "who": who})
+            themes = sorted({n["key"] for n in NARR if any(w in t for w in n["ko"])})
+            who = [p["key"] for p in PEOPLE if p["gnews"].split()[0] in t or p["name"].split()[-1] in t]
+            news.append({"t": t, "b": "", "o": o, "at": it["at"], "u": it["u"], "s": L.headline_score(t) if L else 0,
+                         "pol": any(w in t for w in POLICY_WORDS), "stocks": stocks[:4], "themes": themes[:3], "who": who})
     seen, uniq = set(), []
     for n in sorted(news, key=lambda x: x["at"], reverse=True):
         if n["t"] in seen:
             continue
         seen.add(n["t"]); uniq.append(n)
     arch_p.write_text(json.dumps(arch, ensure_ascii=False, separators=(",", ":")))
-    tnames = {n["key"]: n["name"] for n in NARRATIVES}
+    tnames = {n["key"]: n["name"] for n in NARR}
     (OUT / "latest.json").write_text(json.dumps({"made": NOW.strftime("%Y-%m-%d %H:%M"), "news": uniq, "people": people, "themes": tnames},
                                                 ensure_ascii=False, separators=(",", ":")))
     print(f"뉴스 {len(uniq)}건 · 인물 {len(people)}명 · 트럼프 글 {people[0].get('n_posts')}개(7일)")

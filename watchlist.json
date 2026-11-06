@@ -1,13 +1,16 @@
 {
-  "_설명": "관심종목 목록. 코스피는 .KS, 코스닥은 .KQ, 미국 주식은 티커 그대로(예: AAPL). intraday를 true로 하면 5분봉(최근 60일)도 받아옵니다.",
+  "_설명": "관심종목 목록 (미국 티커 그대로, 예: AAPL). intraday를 true로 하면 5분봉(최근 60일)도 받아옵니다.",
   "symbols": [
-    { "symbol": "005930.KS", "name": "삼성전자", "intraday": true },
-    { "symbol": "000660.KS", "name": "SK하이닉스", "intraday": true },
-    { "symbol": "005380.KS", "name": "현대차", "intraday": false },
-    { "symbol": "035420.KS", "name": "NAVER", "intraday": false },
-    { "symbol": "035720.KS", "name": "카카오", "intraday": false },
-    { "symbol": "247540.KQ", "name": "에코프로비엠", "intraday": true },
-    { "symbol": "196170.KQ", "name": "알테오젠", "intraday": true },
-    { "symbol": "069500.KS", "name": "KODEX 200", "intraday": false }
+    { "symbol": "SPY", "name": "S&P500 ETF", "intraday": true },
+    { "symbol": "QQQ", "name": "나스닥100 ETF", "intraday": true },
+    { "symbol": "NVDA", "name": "엔비디아", "intraday": true },
+    { "symbol": "AAPL", "name": "애플", "intraday": false },
+    { "symbol": "MSFT", "name": "마이크로소프트", "intraday": false },
+    { "symbol": "TSLA", "name": "테슬라", "intraday": true },
+    { "symbol": "AMZN", "name": "아마존", "intraday": false },
+    { "symbol": "META", "name": "메타", "intraday": false },
+    { "symbol": "GOOGL", "name": "알파벳", "intraday": false },
+    { "symbol": "AVGO", "name": "브로드컴", "intraday": false },
+    { "symbol": "PLTR", "name": "팔란티어", "intraday": false }
   ]
 }

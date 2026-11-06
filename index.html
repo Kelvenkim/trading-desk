@@ -6,7 +6,7 @@
   <title>Trading Desk</title>
   <meta name="theme-color" content="#000000" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="assets/style.css?v=4c22e87b" />
+  <link rel="stylesheet" href="assets/style.css?v=da651a8b" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -37,13 +37,14 @@
     <div class="search" id="search">
       <svg class="ico"><use href="#i-search"/></svg>
       <input id="search-input" type="search" autocomplete="off" spellcheck="false"
-             placeholder="종목명, 코드, 초성 검색 (예: 삼성전자, 005930, ㅅㅅㅈㅈ, NVDA)" />
+             placeholder="종목 검색 (예: 엔비디아, NVDA, 애플, 테슬라)" />
       <kbd>/</kbd>
       <ul class="suggest" id="search-list" role="listbox" hidden></ul>
     </div>
 
     <nav class="tabs">
-      <button class="tab active" data-tab="chart">차트</button>
+      <button class="tab active" data-tab="home">홈</button>
+      <button class="tab" data-tab="chart">차트</button>
       <button class="tab" data-tab="rank">오늘의 순위</button>
       <button class="tab" data-tab="theme">장기 테마</button>
       <button class="tab" data-tab="news">뉴스</button>
@@ -58,7 +59,27 @@
 
   <main>
     <!-- ================= 차트 ================= -->
-    <section id="tab-chart" class="panel active">
+    <!-- ================= 홈 ================= -->
+    <section id="tab-home" class="panel active">
+      <div class="hm-head"><h2>오늘의 미국 시장</h2><span class="muted small" id="hm-status"></span></div>
+      <div class="hm-assets" id="hm-assets"></div>
+      <div class="hm-grid">
+        <div class="box"><div class="box-head"><h2>섹터 흐름</h2><div class="seg small" id="hm-secspan"><button data-span="d1" class="on">1일</button><button data-span="w1">1주</button><button data-span="m1">1개월</button><button data-span="m3">3개월</button></div></div><div id="hm-sectors"></div></div>
+        <div class="box"><div class="box-head"><h2>많이 오른 종목</h2><span class="muted small">S&P500·나스닥100</span></div><ul class="hm-list" id="hm-up"></ul>
+          <div class="box-head" style="margin-top:12px"><h2>많이 내린 종목</h2></div><ul class="hm-list" id="hm-down"></ul></div>
+        <div class="box"><div class="box-head"><h2>시장 체력</h2></div><div id="hm-breadth"></div></div>
+      </div>
+      <div class="hm-grid">
+        <div class="box"><div class="box-head"><h2>강한 장기 테마</h2><button class="btn small" data-go="theme">전체 보기</button></div><ul class="hm-list" id="hm-themes"></ul></div>
+        <div class="box"><div class="box-head"><h2>오늘의 추천 바구니</h2><button class="btn small" data-go="rank">순위 보기</button></div><ul class="hm-list" id="hm-basket"></ul>
+          <p class="hint">강한 테마 안에서 최근 5일 쉬어간 종목 (테마당 최대 5개). 통계적 경향이지 투자 권유가 아니에요.</p></div>
+        <div class="box"><div class="box-head"><h2>주요 뉴스</h2><button class="btn small" data-go="news">더 보기</button></div><ul class="news hm-news" id="hm-news"></ul></div>
+      </div>
+      <div class="box"><div class="box-head"><h2>거시 전망</h2><span class="muted small">예측시장 · 돈을 건 사람들이 매긴 확률</span></div><div class="mkts" id="hm-macro"></div></div>
+    </section>
+
+    <!-- ================= 차트 ================= -->
+    <section id="tab-chart" class="panel">
       <div class="ws">
         <aside class="toolbar" id="toolbar">
           <button class="tool on" data-tool="" title="커서 (Esc)"><svg><use href="#i-cursor"/></svg></button>
@@ -140,54 +161,27 @@
     <!-- ================= 오늘의 순위 ================= -->
     <section id="tab-rank" class="panel">
       <div class="rk-head"><h2>오늘의 순위 <span class="muted small" id="rk-date"></span></h2></div>
-      <div class="summary rk-market" id="rk-market"></div>
       <div class="box trust" id="rk-trust"></div>
       <div class="grid-2">
         <div class="box">
           <div class="box-head"><h2>순위</h2>
             <div class="rk-filters">
-              <select id="rk-sort"><option value="t">테마 눌림 순</option><option value="basket">추천 바구니 20</option><option value="o">우리 점수 순</option></select>
+              <select id="rk-sort"><option value="t">테마 눌림 순</option><option value="basket">추천 바구니 20</option><option value="m">모멘텀 순</option><option value="o">우리 점수 순</option></select>
+              <select id="rk-theme-f"></select>
               <input id="rk-q" placeholder="종목 찾기" autocomplete="off" />
-              <select id="rk-grade"><option value="all">전체 등급</option><option value="SA">S·A</option><option value="SAB">B 이상</option></select>
-              <select id="rk-mkt"><option value="all">전체</option><option value="KOSPI">코스피</option><option value="KOSDAQ">코스닥</option></select>
             </div>
           </div>
           <div class="table-wrap">
             <table class="tbl rk-tbl">
-              <thead><tr><th>#</th><th>종목</th><th>테마 눌림 · 우리 점수</th><th class="r"><span class="hide-m">최근 3개월 · </span>종가</th><th>한눈에</th></tr></thead>
+              <thead><tr><th>#</th><th>종목</th><th>점수</th><th class="r"><span class="hide-m">최근 3개월 · </span>종가</th><th>한눈에</th></tr></thead>
               <tbody id="rk-body"><tr class="empty-row"><td colspan="5">불러오는 중…</td></tr></tbody>
             </table>
           </div>
           <div class="rk-foot"><span class="muted small" id="rk-count"></span><button class="btn small" id="rk-more" hidden>더 보기</button></div>
-          <p class="hint">종목을 누르면 바로 아래에 일봉 차트·점수 내역·뉴스가 펼쳐져요. 매일 장 마감 후(16:20쯤) 갱신돼요.</p>
+          <p class="hint">종목을 누르면 일봉 차트·지지/저항·매매 계획이 펼쳐져요. 미국장 마감 후(한국 시각 아침) 갱신돼요.</p>
         </div>
         <div>
-          <div class="box">
-            <div class="box-head"><h2>지난 순위 추적</h2></div>
-            <div class="table-wrap" id="rk-track"></div>
-          </div>
-          <div class="box">
-            <div class="box-head"><h2>우리 점수 기준 <span class="muted small">100점</span></h2></div>
-            <div id="rk-def"></div>
-          </div>
-          <div class="box">
-            <div class="box-head"><h2>검증 대기 항목</h2></div>
-            <div class="table-wrap"><table class="tbl rk-w">
-              <thead><tr><th>항목</th><th class="r">맞힌 정도</th><th class="r">확실성</th><th class="r">상태</th></tr></thead>
-              <tbody id="rk-weights"></tbody></table></div>
-            <p class="hint">맞힌 정도(IC) = 이 항목 순위와 20일 뒤 실제 수익률 순위의 상관. 확실성(t)이 2 이상이고 1년치 이상 쌓인 항목만 '사용'으로 바뀌어 검증 순위에 들어가요. 채점은 매일 자동으로 쌓여요.</p>
-          </div>
-          <div class="box" id="rk-report">
-            <div class="box-head"><h2>우리 점수 성적표</h2></div>
-            <h3>과거 검증 <span class="muted">상위 20종목(흰색) vs 300종목 평균(회색), 20일마다 갈아탄다고 가정 · 실적·뉴스는 중간값</span></h3>
-            <div id="rk-curve" class="rk-curve"></div>
-            <div class="table-wrap"><table class="tbl" id="rk-grades"></table></div>
-            <div class="rk-parts" id="rk-parts"></div>
-            <div class="table-wrap"><table class="tbl" id="rk-years"></table></div>
-            <h3>실제 운영 채점 <span class="muted" id="rk-live-sum"></span></h3>
-            <div class="table-wrap"><table class="tbl" id="rk-live"></table></div>
-            <p class="hint">과거 검증은 '지금' 시총 상위 300 종목으로 해서 실제보다 좋게 나왔을 수 있고(그 사이 사라진 종목이 빠짐), 비용은 빼지 않았어요. 우리 점수는 이해하기 쉬운 고정 규칙이라 맞는다는 보장이 없고, 성적은 위 숫자 그대로예요. 투자 권유가 아니에요.</p>
-          </div>
+          <div class="box"><div class="box-head"><h2>지난 순위 추적</h2></div><div class="table-wrap" id="rk-track"></div></div>
         </div>
       </div>
     </section>
@@ -377,8 +371,8 @@
             <div class="params">
               <label>초기 자금 <input type="number" id="o-capital" value="10000000" step="100000" min="0" /></label>
               <label>슬리피지 % <input type="number" id="o-slip" value="0.05" step="0.01" min="0" /></label>
-              <label>매수 수수료 % <input type="number" id="o-buyFee" value="0.015" step="0.001" min="0" /></label>
-              <label>매도 수수료+세금 % <input type="number" id="o-sellFee" value="0.215" step="0.001" min="0" /></label>
+              <label>매수 수수료 % <input type="number" id="o-buyFee" value="0.02" step="0.001" min="0" /></label>
+              <label>매도 수수료 % <input type="number" id="o-sellFee" value="0.02" step="0.001" min="0" /></label>
               <label data-when="direction!=long">대주 수수료 연 % <input type="number" id="o-borrowFee" value="0" step="0.1" min="0" /></label>
               <label>거래량 한도 % <input type="number" id="o-volCap" value="0" step="0.5" min="0" title="한 봉 거래량의 몇 %까지만 체결할지. 0이면 제한 없음" /></label>
             </div>
@@ -592,16 +586,17 @@
 
   <footer class="foot">개인 학습·연구용 도구입니다. 과거 수익률이 미래 수익을 보장하지 않습니다.</footer>
 
-  <script src="assets/util.js?v=47f52197"></script>
-  <script src="assets/backtest.js?v=04a79827"></script>
-  <script src="assets/data.js?v=009980a7"></script>
-  <script src="assets/chart.js?v=69a54c61"></script>
+  <script src="assets/util.js?v=b1f099b3"></script>
+  <script src="assets/backtest.js?v=13e5f01b"></script>
+  <script src="assets/data.js?v=fcd64e27"></script>
+  <script src="assets/chart.js?v=aec663a8"></script>
   <script src="assets/draw.js?v=f61bef61"></script>
-  <script src="assets/bt.js?v=f0ca857e"></script>
-  <script src="assets/levels.js?v=015b1f36"></script>
-  <script src="assets/rank.js?v=a3dd2d59"></script>
-  <script src="assets/theme.js?v=4325f537"></script>
-  <script src="assets/news.js?v=e9ac8aec"></script>
-  <script src="assets/app.js?v=8dabe5a9"></script>
+  <script src="assets/bt.js?v=0254c648"></script>
+  <script src="assets/levels.js?v=dfcb1e20"></script>
+  <script src="assets/rank.js?v=82879788"></script>
+  <script src="assets/theme.js?v=eb3ce486"></script>
+  <script src="assets/news.js?v=639cc198"></script>
+  <script src="assets/home.js?v=b6ddf735"></script>
+  <script src="assets/app.js?v=d78ea057"></script>
 </body>
 </html>

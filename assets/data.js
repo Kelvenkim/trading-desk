@@ -53,9 +53,18 @@ const Data = (() => {
   function loadSymbols() {
     if (symbols) return Promise.resolve(symbols);
     if (!symbolsPromise) {
-      symbolsPromise = getJSON("data/symbols.json")
-        .then((j) => (symbols = j.list.map(([symbol, name, market], rank) => ({ symbol, name, market, rank, key: norm(name), cho: chosung(name) }))))
-        .catch(() => (symbols = meta.symbols.map((s, rank) => ({ symbol: s.symbol, name: s.name, market: isKR(s.symbol) ? "KR" : "US", rank, key: norm(s.name), cho: chosung(s.name) }))));
+      // 미국 주식만 검색 + 한국어 이름(엔비디아, 테슬라…)으로도 찾기
+      symbolsPromise = Promise.all([getJSON("data/symbols.json").catch(() => null), getJSON("data/us/universe.json").catch(() => null)])
+        .then(([j, u]) => {
+          const ko = Object.assign({}, (u && u.ko) || {});
+          const list = j ? j.list.filter(([sym]) => !isKR(sym)) : meta.symbols.filter((s) => !isKR(s.symbol)).map((s) => [s.symbol, s.name, "US"]);
+          const have = new Set(list.map((x) => x[0]));
+          ((u && u.stocks) || []).forEach((x) => { if (!have.has(x.t)) list.push([x.t, x.name, "US"]); });
+          const big = new Set(((u && u.stocks) || []).map((x) => x.t));
+          symbols = list.map(([symbol, name, market], rank) => ({ symbol, name: ko[symbol] ? `${name}` : name, ko: ko[symbol] || "", market: "US",
+            rank: big.has(symbol) ? rank - 100000 : rank, key: norm(name), alias: norm(ko[symbol] || ""), cho: chosung(ko[symbol] || name) }));
+          return symbols;
+        });
     }
     return symbolsPromise;
   }
@@ -81,11 +90,12 @@ const Data = (() => {
       const code = s.symbol.toLowerCase().split(".")[0];
       let score = -1;
       if (code === n || s.symbol.toLowerCase() === n) score = 0;
-      else if (s.key === n) score = 1;
+      else if (s.key === n || (s.alias && s.alias === n)) score = 1;
+      else if (s.alias && s.alias.startsWith(n)) score = 2;
       else if (code.startsWith(n)) score = 2;
       else if (s.key.startsWith(n)) score = 3;
       else if (onlyCho && s.cho.startsWith(n)) score = 3;
-      else if (s.key.includes(n)) score = 4;
+      else if (s.key.includes(n) || (s.alias && s.alias.includes(n))) score = 4;
       else if (onlyCho && s.cho.includes(n)) score = 5;
       if (score >= 0) scored.push([score, s.rank, s]);
     }
@@ -100,7 +110,23 @@ const Data = (() => {
 
   // ---------- 정규화 / 집계 ----------
   const fromDailyRows = (rows) => rows.map(([d, o, h, l, c, v]) => ({ t: d, ms: Date.parse(d + "T00:00:00Z"), day: d, o, h, l, c, v }));
-  const fromIntradayRows = (rows) => rows.map(([u, o, h, l, c, v]) => ({ t: u + KST, ms: u * 1000, day: kstDay(u * 1000), o, h, l, c, v }));
+  // 뉴욕 시각과 UTC 차이(초, 서머타임 반영)
+  const nyFmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const offCache = new Map();
+  function nyOffset(ms) {
+    const key = Math.floor(ms / 3600000);
+    if (offCache.has(key)) return offCache.get(key);
+    const p = Object.fromEntries(nyFmt.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+    const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+    const off = Math.round((asUTC - ms) / 1000);
+    offCache.set(key, off);
+    return off;
+  }
+  const tzOff = (sym, ms) => (isKR(sym) ? KST : nyOffset(ms));
+  const fromIntradayRows = (rows, sym = "") => rows.map(([u, o, h, l, c, v]) => {
+    const off = tzOff(sym, u * 1000);
+    return { t: u + off, ms: u * 1000, day: new Date((u + off) * 1000).toISOString().slice(0, 10), o, h, l, c, v };
+  });
 
   function aggregate(bars, keyFn, timeFn) {
     const out = [];
@@ -120,8 +146,9 @@ const Data = (() => {
   }
   function toMinutes(bars, n) {
     const step = n * 60000;
-    return aggregate(bars, (b) => Math.floor((b.ms + KST * 1000) / step),
-      (b, k) => { const ms = k * step - KST * 1000; return { ms, t: ms / 1000 + KST }; });
+    // 막대의 화면 시각(t, 현지 시각 기준 초)으로 묶음
+    return aggregate(bars, (b) => Math.floor((b.t * 1000) / step),
+      (b, k) => ({ t: (k * step) / 1000, ms: b.ms - (b.t * 1000 - k * step) }));
   }
   function toWeekly(bars) {
     return aggregate(bars, (b) => {
@@ -172,7 +199,7 @@ const Data = (() => {
       const off = (r.meta && r.meta.gmtoffset) || 0;
       return fromDailyRows(out.map(([u, ...rest]) => [new Date((u + off) * 1000).toISOString().slice(0, 10), ...rest]));
     }
-    return fromIntradayRows(out);
+    return fromIntradayRows(out, sym);
   }
 
   // ---------- 공개 함수 ----------
@@ -205,7 +232,7 @@ const Data = (() => {
     const loc = bySym[sym];
     if (loc && loc.intraday && iv.min >= 5 && !fresh) {
       const j = await getJSON(`data/intraday/${loc.file}`);
-      const base = fromIntradayRows(j.bars);
+      const base = fromIntradayRows(j.bars, sym);
       return iv.min === 5 ? base : toMinutes(base, iv.min);
     }
     const map = { 1: ["1m", "5d"], 5: ["5m", "60d"], 15: ["15m", "60d"], 30: ["30m", "60d"], 60: ["60m", "730d"] };
@@ -234,6 +261,17 @@ const Data = (() => {
     return bars;
   }
 
+  /** 가벼운 실시간 시세 (홈 화면용): 현재가·전일 종가·오늘 5분봉 */
+  async function liveQuote(sym) {
+    const j = await viaProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=5m&range=1d&includePrePost=true`, "json");
+    const r = j.chart && j.chart.result && j.chart.result[0];
+    if (!r) throw new Error("시세 없음");
+    const m = r.meta, q = (r.indicators.quote || [{}])[0];
+    const pts = (r.timestamp || []).map((t, i) => q.close[i]).filter((x) => x != null);
+    const prev = m.chartPreviousClose ?? m.previousClose;
+    return { price: m.regularMarketPrice, prev, chg: prev ? m.regularMarketPrice / prev - 1 : null, time: m.regularMarketTime, pts };
+  }
+
   /** 현재가 요약 */
   async function quote(sym) {
     if (bySym[sym]) return bySym[sym];
@@ -247,7 +285,7 @@ const Data = (() => {
   }
 
   return {
-    INTERVALS, IV, init, search, info, getBars, quote, loadSymbols, getProxy, setProxy, isKR,
+    liveQuote, INTERVALS, IV, init, search, info, getBars, quote, loadSymbols, getProxy, setProxy, isKR,
     get meta() { return meta; }, isLocal: (s) => !!bySym[s], fromRank: (s) => fromRank.has(s), hasLocalIntraday: (s) => !!(bySym[s] && bySym[s].intraday),
     kstDay, KST,
   };

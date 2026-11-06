@@ -1015,7 +1015,7 @@ ${strategies}
   지표 ind: ${inds}
   op: > < >= <= cross_up cross_down. b에 숫자를 쓸 땐 {ind:"num", v:값}. mult는 b에 곱하는 배수(예: 거래량 > 평균거래량×2).
 
-엔진: 신호는 봉 종가로 판단하고 다음 봉 시가에 체결. direction long/short/both(신호마다 뒤집기). sizing all/fixed(size_pct)/risk(risk_pct, atr_mult). pyramid_n>1이면 비중을 나눠 down(물타기)/up(불타기)/signal 방식으로 추가. tp1_pct에 닿으면 tp1_frac%만 매도. 손절·익절은 평균단가 기준, 같은 봉에 둘 다 닿으면 손절 우선. 기본 비용: 매수 0.015%, 매도 수수료+세금 0.215%, 슬리피지 편도 0.05%.
+엔진: 신호는 봉 종가로 판단하고 다음 봉 시가에 체결. direction long/short/both(신호마다 뒤집기). sizing all/fixed(size_pct)/risk(risk_pct, atr_mult). pyramid_n>1이면 비중을 나눠 down(물타기)/up(불타기)/signal 방식으로 추가. tp1_pct에 닿으면 tp1_frac%만 매도. 손절·익절은 평균단가 기준, 같은 봉에 둘 다 닿으면 손절 우선. 기본 비용(미국 주식): 매수·매도 수수료 각 0.02%, 슬리피지 편도 0.05%.
 
 사용자의 매매 철학: 매일 이기는 것보다 승률 50~60%, 손실은 작게, 이익은 크게(손익비 1.5 이상). 결과에는 '내 목표 기준' 통과 여부(goal)가 있으니 이것을 중심으로 평가하고, 손익비를 키우는 방법(손절 고정, 1차 익절 후 트레일링, 진입 필터)을 제안해.
 ETF는 매도 시 증권거래세가 없어 매도 비용을 0.015% 정도로 낮게 잡아도 돼.

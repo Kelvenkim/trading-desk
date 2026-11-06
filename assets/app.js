@@ -97,16 +97,18 @@
     chartMsg(`<div>시세를 불러오는 중…</div>`);
 
     try {
-      const bars = await Data.getBars(sym, cur.iv, opts);
+      // 미국 주식은 열 때부터 최신 시세(중계 서버)로
+      const fresh = opts.fresh || (!Data.isKR(sym) && !!Data.getProxy());
+      let bars;
+      try { bars = await Data.getBars(sym, cur.iv, { ...opts, fresh }); }
+      catch (e) { if (fresh && !opts.fresh && Data.isLocal(sym)) bars = await Data.getBars(sym, cur.iv, opts); else throw e; }
       if (seq !== cur.seq) return;
       if (!bars.length) throw new Error("표시할 시세가 없어요.");
       ChartView.setData(bars, sym, cur.iv, krw(sym));
       Draw.redraw();
       chartMsg(null);
-      const src = Data.isLocal(sym) && !opts.fresh && (Data.IV[cur.iv].daily || (Data.hasLocalIntraday(sym) && Data.IV[cur.iv].min >= 5))
-        ? `저장된 시세 · ${Data.meta.updated} 기준`
-        : Data.fromRank(sym) ? "순위 화면 자료 · 최근 6개월 일봉 (더 긴 기간·분봉은 ⚙ 설정에서 중계 서버 연결)" : "중계 서버로 받은 시세 (최대 몇 분 지연될 수 있어요)";
-      $("#chart-foot").textContent = `${src} · ${bars.length.toLocaleString("ko-KR")}개 봉`;
+      live.at = new Date(); live.n = bars.length; live.src = fresh ? "live" : "saved";
+      renderLiveFoot();
       if (opts.fresh) toast("최신 시세로 바꿨어요.");
     } catch (e) {
       if (seq !== cur.seq) return;
@@ -123,6 +125,34 @@
     }
     renderQuote(sym, seq);
   }
+
+  // ---------- 실시간 갱신 ----------
+  const live = { at: null, n: 0, src: "", busy: false };
+  function renderLiveFoot() {
+    const m = U.usMarket(), el = $("#chart-foot"); if (!el || !live.at) return;
+    const t = live.at.toLocaleTimeString("ko-KR", { hour12: false });
+    const auto = live.src === "live";
+    el.innerHTML = `<span class="live-dot ${auto && m.live ? "on" : ""}"></span>미국장 <b>${m.state}</b> · 뉴욕 ${m.ny} · 한국 ${m.kst}
+      · 마지막 갱신 <b>${t}</b>${auto ? (m.live ? " · 1분마다 자동 갱신" : " · 장 열리면 자동 갱신") : " · 저장된 시세 (↻로 최신 받기)"} · ${live.n.toLocaleString("ko-KR")}개 봉`;
+  }
+  async function liveTick() {
+    if (live.busy || !cur.sym || document.hidden || !$("#tab-chart").classList.contains("active") || live.src !== "live") return;
+    const m = U.usMarket();
+    if (!m.live && live.at && Date.now() - live.at < 15 * 60000) return;     // 장 밖에서는 15분에 한 번만
+    live.busy = true;
+    const seq = cur.seq;
+    try {
+      const bars = await Data.getBars(cur.sym, cur.iv, { fresh: true });
+      if (seq !== cur.seq || !bars.length) return;
+      ChartView.refresh(bars); Draw.redraw();
+      live.at = new Date(); live.n = bars.length;
+      renderQuote(cur.sym, seq);
+    } catch (_) { /* 다음 차례에 다시 */ }
+    finally { live.busy = false; renderLiveFoot(); }
+  }
+  setInterval(liveTick, 60000);
+  setInterval(renderLiveFoot, 20000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) liveTick(); });
 
   async function renderQuote(sym, seq) {
     try {
@@ -274,6 +304,8 @@
     if (name === "rank") { try { RankUI.onShow(); } catch (e) { console.error(e); } }
     if (name === "theme") { try { ThemeUI.onShow(); } catch (e) { console.error(e); } }
     if (name === "news") { try { NewsUI.onShow(); } catch (e) { console.error(e); } }
+    if (name === "home") { try { HomeUI.onShow(); } catch (e) { console.error(e); } }
+    if (name === "chart" && ChartView.chart) { try { ChartView.chart.timeScale(); } catch (_) {} }
   }
 
   // ================= 시작 =================
@@ -294,13 +326,15 @@
     safe("순위", () => RankUI.init());
     safe("장기 테마", () => ThemeUI.init());
     safe("뉴스", () => NewsUI.init());
-    window.App = { openChart: (sym) => { showTab("chart"); openSymbol(sym, "1d"); },
+    safe("홈", () => HomeUI.init());
+    window.App = { go: (t) => showTab(t), openChart: (sym) => { showTab("chart"); openSymbol(sym, "1d"); },
       showTheme: (key) => { showTab("theme"); ThemeUI.openKey(key); } };
     const last = store.get(LAST_KEY, null);
-    const first = (last && last.sym) || (Data.meta.symbols[0] && Data.meta.symbols[0].symbol);
-    if (first) openSymbol(first, (last && last.iv) || "1d");
+    const okLast = last && last.sym && !Data.isKR(last.sym);           // 예전 한국 종목 기록은 무시
+    const first = (okLast && last.sym) || (Data.meta.symbols[0] && Data.meta.symbols[0].symbol);
+    if (first) openSymbol(first, (okLast && last.iv) || "1d");
     const h = location.hash.slice(1);
-    if (["portfolio", "backtest", "rank", "theme", "news"].includes(h)) showTab(h);
+    showTab(["chart", "portfolio", "backtest", "rank", "theme", "news"].includes(h) ? h : "home");
   }
   init();
 })();

@@ -1,10 +1,7 @@
 name: 매일 순위
 
 on:
-  schedule:
-    - cron: "20 7 * * 1-5"    # 평일 16:20 KST (장 마감 후)
-    - cron: "47 8 * * 1-5"    # GitHub 예약이 자주 늦거나 빠져서 두 번 더 시도 (이미 했으면 바로 끝남)
-    - cron: "13 11 * * 1-5"
+  # 사이트를 미국 위주로 바꾸면서 한국 순위 자동 실행은 멈춤 (필요하면 Actions 탭에서 수동 실행)
   workflow_dispatch: {}
 
 permissions:

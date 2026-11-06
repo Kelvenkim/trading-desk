@@ -1,0 +1,37 @@
+name: 미국 매일 순위·테마
+
+on:
+  schedule:
+    - cron: "40 21 * * 1-5"   # 미국장 마감 뒤 (뉴욕 16:40 서머타임 / 17:40 표준시, 한국 아침 6~7시)
+    - cron: "10 23 * * 1-5"   # GitHub 예약이 늦거나 빠질 때 다시 (이미 했으면 바로 끝남)
+    - cron: "40 1 * * 2-6"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  us:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: 미국 순위·테마·추천 계산
+        run: python scripts/us_daily.py
+      - name: 커밋
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/us
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git commit -m "us: 미국 순위·테마 $(TZ=America/New_York date '+%Y-%m-%d')"
+          for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done

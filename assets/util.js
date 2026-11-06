@@ -34,7 +34,7 @@ const U = (() => {
     const close = () => { list.hidden = true; on = -1; };
     const render = () => {
       list.innerHTML = items.length
-        ? items.map((s, i) => `<li data-i="${i}" class="${i === on ? "on" : ""}" role="option"><span class="nm">${esc(s.name)}</span><span class="mk">${esc(s.market)}</span><span class="cd">${esc(s.symbol)}</span></li>`).join("")
+        ? items.map((s, i) => `<li data-i="${i}" class="${i === on ? "on" : ""}" role="option"><span class="nm">${esc(s.ko ? s.ko + " · " + s.name : s.name)}</span><span class="mk">${esc(s.market)}</span><span class="cd">${esc(s.symbol)}</span></li>`).join("")
         : `<li class="none">검색 결과가 없어요. 종목명이나 코드를 다시 확인해주세요.</li>`;
       list.hidden = false;
     };
@@ -71,5 +71,15 @@ const U = (() => {
     timeScale: { borderColor: "#2a2a2e", timeVisible: true, secondsVisible: false },
     crosshair: { mode: 0 }, localization: { locale: "ko-KR" },
   });
-  return { $, $$, esc, krw, fmtPx, fmtWon, fmtPct, fmtVol, cls, store, toast, attachSearch, download, LC_OPTS };
+  // 미국 시장 상태 (뉴욕 시각 기준, 공휴일은 반영 안 함)
+  function usMarket(now = new Date()) {
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hourCycle: "h23", weekday: "short", hour: "2-digit", minute: "2-digit" })
+      .formatToParts(now).map((x) => [x.type, x.value]));
+    const m = +p.hour * 60 + +p.minute, wk = !["Sat", "Sun"].includes(p.weekday);
+    const state = !wk ? "주말 휴장" : m >= 570 && m < 960 ? "정규장" : m >= 240 && m < 570 ? "프리마켓" : m >= 960 && m < 1200 ? "애프터마켓" : "장 마감";
+    const ny = `${p.hour}:${p.minute}`;
+    const kst = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false }).format(now);
+    return { state, open: state === "정규장", live: ["정규장", "프리마켓", "애프터마켓"].includes(state), ny, kst };
+  }
+  return { usMarket, $, $$, esc, krw, fmtPx, fmtWon, fmtPct, fmtVol, cls, store, toast, attachSearch, download, LC_OPTS };
 })();

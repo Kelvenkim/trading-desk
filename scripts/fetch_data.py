@@ -100,11 +100,13 @@ def main():
                     write_json(DATA / "intraday" / fname, {"symbol": sym, "name": name, "interval": "5m", "bars": ib})
                     entry["intraday"] = True
                     # 장중이면 5분봉 마지막 값이 더 최신 → 현재가로 사용
-                    next_day = datetime.strptime(last[0], "%Y-%m-%d").replace(tzinfo=KST) + timedelta(days=1)
+                    from zoneinfo import ZoneInfo
+                    tz = KST if is_korean(sym) else ZoneInfo("America/New_York")
+                    next_day = datetime.strptime(last[0], "%Y-%m-%d").replace(tzinfo=tz) + timedelta(days=1)
                     if ib and ib[-1][0] >= next_day.timestamp():
                         entry["prevClose"] = last[4]
                         entry["close"] = ib[-1][4]
-                        entry["date"] = datetime.fromtimestamp(ib[-1][0], KST).strftime("%Y-%m-%d")
+                        entry["date"] = datetime.fromtimestamp(ib[-1][0], tz).strftime("%Y-%m-%d")
                         entry["change"] = round(entry["close"] - entry["prevClose"], 4)
                         entry["changePct"] = round((entry["close"] / entry["prevClose"] - 1) * 100, 2)
             print(f"[완료] {sym} {name}: 일봉 {len(bars)}개{' + 5분봉' if entry['intraday'] else ''}")
