@@ -92,6 +92,32 @@ def rss_items(xml):
     return out
 
 
+def truth_pages(days=35, max_pages=30):
+    """trumpstruth.org 목록 페이지를 거슬러 올라가며 지난 글 모으기 (보관 자료가 짧을 때 한 번)"""
+    out, cur = [], ""
+    stop = (NOW - timedelta(days=days)).strftime("%Y-%m-%d %H:%M")
+    for _ in range(max_pages):
+        x = get("https://www.trumpstruth.org/?sort=desc&per_page=50" + (f"&cursor={cur}" if cur else ""), raw=True)
+        if not x:
+            break
+        for blk in x.split('<div class="status" data-status-url="')[1:]:
+            u = blk.split('"', 1)[0]
+            m = re.search(r'<time datetime="([^"]+)"', blk)
+            c = re.search(r'<div class="status__content"[^>]*>(.*?)</div>', blk, re.S)
+            if not m or not c:
+                continue
+            at = datetime.fromisoformat(m.group(1)).astimezone(KST).strftime("%Y-%m-%d %H:%M")
+            t = html.unescape(re.sub(r"<[^>]+>", " ", c.group(1)))
+            t = re.sub(r"\s+", " ", t).strip()
+            out.append({"t": t[:600], "u": u, "at": at})
+        nx = re.findall(r"cursor=([A-Za-z0-9=_-]+)", x)
+        if not nx or (out and out[-1]["at"] < stop) or nx[-1] == cur:
+            break
+        cur = nx[-1]
+        time.sleep(0.5)
+    return [o for o in out if len(re.sub(r"View (image|video)", "", o["t"]).strip()) > 25]
+
+
 def en_words(text):
     text = re.sub(r"https?://\S+", " ", text.lower())
     return [w for w in re.findall(r"[a-z][a-z']{2,}", text) if w not in EN_STOP and not w.endswith("'s")]
@@ -120,6 +146,38 @@ def ko_words(title, drop, norm=lambda w: w):
         if w in KO_STOP or any(d in w for d in drop) or w.isdigit():
             continue
         out.append(w)
+    return out
+
+
+import market_terms as MT
+_EN = [(lab, [re.compile(x) for x in en], th) for lab, en, ko, th in MT.TERMS]
+_KO = [(lab, ko, th) for lab, en, ko, th in MT.TERMS]
+THEMES_OF = {lab: th for lab, en, ko, th in MT.TERMS}
+
+
+_SKIP = [re.compile(x) for x in MT.EN_SKIP]
+
+
+def en_terms(text):
+    t = re.sub(r"https?://\S+", " ", text.lower())
+    if any(p.search(t) for p in _SKIP):
+        return set()
+    return {lab for lab, pats, th in _EN if any(p.search(t) for p in pats)}
+
+
+def ko_terms(title):
+    t = re.sub(r"\s-\s[^-]+$", "", title)
+    return {lab for lab, ws, th in _KO if any(w in t for w in ws)}
+
+
+def term_list(items, fn, k=15, days=7):
+    """사전 단어별 최근 N일 / 그 전 N일 글 수 + 예시 글 3개"""
+    a, b = count_window(items, fn, days)
+    t1 = (NOW - timedelta(days=days)).strftime("%Y-%m-%d %H:%M")
+    out = []
+    for lab, n in a.most_common(k):
+        ex = [{"t": it["t"][:200], "u": it["u"], "at": it["at"]} for it in items if it["at"] >= t1 and lab in fn(it)][:3]
+        out.append({"w": lab, "n": n, "prev": b.get(lab, 0), "themes": THEMES_OF.get(lab, []), "ex": ex})
     return out
 
 
@@ -158,34 +216,25 @@ def main():
         drop = [p["gnews"].replace(" ", ""), p["gnews"].split()[0], p["name"].split()[-1]]
         norm = ko_normalizer([h["t"] for h in heads])
         a, b = count_window(heads, lambda it: ko_words(it["t"], drop, norm), 7)
-        info["ko_words"] = [{"w": w, "n": n, "prev": b.get(w, 0), "themes": KO_MARKET.get(w, [])} for w, n in a.most_common(18)]
-        info["ko_market"] = [{"w": w, "n": a.get(w, 0), "prev": b.get(w, 0), "themes": th} for w, th in KO_MARKET.items() if a.get(w, 0) >= 2]
-        info["ko_market"].sort(key=lambda x: -x["n"])
+        info["ko_market"] = term_list(heads, lambda it: ko_terms(it["t"]))
         info["heads"] = [{"t": h["t"], "u": h["u"], "at": h["at"]} for h in heads[:8]]
         info["since"] = heads[-1]["at"][:10] if heads else None
         info["n_heads"] = sum(1 for h in heads if h["at"] >= (NOW - timedelta(days=7)).strftime("%Y-%m-%d %H:%M"))
         if p.get("truth"):
             posts = [x for x in rss_items(get("https://www.trumpstruth.org/feed", raw=True))
                      if len(re.sub(r"View (image|video)", "", x["d"]).strip()) > 25 and not x["d"].startswith("http")]
+            have = arch.get("trump_truth", [])
+            if not have or have[-1]["at"] > (NOW - timedelta(days=30)).strftime("%Y-%m-%d"):
+                merge("trump_truth", truth_pages())
             posts = merge("trump_truth", [{"t": re.sub(r"\s*View (image|video)\s*", " ", x["d"]).strip()[:600], "u": x["u"], "at": x["at"]} for x in posts])
             posts = [x for x in posts if len(re.sub(r"View (image|video)", "", x["t"]).strip()) > 25]
             wh = merge("whitehouse", rss_items(get("https://www.whitehouse.gov/news/feed/", raw=True)))
-            a, b = count_window(posts, lambda it: en_words(it["t"]), 7)
-            info["own_words"] = [{"w": w, "ko": EN_MARKET.get(w, (None,))[0], "n": n, "prev": b.get(w, 0), "themes": EN_MARKET.get(w, (None, []))[1]}
-                                 for w, n in a.most_common(20)]
-            mk = Counter()
-            for w, (ko, th) in EN_MARKET.items():
-                if a.get(w):
-                    mk[ko] += a[w]
-            prevk = Counter()
-            for w, (ko, th) in EN_MARKET.items():
-                if b.get(w):
-                    prevk[ko] += b[w]
-            themes_of = {}
-            for w, (ko, th) in EN_MARKET.items():
-                themes_of.setdefault(ko, set()).update(th)
-            info["own_market"] = [{"w": k, "n": n, "prev": prevk.get(k, 0), "themes": sorted(themes_of.get(k, []))} for k, n in mk.most_common(15)]
+            info["own_market"] = term_list(posts, lambda it: en_terms(it["t"]))
+            info["own_market30"] = term_list(posts, lambda it: en_terms(it["t"]), 18, 30)
+            info["n_posts30"] = sum(1 for x in posts if x["at"] >= (NOW - timedelta(days=30)).strftime("%Y-%m-%d %H:%M"))
+            info["wh_market"] = term_list(wh, lambda it: en_terms(it["t"] + " " + it.get("d", "")), 8)
             info["n_posts"] = sum(1 for x in posts if x["at"] >= (NOW - timedelta(days=7)).strftime("%Y-%m-%d %H:%M"))
+            info["n_skip"] = sum(1 for x in posts if x["at"] >= (NOW - timedelta(days=7)).strftime("%Y-%m-%d %H:%M") and any(p.search(x["t"].lower()) for p in _SKIP))
             info["posts"] = posts[:6]
             info["since_own"] = posts[-1]["at"][:10] if posts else None
             info["whitehouse"] = [{"t": x["t"], "u": x["u"], "at": x["at"]} for x in wh[:6]]

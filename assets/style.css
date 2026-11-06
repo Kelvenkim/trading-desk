@@ -610,3 +610,8 @@ body.no-scroll { overflow: hidden; }
 .w-th { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 3px; } .w-th:empty { display: none; } .w-th .rk-theme { margin: 0; background: none; }
 .new { font-size: 10.5px; color: #000; background: #fff; border-radius: 4px; padding: 0 4px; }
 @media (max-width: 960px) { .nw-grid { grid-template-columns: minmax(0, 1fr); } }
+.w-item summary { list-style: none; cursor: pointer; }
+.w-item summary::-webkit-details-marker { display: none; }
+.w-item[open] summary { background: var(--raised); }
+.w-ex { margin: 4px 0 8px 8px; font-size: 12px; }
+.nw-sub { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
