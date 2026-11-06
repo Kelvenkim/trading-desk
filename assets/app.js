@@ -93,6 +93,7 @@
     $$("#iv-seg button").forEach((b) => b.classList.toggle("on", b.dataset.iv === cur.iv));
     $$("#watchlist li").forEach((li) => li.classList.toggle("on", li.dataset.sym === sym));
     updateFav();
+    if (changed && typeof CompanyUI !== "undefined") CompanyUI.show(sym);
     if (changed) { Draw.setSymbol(sym); $("#q-price").textContent = "—"; $("#q-change").textContent = ""; $("#q-range").innerHTML = ""; }
     chartMsg(`<div>시세를 불러오는 중…</div>`);
 

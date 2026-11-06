@@ -17,7 +17,7 @@ concurrency:
 jobs:
   us:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,6 +27,9 @@ jobs:
       - run: pip install -r requirements.txt
       - name: 미국 순위·테마·추천 계산
         run: python scripts/us_daily.py
+      - name: 기업 정보 (관심·추천 종목 매일 + 나머지 하루 90개씩 돌아가며)
+        run: timeout 35m python scripts/us_profiles.py
+        continue-on-error: true
       - name: 커밋
         run: |
           git config user.name "github-actions[bot]"
