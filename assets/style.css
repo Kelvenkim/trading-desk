@@ -75,7 +75,7 @@ svg { width: 18px; height: 18px; fill: none; }
 .suggest .none:hover { background: none; }
 
 .tabs { justify-self: end; display: flex; gap: 2px; background: var(--panel); padding: 3px; border-radius: 999px; border: 1px solid var(--line); }
-.tab { border: 0; background: none; padding: 6px 16px; border-radius: 999px; color: var(--muted); font-weight: 600; }
+.tab { border: 0; background: none; padding: 6px 14px; white-space: nowrap; border-radius: 999px; color: var(--muted); font-weight: 600; }
 .tab:hover { color: var(--text); }
 .tab.active { background: var(--raised); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
 
@@ -731,3 +731,37 @@ body.no-scroll { overflow: hidden; }
 .co-info .faint { color: var(--faint); }
 .co-info .tbl-wrap { overflow-x: auto; }
 .co-tbl td:first-child { white-space: nowrap; }
+
+/* ---------- 터틀 ---------- */
+#tab-turtle > .box, #tab-turtle > .grid-2, #tab-turtle > .tt-top { margin-bottom: 14px; }
+.tt-top { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 14px; }
+.tt-rules h3, .tt-acct h3, .tt-head h3 { margin: 0 0 10px; font-size: 15px; }
+.tt-rules ol { margin: 0 0 10px; padding-left: 20px; display: grid; gap: 6px; font-size: 13.5px; line-height: 1.6; }
+.tt-acct .field { margin-bottom: 10px; }
+.tt-acct input, .tt-head input { background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px 10px; color: var(--text); width: 100%; }
+.tt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+.tt-head h3 { margin: 0; }
+.tt-head input { width: 160px; padding: 6px 10px; }
+.tt-mkt { border-radius: var(--r-sm); padding: 10px 12px; background: var(--raised); border-left: 3px solid var(--line); display: grid; gap: 2px; font-size: 12.5px; }
+.tt-mkt.on { border-left-color: #fff; } .tt-mkt.off { border-left-color: var(--down); }
+.tt-mkt span { color: var(--muted); }
+.tt-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tt-tbl th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tt-tbl td { padding: 8px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+.tt-tbl .num { text-align: right; white-space: nowrap; }
+.tt-tbl .s { display: block; font-size: 11.5px; color: var(--muted); }
+.tt-tbl .s.up { color: var(--up); } .tt-tbl .s.down { color: var(--down); }
+.tt-tbl tr.bench td { color: var(--muted); }
+.tt-sym { background: none; border: 0; padding: 0; text-align: left; display: flex; flex-direction: column; cursor: pointer; }
+.tt-sym:hover b { text-decoration: underline; }
+.tt-sym .muted { font-size: 11.5px; }
+.tt-tag { display: inline-block; font-size: 11.5px; border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; white-space: nowrap; }
+.tt-tag.new { background: #fff; color: #000; border-color: #fff; font-weight: 700; }
+.tt-curve { height: 260px; margin-top: 14px; }
+.tt-leg { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; margin: 8px 0 4px; }
+.tt-leg i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: 3px; }
+.tt-notes { padding-left: 18px; display: grid; gap: 4px; margin: 8px 0 0; }
+@media (max-width: 960px) { .tt-top { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .tt-tbl { font-size: 12.5px; } .tt-tbl td, .tt-tbl th { padding: 7px 5px; } }
+
+@media (max-width: 1280px) and (min-width: 961px) { .tab { padding: 6px 10px; font-size: 13px; } .top .search { max-width: 340px; } }

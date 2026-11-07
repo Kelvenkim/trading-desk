@@ -304,6 +304,7 @@
     if (name === "backtest") { try { BTUI.onShow(cur.sym); } catch (_) {} }
     if (name === "rank") { try { RankUI.onShow(); } catch (e) { console.error(e); } }
     if (name === "theme") { try { ThemeUI.onShow(); } catch (e) { console.error(e); } }
+    if (name === "turtle") { try { TurtleUI.onShow(); } catch (e) { console.error(e); } }
     if (name === "news") { try { NewsUI.onShow(); } catch (e) { console.error(e); } }
     if (name === "home") { try { HomeUI.onShow(); } catch (e) { console.error(e); } }
     if (name === "chart" && ChartView.chart) { try { ChartView.chart.timeScale(); } catch (_) {} }

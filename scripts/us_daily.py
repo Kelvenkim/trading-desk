@@ -437,6 +437,11 @@ def main(force=False):
             break
     bset = set(basket); tp_pct = TP.rank(pct=True) * 100; mom_pct = MOM.rank(pct=True) * 100
     tnames = {n["key"]: n["name"] for n in NARR}
+    try:                                              # 터틀 신호 (같은 시세로)
+        import us_turtle
+        us_turtle.build(P, uni, names, ko, mk["regime"], prim, tnames)
+    except Exception as e:
+        print("터틀 신호 실패:", e)
     rows = []
     for c in order:
         rows.append({"code": c, "name": names.get(c), "ko": ko.get(c), "sector": sector.get(c), "close": float(C.loc[d, c]),

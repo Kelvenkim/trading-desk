@@ -6,7 +6,7 @@
   <title>Trading Desk</title>
   <meta name="theme-color" content="#000000" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="assets/style.css?v=5952eca5" />
+  <link rel="stylesheet" href="assets/style.css?v=f495eaaa" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -47,6 +47,7 @@
       <button class="tab" data-tab="chart">차트</button>
       <button class="tab" data-tab="rank">오늘의 순위</button>
       <button class="tab" data-tab="theme">장기 테마</button>
+      <button class="tab" data-tab="turtle">터틀</button>
       <button class="tab" data-tab="news">뉴스</button>
       <button class="tab" data-tab="portfolio">포트폴리오</button>
       <button class="tab" data-tab="backtest">백테스트</button>
@@ -129,7 +130,8 @@
               <button data-ind="rsi">RSI</button>
               <button data-ind="macd">MACD</button>
               <button data-ind="spo" title="Smooth Price Oscillator (SuperSmoother 10/40, ±1 기준선, 밴드)">SPO</button>
-              <button data-ind="plan" title="지지·저항·추세선, 매수 구간·손절·목표 (한국 주식 일봉)">매매 계획</button>
+              <button data-ind="plan" title="지지·저항·추세선, 매수 구간·손절·목표 (일봉)">매매 계획</button>
+              <button data-ind="turtle" title="터틀: 20일·55일 최고가(돌파 매수선), 10일 최저가(청산선)">터틀</button>
             </div>
             <div class="bar-right">
               <button class="icon-btn sm" id="fit-btn" title="전체 화면 (Esc로 닫기)"><svg><use href="#i-fit"/></svg></button>
@@ -201,6 +203,55 @@
             <div class="table-wrap"><table class="tbl" id="th-bf"></table></div>
             <p class="hint">매달 '주가 추세 점수' 상위 3개 테마를 골랐을 때 그 뒤 성적이에요. 지금 테마 구성으로 과거를 계산해서 실제보다 좋게 나왔을 수 있어요. 테마 점수가 높다고 오른다는 보장은 없어요.</p></div>
         </div>
+      </div>
+    </section>
+
+    <!-- ================= 터틀 트레이딩 ================= -->
+    <section id="tab-turtle" class="panel">
+      <div class="rk-head"><h2>터틀 트레이딩 <span class="muted small" id="tt-date"></span></h2></div>
+      <div class="box trust" id="tt-trust"></div>
+      <div class="tt-top">
+        <div class="box tt-rules">
+          <h3>규칙 한눈에</h3>
+          <ol>
+            <li><b>N</b> = 하루 평균 변동폭(20일 ATR). 모든 계산의 기준이에요.</li>
+            <li><b>매수</b>: 20일 최고가를 넘는 순간 (시스템1). 직전 20일 신호가 이익으로 끝났으면 건너뛰고 55일 최고가 돌파 때 사요 (시스템2).</li>
+            <li><b>수량</b>: 1유닛 = 계좌의 1% ÷ N 주. N만큼 움직이면 계좌가 1% 움직여요.</li>
+            <li><b>추가</b>: 첫 매수가에서 ½N 오를 때마다 1유닛씩, 최대 4유닛.</li>
+            <li><b>손절</b>: 마지막 매수가 − 2N. 추가할 때마다 전체 손절선도 올려요.</li>
+            <li><b>청산</b>: 10일 최저가를 깨면 (시스템2는 20일 최저가).</li>
+          </ol>
+          <p class="muted small">돌파가 실패하면 작게 잃고(승률 20% 안팎), 큰 추세 몇 번에서 크게 버는 방식이에요. 연속 손절이 10번 넘게 나오는 게 정상이에요.</p>
+        </div>
+        <div class="box tt-acct">
+          <h3>내 계좌</h3>
+          <label class="field"><span>계좌 크기 (달러)</span><input id="tt-acct" type="number" min="100" step="100" value="10000"></label>
+          <label class="field"><span>1유닛 위험 (%)</span><input id="tt-risk" type="number" min="0.1" max="2" step="0.1" value="1"></label>
+          <p class="muted small">한 유닛이 계좌의 8%를 넘지 않게 줄여요 (주식은 선물보다 변동이 작아서 원래 공식대로면 한 종목에 계좌 절반이 들어가요). 전체는 12유닛까지.</p>
+          <div id="tt-mkt"></div>
+        </div>
+      </div>
+      <div class="box">
+        <div class="tt-head"><h3>오늘 진입 · 내일 돌파 대기</h3><span class="muted small">돌파가에 <b>매수 스톱 주문</b>을 걸어두는 방식 · 1N 이내만</span></div>
+        <div class="tbl-wrap"><table class="tt-tbl"><thead><tr><th>종목</th><th>상태</th><th class="num">현재가</th><th class="num">매수 주문가</th><th class="num">손절가 (2N)</th><th class="num">N</th><th class="num">1유닛</th></tr></thead><tbody id="tt-entry"></tbody></table></div>
+      </div>
+      <div class="grid-2">
+        <div class="box">
+          <div class="tt-head"><h3>규칙상 보유 중</h3><input id="tt-q" type="search" placeholder="종목 찾기"></div>
+          <p class="muted small">각 종목에 규칙을 따로 적용했을 때 지금 들고 있을 종목이에요 (계좌 한도는 안 따짐). 손절선은 2N과 청산선 중 높은 쪽.</p>
+          <div class="tbl-wrap"><table class="tt-tbl"><thead><tr><th>종목</th><th class="num">유닛</th><th class="num">손익</th><th class="num">R</th><th class="num">손절선</th><th class="num">다음 추가</th></tr></thead><tbody id="tt-hold"></tbody></table></div>
+          <button class="link-btn" id="tt-more">더 보기</button>
+        </div>
+        <div class="box">
+          <div class="tt-head"><h3>오늘 청산</h3></div>
+          <div class="tbl-wrap"><table class="tt-tbl"><thead><tr><th>종목</th><th>이유</th><th class="num">손익</th></tr></thead><tbody id="tt-exit"></tbody></table></div>
+        </div>
+      </div>
+      <div class="box">
+        <div class="tt-head"><h3>과거 검증</h3><span class="muted small" id="tt-bt-sub"></span></div>
+        <div id="tt-bt"></div>
+        <div id="tt-curve" class="tt-curve"></div>
+        <div id="tt-bt-note"></div>
       </div>
     </section>
 
@@ -590,7 +641,7 @@
   <script src="assets/util.js?v=b1f099b3"></script>
   <script src="assets/backtest.js?v=13e5f01b"></script>
   <script src="assets/data.js?v=fcd64e27"></script>
-  <script src="assets/chart.js?v=745927b1"></script>
+  <script src="assets/chart.js?v=a751e3d8"></script>
   <script src="assets/draw.js?v=f61bef61"></script>
   <script src="assets/bt.js?v=0254c648"></script>
   <script src="assets/levels.js?v=dfcb1e20"></script>
@@ -599,6 +650,7 @@
   <script src="assets/news.js?v=639cc198"></script>
   <script src="assets/home.js?v=b6ddf735"></script>
   <script src="assets/company.js?v=cceb89ae"></script>
-  <script src="assets/app.js?v=27717bf0"></script>
+  <script src="assets/turtle.js?v=92ba8b60"></script>
+  <script src="assets/app.js?v=8529720d"></script>
 </body>
 </html>

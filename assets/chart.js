@@ -12,7 +12,7 @@ const ChartView = (() => {
   };
   const MA = [[5, "#8a8a92"], [20, "#ffffff"], [60, "#7aa2ff"], [120, "#c792ea"]];
   const IND_KEY = "tradingdesk.indicators";
-  const DEFAULT_IND = { ma: true, bb: false, vol: true, rsi: false, macd: false, spo: false, vwap: false, plan: true };
+  const DEFAULT_IND = { ma: true, bb: false, vol: true, rsi: false, macd: false, spo: false, vwap: false, plan: true, turtle: false };
 
   let chart, candle, vol, legendEl, markersApi;
   let bars = [], idxByTime = new Map(), sym = "", ivId = "1d", fmt = (v) => String(v);
@@ -152,6 +152,12 @@ const ChartView = (() => {
         const arr = BT.vwapCalc(bars, k, nn).vwap;
         s2.setData(line(arr)); s2._label = lb; s2._calc = arr; main.push(s2);
       });
+    }
+    if (ind.turtle && bars.length >= 25) {
+      // 터틀: 20일 최고(시스템1 매수 돌파선), 55일 최고(시스템2), 10일 최저(시스템1 청산선) — 오늘을 뺀 직전 기간
+      const prevExt = (n, hi) => bars.map((_, i) => { if (i < n) return NaN; let v = hi ? -Infinity : Infinity; for (let k = i - n; k < i; k++) v = hi ? Math.max(v, bars[k].h) : Math.min(v, bars[k].l); return v; });
+      [[prevExt(20, true), "#ffffff", 0, "돌파 20일"], [prevExt(55, true), "rgba(255,255,255,.5)", 2, "돌파 55일"], [prevExt(10, false), "#3d8bfd", 0, "청산 10일"]]
+        .forEach(([arr, c, st, lb]) => { const s = chart.addSeries(LC.LineSeries, { ...lineOpts(c), lineType: 1, lineStyle: st }); s.setData(line(arr)); s._label = lb; s._calc = arr; main.push(s); });
     }
     let pane = 1;
     if (ind.rsi) {
