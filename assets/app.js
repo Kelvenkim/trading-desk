@@ -336,7 +336,7 @@
     const first = (okLast && last.sym) || (Data.meta.symbols[0] && Data.meta.symbols[0].symbol);
     if (first) openSymbol(first, (okLast && last.iv) || "1d");
     const h = location.hash.slice(1);
-    showTab(["chart", "portfolio", "backtest", "rank", "theme", "news"].includes(h) ? h : "home");
+    showTab(["chart", "portfolio", "backtest", "rank", "theme", "turtle", "news"].includes(h) ? h : "home");
   }
   init();
 })();
