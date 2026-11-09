@@ -527,6 +527,11 @@ def main(force=False):
         us_paper.run(P, day)
     except Exception as e:
         print("모의 투자 실패:", e)
+    try:                                              # 매일 보고서
+        import daily_report
+        daily_report.main()
+    except Exception as e:
+        print("보고서 실패:", e)
     print(f"완료 {day} · {time.time() - t0:.0f}s")
 
 
