@@ -12,6 +12,8 @@ const RankUI = (() => {
     try { [L, R] = await Promise.all([get("data/us/rank.json"), get("data/us/rank_report.json")]); }
     catch (_) { $("#rk-body").innerHTML = `<tr class="empty-row"><td colspan="5">아직 순위 자료가 없어요.</td></tr>`; return; }
     loaded = true;
+    const LS = { td: "basket", t: "t", m: "m", o: "o" }[L.leader || "td"] || "t";     // 채점으로 승격된 방식을 기본 보기로
+    if (!filt.touched) { filt.sort = LS; const sel = $("#rk-sort"); if (sel) sel.value = LS; }
     $("#rk-theme-f").innerHTML = `<option value="">모든 테마</option>` + Object.entries(L.themes).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
     renderTop(); renderTable(); renderTrack();
   }
@@ -147,7 +149,8 @@ const RankUI = (() => {
         <tr><td>12-1 모멘텀</td><td class="r">${st("m", "5")}</td><td class="r">${st("m", "20")}</td><td class="r">${bf("12-1 모멘텀")}</td></tr>
         <tr><td>우리 점수</td><td class="r">${st("o", "5")}</td><td class="r">${st("o", "20")}</td><td class="r">${bf("우리 점수")}</td></tr>
       </tbody></table>
-      <p class="hint">20일 채점이 40번 넘게 쌓이고 다른 방식이 확실성(t) 2 이상으로 앞서면 기본을 바꿔요.</p>`;
+      <p class="hint">매일 순위를 기록하고 1·5·20일 뒤 실제 수익으로 채점해요. 20일 채점이 40번 넘게 쌓이고 다른 방식이 같은 날 비교로 확실성(t) 2 이상 앞서면 자동으로 기본을 바꿔요.
+        <br><b>지금:</b> ${esc(L.leader_why || "채점 대기 중")}</p>`;
   }
 
   function init() {
@@ -162,7 +165,7 @@ const RankUI = (() => {
       renderTable(); if (open) tr.scrollIntoView({ block: "nearest" });
     });
     $("#rk-q").addEventListener("input", (e) => { filt.q = e.target.value; renderTable(); });
-    $("#rk-sort").addEventListener("change", (e) => { filt.sort = e.target.value; renderTable(); });
+    $("#rk-sort").addEventListener("change", (e) => { filt.sort = e.target.value; filt.touched = true; renderTable(); });
     $("#rk-theme-f").addEventListener("change", (e) => { filt.theme = e.target.value; renderTable(); });
     $("#rk-more").addEventListener("click", () => { filt.n += 100; renderTable(); });
   }

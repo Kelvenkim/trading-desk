@@ -121,6 +121,7 @@ def top20(S, codes, k):
 
 
 def grade(C, Op, live):
+    live[:] = [r for r in live if r.get("all") is not None and r.get("var")]     # 시세가 비어 잘못 채점된 기록은 다시
     done = {(r["date"], r["h"]) for r in live}
     pos = {d.strftime("%Y-%m-%d"): i for i, d in enumerate(C.index)}
     for p in sorted(SNAP.glob("*.json")):
@@ -132,7 +133,9 @@ def grade(C, Op, live):
             if (day, h) in done or i + h >= len(C.index):
                 continue
             S = S or json.loads(p.read_text())
-            codes = [c for c in S["stocks"] if c in C.columns and pd.notna(Op.iloc[i + 1].get(c))]
+            codes = [c for c in S["stocks"] if c in C.columns and pd.notna(Op.iloc[i + 1].get(c)) and pd.notna(C.iloc[i + h].get(c))]
+            if len(codes) < 100:
+                continue
             fr = C.iloc[i + h][codes] / Op.iloc[i + 1][codes] - 1
             rec = {"date": day, "h": h, "all": float(fr.mean()), "var": {}}
             for k in VARIANTS:
@@ -172,6 +175,24 @@ def summarize(live):
                 a = np.array(ex); n_eff = max(1.0, len(a) / h)
                 rep["variants"].setdefault(k, {"name": nm})[str(h)] = {"n": len(a), "ex": float(a.mean()), "beat": float((a > 0).mean()),
                                                                      "t": float(a.mean() / a.std() * np.sqrt(n_eff)) if len(a) > 2 and a.std() > 0 else None}
+    # 승격 규칙: 지금 기본(td=추천 바구니)보다 20일 성적이 같은 날끼리 비교해 꾸준히 좋으면(20일 채점 40번 이상, t≥2) 기본을 바꿈
+    R20 = [r for r in live if r["h"] == 20 and "td" in r["var"]]
+    leader, why = "td", f"20일 채점 {len(R20)}번 — 40번 쌓이기 전엔 기본(추천 바구니) 유지"
+    if len(R20) >= 40:
+        best = None
+        for k in VARIANTS:
+            if k == "td":
+                continue
+            d = np.array([r["var"][k]["top"] - r["var"]["td"]["top"] for r in R20 if k in r["var"]])
+            if len(d) >= 40 and d.std() > 0:
+                t = d.mean() / d.std() * np.sqrt(len(d) / 20)
+                if t >= 2 and (best is None or t > best[1]):
+                    best = (k, t, d.mean())
+        if best:
+            leader, why = best[0], f"{VARIANTS[best[0]]}가 추천 바구니보다 20일 평균 {best[2]*100:+.2f}%p (t {best[1]:.1f}, {len(R20)}번) → 기본으로 승격"
+        else:
+            why = f"20일 채점 {len(R20)}번 — 추천 바구니를 확실히 이긴 방식 없음 (t≥2 기준)"
+    rep["leader"], rep["leader_why"] = leader, why
     vb = OUT / "variants_backfill.json"
     rep["variants_backfill"] = json.loads(vb.read_text()) if vb.exists() else None
     return rep
@@ -397,6 +418,15 @@ def main(force=False):
     P = UP.download(tick, period="2y")
     print(f"시세 {len(P)}종목 {time.time() - t0:.0f}s", flush=True)
     sp = P["^GSPC"]; cal = [r[0] for r in sp]
+    # 장 마감 직후엔 종목 시세가 아직 안 들어온 경우가 있음 → 90% 이상 들어온 날까지만 씀 (안 그러면 전날 가격으로 순위·채점이 됨)
+    while cal:
+        have = sum(1 for t in uni_all if P.get(t) and P[t][-1][0] >= cal[-1])
+        if have >= 0.9 * len(uni_all):
+            break
+        print(f"{cal[-1]} 시세가 {have}/{len(uni_all)}종목만 들어옴 → 그 전날까지만 사용", flush=True)
+        drop = cal.pop()
+        P = {t: [r for r in v if r[0] < drop] for t, v in P.items()}
+    sp = P["^GSPC"]
     last = cal[-1]
     if (SNAP / f"{last}.json").exists() and not force:
         print("이미 계산한 거래일:", last); return
@@ -457,6 +487,7 @@ def main(force=False):
     rep = summarize(live); rep["track"] = track(C, Op)
     dump(OUT / "rank_report.json", rep)
     dump(OUT / "rank.json", {"date": day, "made": NOW.strftime("%Y-%m-%d %H:%M"), "regime": mk["regime"], "themes": tnames, "rows": rows,
+                              "leader": rep.get("leader", "td"), "leader_why": rep.get("leader_why", ""),
                               "ours_def": {k: {"name": nm, "max": mx, "desc": ds} for k, (nm, mx, ds) in L.OURS.items() if k in ("trend", "flow", "safe")}})
     days = cal[-130:]
     allb = {t: P[t] for t in set(uni) | set(extras) if t in P}
