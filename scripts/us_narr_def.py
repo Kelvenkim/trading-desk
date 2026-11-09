@@ -54,7 +54,7 @@ NARR = [
      "story": {"기술": "배터리·태양광 효율", "트렌드": "전기차 가격 경쟁", "정책": "IRA 세액공제 축소, 태양광 관세"},
      "pm": [("Tesla deliveries", ["Tesla"]), ("EV tax credit", ["EV", "electric vehicle"])], "ko": ["전기차", "테슬라", "태양광", "배터리"]},
 ]
-EXTRA_KO = {"TSM": "TSMC", "ASML": "ASML", "CCJ": "카메코", "OKLO": "오클로", "SMR": "뉴스케일", "LEU": "센트러스", "IONQ": "아이온큐",
+EXTRA_KO = {"SPCX": "스페이스X", "RDW": "레드와이어", "TSM": "TSMC", "ASML": "ASML", "CCJ": "카메코", "OKLO": "오클로", "SMR": "뉴스케일", "LEU": "센트러스", "IONQ": "아이온큐",
             "RGTI": "리게티", "QBTS": "디웨이브", "QUBT": "퀀텀컴퓨팅", "RKLB": "로켓랩", "ASTS": "AST스페이스모바일", "KTOS": "크라토스",
             "VKTX": "바이킹", "NVO": "노보노디스크", "SOFI": "소파이", "AFRM": "어펌", "MP": "MP머티리얼즈", "USAR": "USA희토류",
             "CRWV": "코어위브", "NBIS": "네비우스", "TLN": "탈렌", "NNE": "나노뉴클리어", "SYM": "심보틱", "QS": "퀀텀스케이프",

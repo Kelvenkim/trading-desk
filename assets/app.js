@@ -214,85 +214,9 @@
     });
   }
 
-  // ================= 포트폴리오 =================
-  const loadPF = () => store.get(PF_KEY, { holdings: [], cash: 0 });
-  const savePF = (pf) => store.set(PF_KEY, pf);
-  const pfQuote = (sym) => Data.meta.symbols.find((x) => x.symbol === sym) || quoteCache[sym];
-
-  function renderPF() {
-    const pf = loadPF();
-    const rows = pf.holdings.map((h) => {
-      const q = pfQuote(h.symbol);
-      const px = q && isFinite(q.close) ? q.close : null;
-      const cost = h.qty * h.avg, val = px != null ? h.qty * px : null;
-      return { ...h, name: Data.info(h.symbol).name, px, cost, val, pnl: val != null ? val - cost : null,
-        ret: val != null && cost ? (val / cost - 1) * 100 : null, dayPct: q ? q.changePct : null, dayChg: q && isFinite(q.change) ? q.change * h.qty : 0 };
-    });
-    const invested = rows.reduce((s, r) => s + r.cost, 0);
-    const value = rows.reduce((s, r) => s + (r.val ?? r.cost), 0);
-    const total = value + (+pf.cash || 0), pnl = value - invested;
-    const day = rows.reduce((s, r) => s + (r.dayChg || 0), 0);
-    $("#pf-summary").innerHTML = [
-      ["총 자산", fmtWon(total), "", "hero"],
-      ["주식 평가액", fmtWon(value), "", ""],
-      ["평가 손익", `${pnl > 0 ? "+" : ""}${fmtWon(pnl)}`, cls(pnl), ""],
-      ["수익률", fmtPct(invested ? (pnl / invested) * 100 : 0), cls(pnl), ""],
-      ["오늘 변동", `${day > 0 ? "+" : ""}${fmtWon(day)}`, cls(day), ""],
-      ["예수금", fmtWon(+pf.cash || 0), "", ""],
-    ].map(([k, v, c, x]) => `<div class="stat ${x}"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join("");
-
-    const tb = $("#pf-table tbody");
-    if (!rows.length) tb.innerHTML = `<tr class="empty-row"><td colspan="9">아직 보유 종목이 없어요. 오른쪽에서 종목을 검색해 추가하세요.</td></tr>`;
-    else {
-      rows.sort((a, b) => (b.val ?? b.cost) - (a.val ?? a.cost));
-      tb.innerHTML = rows.map((r) => {
-        const w = total ? ((r.val ?? r.cost) / total) * 100 : 0;
-        return `<tr data-sym="${esc(r.symbol)}">
-          <td><b>${esc(r.name)}</b><div class="sub">${esc(r.symbol)}${r.px == null ? " · 현재가 없음" : ""}</div></td>
-          <td class="r">${r.qty.toLocaleString("ko-KR")}</td><td class="r">${fmtPx(r.avg, r.symbol)}</td>
-          <td class="r">${fmtPx(r.px, r.symbol)}<div class="sub ${cls(r.dayPct)}">${fmtPct(r.dayPct)}</div></td>
-          <td class="r">${fmtWon(r.val)}</td>
-          <td class="r ${cls(r.pnl)}">${r.pnl == null ? "—" : (r.pnl > 0 ? "+" : "") + fmtWon(r.pnl)}</td>
-          <td class="r ${cls(r.ret)}">${fmtPct(r.ret)}</td>
-          <td class="r">${w.toFixed(1)}%<span class="wbar"><b style="width:${w}%"></b></span></td>
-          <td><button class="del" data-del="${esc(r.symbol)}" title="삭제">✕</button></td></tr>`;
-      }).join("");
-      $$("[data-del]", tb).forEach((b) => b.addEventListener("click", () => { const p = loadPF(); p.holdings = p.holdings.filter((h) => h.symbol !== b.dataset.del); savePF(p); renderPF(); }));
-      $$("tr[data-sym]", tb).forEach((tr) => tr.addEventListener("dblclick", () => {
-        const h = loadPF().holdings.find((x) => x.symbol === tr.dataset.sym); if (!h) return;
-        pfSearch.set(h.symbol); $("#pf-qty").value = h.qty; $("#pf-avg").value = h.avg;
-      }));
-    }
-    $("#pf-cash").value = pf.cash || "";
-    // 관심종목 밖 종목은 중계 서버로 현재가 받아서 다시 그리기
-    const missing = pf.holdings.filter((h) => !pfQuote(h.symbol)).map((h) => h.symbol);
-    if (missing.length && Data.getProxy()) Promise.allSettled(missing.map(async (s) => (quoteCache[s] = await Data.quote(s)))).then((r) => { if (r.some((x) => x.status === "fulfilled")) renderPF(); });
-  }
-
-  let pfSearch;
-  function initPF() {
-    pfSearch = attachSearch($("#pf-symbol").closest(".search"), () => $("#pf-qty").focus());
-    $("#pf-form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const sym = $("#pf-symbol").dataset.sym;
-      if (!sym) { toast("종목을 검색해서 목록에서 골라주세요.", true); return; }
-      const qty = +$("#pf-qty").value, avg = +$("#pf-avg").value;
-      const pf = loadPF(), i = pf.holdings.findIndex((h) => h.symbol === sym);
-      if (qty === 0) { if (i >= 0) pf.holdings.splice(i, 1); }
-      else if (i >= 0) pf.holdings[i] = { symbol: sym, qty, avg };
-      else pf.holdings.push({ symbol: sym, qty, avg });
-      savePF(pf); e.target.reset(); delete $("#pf-symbol").dataset.sym; renderPF(); toast("저장했어요.");
-    });
-    $("#cash-form").addEventListener("submit", (e) => { e.preventDefault(); const pf = loadPF(); pf.cash = +$("#pf-cash").value || 0; savePF(pf); renderPF(); toast("예수금을 저장했어요."); });
-    $("#pf-export").addEventListener("click", () => download("portfolio.json", JSON.stringify(loadPF(), null, 2), "application/json"));
-    $("#pf-import").addEventListener("change", async (e) => {
-      const f = e.target.files[0]; if (!f) return;
-      try { const j = JSON.parse(await f.text()); if (!Array.isArray(j.holdings)) throw 0; savePF(j); renderPF(); toast("가져왔어요."); }
-      catch (_) { toast("포트폴리오 파일 형식이 맞지 않아요. 내보내기로 만든 파일을 골라주세요.", true); }
-      e.target.value = "";
-    });
-    renderPF();
-  }
+  // ================= 내 투자 (assets/invest.js) =================
+  function renderPF() { try { InvestUI.onShow(); } catch (e) { console.error(e); } }
+  function initPF() {}
 
 
   // ================= 탭 =================

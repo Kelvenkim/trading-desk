@@ -6,7 +6,7 @@
   <title>Trading Desk</title>
   <meta name="theme-color" content="#000000" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="assets/style.css?v=f495eaaa" />
+  <link rel="stylesheet" href="assets/style.css?v=b60404d7" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -49,7 +49,7 @@
       <button class="tab" data-tab="theme">장기 테마</button>
       <button class="tab" data-tab="turtle">터틀</button>
       <button class="tab" data-tab="news">뉴스</button>
-      <button class="tab" data-tab="portfolio">포트폴리오</button>
+      <button class="tab" data-tab="portfolio">내 투자</button>
       <button class="tab" data-tab="backtest">백테스트</button>
     </nav>
 
@@ -275,40 +275,49 @@
 
     <!-- ================= 포트폴리오 ================= -->
     <section id="tab-portfolio" class="panel">
-      <div class="summary" id="pf-summary"></div>
-      <div class="grid-2">
+      <div class="rk-head"><h2>내 투자</h2></div>
+      <div class="hd-layout">
         <div class="box">
-          <div class="box-head"><h2>보유 종목</h2><span class="muted small">행을 두 번 누르면 수정할 수 있어요</span></div>
-          <div class="table-wrap">
-            <table class="tbl" id="pf-table">
-              <thead><tr>
-                <th>종목</th><th class="r">수량</th><th class="r">평단</th><th class="r">현재가</th>
-                <th class="r">평가액</th><th class="r">손익</th><th class="r">수익률</th><th class="r">비중</th><th></th>
-              </tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-          <p class="hint">보유 내역은 이 브라우저에만 저장되고 GitHub에는 올라가지 않아요. 다른 기기로 옮길 땐 내보내기·가져오기를 쓰세요.</p>
+          <div class="tt-head"><h3>보유 종목</h3><span class="muted small">이 브라우저에만 저장돼요 (GitHub에 안 올라감)</span></div>
+          <div class="hd-summary" id="hd-summary"></div>
+          <div id="hd-warn"></div>
+          <div id="hd-list"></div>
         </div>
-        <div class="box">
-          <div class="box-head"><h2>종목 추가·수정</h2></div>
-          <form id="pf-form" class="form">
-            <label>종목 <div class="search mini"><input id="pf-symbol" autocomplete="off" placeholder="종목명 또는 코드" required /><ul class="suggest" hidden></ul></div></label>
+        <div class="box hd-form-box">
+          <h3>종목 추가·수정</h3>
+          <form id="hd-form" class="form">
+            <label>종목 <div class="search mini"><input id="hd-sym" autocomplete="off" placeholder="예: IONQ, 스페이스X" required /><ul class="suggest" hidden></ul></div></label>
             <div class="two">
-              <label>수량 <input id="pf-qty" type="number" step="any" min="0" required /></label>
-              <label>평균 단가 <input id="pf-avg" type="number" step="any" min="0" required /></label>
+              <label>수량 <input id="hd-qty" type="number" step="any" min="0" required /></label>
+              <label>평균 단가 ($) <input id="hd-avg" type="number" step="any" min="0" required /></label>
             </div>
             <button class="btn primary" type="submit">저장</button>
+            <p class="muted small">수량을 0으로 저장하면 지워져요. 평균 단가는 토스 앱 종목 화면의 '1주 평균 금액(달러)'을 넣으세요.</p>
           </form>
           <hr />
-          <form id="cash-form" class="form">
-            <label>예수금 (원) <input id="pf-cash" type="number" step="any" min="0" /></label>
-            <button class="btn" type="submit">예수금 저장</button>
-          </form>
-          <hr />
+          <label class="field"><span>현금 ($)</span><input id="hd-cash" type="number" step="any" min="0" /></label>
           <div class="row-btns">
-            <button class="btn" id="pf-export">내보내기</button>
-            <label class="btn">가져오기<input type="file" id="pf-import" accept=".json" hidden /></label>
+            <button class="btn" id="hd-export">내보내기</button>
+            <label class="btn">가져오기<input type="file" id="hd-import" accept=".json" hidden /></label>
+          </div>
+          <p class="muted small">휴대폰과 컴퓨터에서 같이 보려면 내보내기 파일을 다른 기기에서 가져오기 하세요.</p>
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="tt-head"><h3>모의 투자</h3><span class="muted small" id="pp-sub"></span></div>
+        <p class="muted small">사이트의 전략을 가상의 돈으로 매일 실제처럼 사고팔아요. 장 마감 뒤 주문을 내고 다음 날 시세로 체결, 수수료 포함. 과거 검증과 달리 <b>앞으로 쌓이는 기록이라 결과를 고칠 수 없어요</b>. 1~2달 쌓이면 실전으로 갈지 판단할 근거가 돼요.</p>
+        <div class="pp-cards" id="pp-cards"></div>
+        <div id="pp-chart" class="pp-chart"></div>
+        <p class="small" id="pp-stats"></p>
+        <div class="grid-2">
+          <div>
+            <div class="tbl-wrap"><table class="tt-tbl"><thead><tr><th>보유</th><th class="num">매수가</th><th class="num">현재가</th><th class="num">손익</th><th class="num">금액</th><th class="num">손절선</th></tr></thead><tbody id="pp-pos"></tbody></table></div>
+            <div id="pp-orders"></div>
+          </div>
+          <div>
+            <div class="co-sub">매매·걸러냄 기록</div>
+            <ul class="pp-log" id="pp-log"></ul>
           </div>
         </div>
       </div>
@@ -651,6 +660,7 @@
   <script src="assets/home.js?v=b6ddf735"></script>
   <script src="assets/company.js?v=cceb89ae"></script>
   <script src="assets/turtle.js?v=92ba8b60"></script>
-  <script src="assets/app.js?v=10c0729e"></script>
+  <script src="assets/invest.js?v=d30f4dad"></script>
+  <script src="assets/app.js?v=e252cf01"></script>
 </body>
 </html>

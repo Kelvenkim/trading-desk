@@ -1,16 +1,75 @@
 {
   "_설명": "관심종목 목록 (미국 티커 그대로, 예: AAPL). intraday를 true로 하면 5분봉(최근 60일)도 받아옵니다.",
   "symbols": [
-    { "symbol": "SPY", "name": "S&P500 ETF", "intraday": true },
-    { "symbol": "QQQ", "name": "나스닥100 ETF", "intraday": true },
-    { "symbol": "NVDA", "name": "엔비디아", "intraday": true },
-    { "symbol": "AAPL", "name": "애플", "intraday": false },
-    { "symbol": "MSFT", "name": "마이크로소프트", "intraday": false },
-    { "symbol": "TSLA", "name": "테슬라", "intraday": true },
-    { "symbol": "AMZN", "name": "아마존", "intraday": false },
-    { "symbol": "META", "name": "메타", "intraday": false },
-    { "symbol": "GOOGL", "name": "알파벳", "intraday": false },
-    { "symbol": "AVGO", "name": "브로드컴", "intraday": false },
-    { "symbol": "PLTR", "name": "팔란티어", "intraday": false }
+    {
+      "symbol": "SPY",
+      "name": "S&P500 ETF",
+      "intraday": true
+    },
+    {
+      "symbol": "QQQ",
+      "name": "나스닥100 ETF",
+      "intraday": true
+    },
+    {
+      "symbol": "NVDA",
+      "name": "엔비디아",
+      "intraday": true
+    },
+    {
+      "symbol": "AAPL",
+      "name": "애플",
+      "intraday": false
+    },
+    {
+      "symbol": "MSFT",
+      "name": "마이크로소프트",
+      "intraday": false
+    },
+    {
+      "symbol": "TSLA",
+      "name": "테슬라",
+      "intraday": true
+    },
+    {
+      "symbol": "AMZN",
+      "name": "아마존",
+      "intraday": false
+    },
+    {
+      "symbol": "META",
+      "name": "메타",
+      "intraday": false
+    },
+    {
+      "symbol": "GOOGL",
+      "name": "알파벳",
+      "intraday": false
+    },
+    {
+      "symbol": "AVGO",
+      "name": "브로드컴",
+      "intraday": false
+    },
+    {
+      "symbol": "PLTR",
+      "name": "팔란티어",
+      "intraday": false
+    },
+    {
+      "symbol": "SPCX",
+      "name": "스페이스X",
+      "intraday": false
+    },
+    {
+      "symbol": "IONQ",
+      "name": "아이온큐",
+      "intraday": false
+    },
+    {
+      "symbol": "RDW",
+      "name": "레드와이어",
+      "intraday": false
+    }
   ]
 }

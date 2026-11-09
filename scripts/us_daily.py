@@ -491,6 +491,11 @@ def main(force=False):
                               "parts": {"trend": {"name": "주가 추세", "max": 30}, "breadth": {"name": "확산", "max": 20}, "buzz": {"name": "관심(기사)", "max": 15},
                                         "policy": {"name": "정책 뉴스", "max": 15}, "target": {"name": "목표가 여력", "max": 10}, "opinion": {"name": "애널리스트 의견", "max": 10}},
                               "primary": prim, "pick_record": pick_record(sp_hist), "backfill": (json.loads(bf.read_text()) if bf.exists() else {}).get("summary")})
+    try:                                              # 모의 투자 (전략을 실제처럼 굴려 기록)
+        import us_paper
+        us_paper.run(P, day)
+    except Exception as e:
+        print("모의 투자 실패:", e)
     print(f"완료 {day} · {time.time() - t0:.0f}s")
 
 
