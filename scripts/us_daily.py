@@ -419,6 +419,13 @@ def main(force=False):
     print(f"시세 {len(P)}종목 {time.time() - t0:.0f}s", flush=True)
     sp = P["^GSPC"]; cal = [r[0] for r in sp]
     # 장 마감 직후엔 종목 시세가 아직 안 들어온 경우가 있음 → 90% 이상 들어온 날까지만 씀 (안 그러면 전날 가격으로 순위·채점이 됨)
+    # 장중에 실행되면 오늘 봉은 아직 미완성 → 뉴욕 16:30 전이면 오늘은 빼고 계산 (GitHub 예약이 몇 시간씩 밀려 장중에 돌 때가 있음)
+    from zoneinfo import ZoneInfo
+    ny = datetime.now(ZoneInfo("America/New_York"))
+    if cal and cal[-1] >= ny.strftime("%Y-%m-%d") and (ny.hour, ny.minute) < (16, 30):
+        print(f"뉴욕 {ny:%H:%M} — 장이 아직 안 끝나서 {cal[-1]}은 빼고 계산", flush=True)
+        drop = cal.pop()
+        P = {t: [r for r in v if r[0] < drop] for t, v in P.items()}
     while cal:
         have = sum(1 for t in uni_all if P.get(t) and P[t][-1][0] >= cal[-1])
         if have >= 0.9 * len(uni_all):
