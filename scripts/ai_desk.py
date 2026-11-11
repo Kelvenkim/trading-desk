@@ -249,6 +249,7 @@ def intraday(tickers, prepost=False):
         try:
             d = df[t] if isinstance(df.columns, pd.MultiIndex) else df
             d = d.dropna(subset=["Close"])
+            d = d[d.index <= pd.Timestamp(ny_now()) - pd.Timedelta(minutes=5)]      # 아직 안 끝난 봉 제외 (모의 시험 때도 그 시각까지만)
             days = [ix.tz_convert("America/New_York").strftime("%Y-%m-%d") for ix in d.index]
             prevd = [i for i, x in enumerate(days) if x < today]
             pc = float(d["Close"].iloc[prevd[-1]]) if prevd else None
@@ -257,8 +258,14 @@ def intraday(tickers, prepost=False):
                 continue
             tp = (d["High"] + d["Low"] + d["Close"]) / 3
             v = d["Volume"].fillna(0)
+            cv = (tp * v).cumsum() / v.cumsum().replace(0, float("nan"))           # 시간별 VWAP
+            below = (d["Close"] < cv).tolist()
+            orng = d.iloc[:6]                                                      # 첫 30분 (개장 범위)
             out[t] = {"p": float(d["Close"].iloc[-1]), "o": float(d["Open"].iloc[0]), "hi": float(d["High"].max()), "lo": float(d["Low"].min()),
-                      "vwap": float((tp * v).sum() / v.sum()) if v.sum() > 0 else float(d["Close"].mean()), "vol": float(v.sum()), "bars": len(d), "pc": pc}
+                      "vwap": float(cv.iloc[-1]) if cv.notna().any() else float(d["Close"].mean()), "vol": float(v.sum()), "bars": len(d), "pc": pc,
+                      "orh": float(orng["High"].max()), "orl": float(orng["Low"].min()),
+                      "reclaim": len(below) > 8 and any(below[:-3]) and not any(below[-3:]),       # 아래 있다가 최근 15분 VWAP 위로
+                      "mom30": float(d["Close"].iloc[-1] / d["Close"].iloc[max(0, len(d) - 7)] - 1)}
         except Exception:
             pass
     return out
@@ -325,55 +332,79 @@ def live():
         chg = x["p"] / (prev(t) or d[2]) - 1
         if chg <= -2.5 * d[3] / d[2] and x["p"] < x["vwap"]:
             acts.append(("risk", f"{nm(t)}가 오늘 {chg:+.1%}로 평소 변동의 2.5배 넘게 빠지고 VWAP 아래예요. 손절가(${p.get('stop')})까진 여유가 있어 규칙대로 두되 지켜볼게요."))
-    # Scout: 장중 강세 (일봉 점수 0.6↑ + 오늘 시장보다 강함 + VWAP 위 + 거래 활발)
+    # Scout: 장중 신호를 전체 종목에서 직접 찾음 (전날 종가 점수로 미리 거르지 않음)
+    #   ① 개장 범위 돌파(ORB): 10시 이후 첫 30분 고점 위 + VWAP 위
+    #   ② VWAP 회복: 오늘 VWAP 아래 있다가 다시 위로 올라와 15분 유지
+    #   ③ 상대강도 급등: S&P500보다 +2% 이상 + VWAP 위
+    #   공통: 오늘 거래대금이 평소 하루치의 1.3배 속도 이상, 평소 변동의 3배 넘게 이미 오른 건 추격 안 함
     cands = []
     if phase == "open" and not S.get("halt"):
-        for t, d in ds.items():
-            x = X.get(t)
-            if not x or t in mine or d[0] < 0.7 or not d[2]:
+        frac = max(0.08, (hm - 570) / 390)
+        for t, x in X.items():
+            d = ds.get(t)
+            if t == "SPY" or t in mine or not d or not prev(t):
                 continue
-            chg = x["p"] / (prev(t) or d[2]) - 1
-            rel = chg - spy_chg
-            if rel < 0.01 or x["p"] < x["vwap"] or chg > 2.5 * d[3] / d[2]:       # 너무 급하게 오른 건 추격 안 함
+            pc = prev(t); chg = x["p"] / pc - 1; rel = chg - spy_chg; Np = d[3] / pc
+            if x["p"] < x["vwap"] or chg > 3 * Np or x["p"] < 5:
                 continue
-            dv_est = x["vol"] * x["p"] / max(0.1, (hm - 570) / 390)                 # 오늘 하루 거래대금 추정
-            if dv_est < 1.5 * d[5] * 1e6:
+            rv = (x["vol"] * x["p"] / frac) / max(1, d[5] * 1e6)                  # 거래대금 속도 (평소 하루 대비)
+            if rv < 1.3:
                 continue
-            isc = round(min(1.0, d[0] + 0.05 + min(0.05, rel) + 0.05), 2)
-            cands.append({"t": t, "score": isc, "chg": chg, "rel": rel, "x": x, "d": d})
+            sig = []
+            if hm >= 600 and x["p"] > x["orh"] * 1.001: sig.append("개장 범위 돌파")
+            if x["reclaim"]: sig.append("VWAP 회복")
+            if rel >= 0.02: sig.append(f"S&P 대비 {rel:+.1%}")
+            if not sig:
+                continue
+            # Analyst 장중 점수 (0~1): 장중 60% + 일봉 맥락 40%
+            p_sig = min(0.25, 0.12 * len(sig))
+            p_rel = max(0, min(0.15, rel / 0.03 * 0.15))
+            p_rv = max(0, min(0.12, (rv - 1) / 2 * 0.12))
+            p_mom = 0.08 if x["mom30"] > 0 else 0
+            isc = round(p_sig + p_rel + p_rv + p_mom + 0.4 * d[0], 2)
+            stop = max(x["orl"] if "개장 범위 돌파" in sig else x["vwap"] - 0.5 * d[3], x["p"] * (1 - d[1]))
+            stop = min(stop, x["p"] * 0.98)                                       # 최소 2% 여유
+            cands.append({"t": t, "score": isc, "chg": chg, "rel": rel, "rv": rv, "sig": sig, "x": x, "d": d, "stop": round(stop, 2)})
         cands.sort(key=lambda z: -z["score"])
+    # Risk: 장중에 산 종목이 개장 범위 저점을 깨면 그날 정리 (장중 진입 실패)
+    for t, p in list(S["pos"].items()):
+        x = X.get(t)
+        if x and p.get("src") == "장중 신호" and p["since"][:10] == day and x["p"] < x["orl"] and not any(o["sym"] == t and o["side"] == "sell" for o in S["orders"]):
+            o, _ = AP.place(S, t, "sell", typ="market", pct=100, why=f"장중 진입 실패: 개장 범위 저점(${x['orl']:.2f}) 이탈", src="장중 신호")
+            acts.append(("risk", f"{nm(t)} 오늘 장중에 샀는데 개장 범위 저점 ${x['orl']:.2f} 아래로 밀렸어요. 신호 실패로 보고 시장가 정리할게요. @Executor"))
     seen = set(M.get("seen", []))
     new_c = [z for z in cands if z["t"] not in seen]
     M["seen"] = sorted(seen | {z["t"] for z in cands})
     cands = new_c                                            # 이미 오늘 이야기한 종목은 다시 안 꺼냄
     if cands:
-        acts.append(("scout", "장중에 시장보다 강하고 VWAP 위에서 거래가 몰리는 종목: " + ", ".join(f"{nm(z['t'])} {z['chg']:+.1%}" for z in cands[:5]) + ". @Analyst"))
-        ok = [z for z in cands if z["score"] >= 0.85][:3]
+        acts.append(("scout", f"장중 신호 {len(cands)}개 새로 잡혔어요: " + ", ".join(f"{nm(z['t'])} {z['chg']:+.1%} ({' · '.join(z['sig'])}, 거래 {z['rv']:.1f}배 속도)" for z in cands[:5]) + ". @Analyst"))
+        ok = [z for z in cands if z["score"] >= 0.6][:3]
+        acts.append(("analyst", ("장중 점수(장중 신호 60% + 일봉 맥락 40%, 0.6↑ 통과): " + "; ".join(f"{nm(z['t'])} {z['score']:.2f} (일봉 {z['d'][0]:.2f})" for z in ok) + ". @Risk") if ok else
+                     "장중 신호는 있지만 0.6 넘는 건 없어요 — 일봉 추세가 약하거나 거래가 덜 붙었어요. 패스할게요. 최고: " + ", ".join(f"{nm(z['t'])} {z['score']:.2f}" for z in cands[:3])))
         if ok:
-            acts.append(("analyst", "일봉 점수에 장중 강도를 더했어요(장중 진입은 일봉 0.7 이상 + 합계 0.85 이상만): " + "; ".join(f"{nm(z['t'])} {z['score']:.2f} (일봉 {z['d'][0]:.2f}: {z['d'][4]} / 오늘 S&P 대비 {z['rel']:+.1%})" for z in ok) + ". @Risk"))
-            new_today = sum(1 for o in S["orders"] if o.get("src", "").startswith("장중")) + M.get("bought", 0)
+            new_today = sum(1 for o in S["orders"] if (o.get("src") or "").startswith("장중")) + M.get("bought", 0)
             eq = AP.equity(S); pend = sum(o["usd"] for o in S["orders"] if o["side"] == "buy")
             room = eq * 0.80 - (eq - S["cash"]) - pend
             placed, rej = [], []
             for z in ok:
-                if new_today + len(placed) >= 1:
-                    rej.append((z["t"], "장중 신규는 하루 1개까지")); continue
-                sp = z["d"][1]; px = round(z["x"]["p"] * 1.002, 2)
+                if new_today + len(placed) >= 2:
+                    rej.append((z["t"], "장중 신규는 하루 2개까지")); continue
+                px = round(z["x"]["p"] * 1.002, 2); sp = 1 - z["stop"] / px
                 usd = math.floor(min(eq * AP.MAX_RISK / sp, eq * AP.MAX_W, room) / 10) * 10
                 if usd < 200:
                     rej.append((z["t"], "현금 20% 유지 규칙")); continue
-                o, bad = AP.place(S, z["t"], "buy", usd, "limit", px, round(px * (1 - sp), 2), round(px * (1 + 2.5 * sp), 2), 1,
-                                  f"장중 회의 {t_ny}: 일봉 {z['d'][0]:.2f} + 장중 강도 → {z['score']:.2f} ({z['d'][4]}, 오늘 S&P 대비 {z['rel']:+.1%}, VWAP 위)", src="장중 강세", score=z["score"])
+                o, bad = AP.place(S, z["t"], "buy", usd, "limit", px, z["stop"], round(px * (1 + 2.5 * sp), 2), 1,
+                                  f"장중 회의 {t_ny}: {' · '.join(z['sig'])}, 거래 {z['rv']:.1f}배 속도, VWAP 위 → 장중 점수 {z['score']:.2f} (일봉 {z['d'][0]:.2f})", src="장중 신호", score=z["score"])
                 if bad: rej.append((z["t"], bad)); continue
                 placed.append((z, o, usd)); room -= usd
             if placed:
                 M["bought"] = M.get("bought", 0) + len(placed)
-                acts.append(("risk", "승인: " + "; ".join(f"{nm(z['t'])} ${u:,.0f} (손절 -{z['d'][1]:.1%})" for z, o, u in placed) + (" / 보류: " + "; ".join(f"{nm(t)} — {r}" for t, r in rej) if rej else "")))
+                acts.append(("risk", "승인: " + "; ".join(f"{nm(z['t'])} ${u:,.0f} (손절 ${o['stop']}, -{1 - o['stop'] / o['px']:.1%})" for z, o, u in placed) + (" / 보류: " + "; ".join(f"{nm(t)} — {r}" for t, r in rej) if rej else "")))
                 acts.append(("executor", "지정가 넣었어요 (오늘만 유효): " + "; ".join(f"{z['t']} ${o['px']} · 손절 ${o['stop']} · 목표 ${o['target']}" for z, o, u in placed)))
             elif rej:
                 acts.append(("risk", "보류: " + "; ".join(f"{nm(t)} — {r}" for t, r in rej)))
     if phase == "close" and M.get("close") and full:
-        canc = [o for o in S["orders"] if o["side"] == "buy" and o.get("src") == "장중 강세"]
+        canc = [o for o in S["orders"] if o["side"] == "buy" and o.get("src") == "장중 신호"]
         for o in canc:
             S["orders"].remove(o); AP.log(S, "cancel", "장 마감 전 미체결 장중 주문 취소", sym=o["sym"], detail=AP.desc(o))
         acts.append(("risk", "마감 30분 전이라 신규 진입은 여기까지예요." + (f" 안 채워진 장중 주문 {len(canc)}건 취소했어요." if canc else "")))
