@@ -228,6 +228,7 @@
     if (name === "backtest") { try { BTUI.onShow(cur.sym); } catch (_) {} }
     if (name === "rank") { try { RankUI.onShow(); } catch (e) { console.error(e); } }
     if (name === "theme") { try { ThemeUI.onShow(); } catch (e) { console.error(e); } }
+    if (name === "desk") { try { DeskUI.onShow(); } catch (e) { console.error(e); } }
     if (name === "turtle") { try { TurtleUI.onShow(); } catch (e) { console.error(e); } }
     if (name === "news") { try { NewsUI.onShow(); } catch (e) { console.error(e); } }
     if (name === "home") { try { HomeUI.onShow(); } catch (e) { console.error(e); } }
@@ -260,7 +261,7 @@
     const first = (okLast && last.sym) || (Data.meta.symbols[0] && Data.meta.symbols[0].symbol);
     if (first) openSymbol(first, (okLast && last.iv) || "1d");
     const h = location.hash.slice(1);
-    showTab(["chart", "portfolio", "backtest", "rank", "theme", "turtle", "news"].includes(h) ? h : "home");
+    showTab(["chart", "portfolio", "backtest", "rank", "theme", "turtle", "desk", "news"].includes(h) ? h : "home");
   }
   init();
 })();

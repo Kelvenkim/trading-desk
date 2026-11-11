@@ -27,10 +27,10 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - name: 미국 순위·테마·추천 계산
-        run: python scripts/us_daily.py
-      - name: AI 모의 트레이딩 하루 마감 평가
+      - name: AI 데스크 마지막 체결 처리 (회의 전에)
         run: python scripts/ai_paper.py fill || true
+      - name: 미국 순위·테마·추천 계산 (+ 터틀·모의 투자·AI 데스크 회의·보고서)
+        run: python scripts/us_daily.py
       - name: 기업 정보 (관심·추천 종목 매일 + 나머지 하루 90개씩 돌아가며)
         run: timeout 35m python scripts/us_profiles.py
         continue-on-error: true

@@ -534,6 +534,11 @@ def main(force=False):
         us_paper.run(P, day)
     except Exception as e:
         print("모의 투자 실패:", e)
+    try:                                              # AI 데스크 (6명 에이전트 회의 → 내일 주문)
+        import ai_desk
+        ai_desk.run(P, day)
+    except Exception as e:
+        print("AI 데스크 실패:", e)
     try:                                              # 매일 보고서
         import daily_report
         daily_report.main()

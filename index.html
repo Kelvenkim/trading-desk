@@ -6,7 +6,7 @@
   <title>Trading Desk</title>
   <meta name="theme-color" content="#000000" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="assets/style.css?v=6acd96a8" />
+  <link rel="stylesheet" href="assets/style.css?v=500db262" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -49,6 +49,7 @@
       <button class="tab" data-tab="theme">장기 테마</button>
       <button class="tab" data-tab="turtle">터틀</button>
       <button class="tab" data-tab="news">뉴스</button>
+      <button class="tab" data-tab="desk">AI 데스크</button>
       <button class="tab" data-tab="portfolio">내 투자</button>
       <button class="tab" data-tab="backtest">백테스트</button>
     </nav>
@@ -255,6 +256,27 @@
       </div>
     </section>
 
+    <!-- ================= AI 트레이딩 데스크 ================= -->
+    <section id="tab-desk" class="panel">
+      <div class="rk-head"><h2>AI 트레이딩 데스크 <span class="muted small" id="dk-date"></span></h2></div>
+      <p class="muted small dk-intro">6명의 에이전트가 가상 $10,000로 미국 주식을 굴려요. 규칙으로 걸러내고 점수 매기고, Claude가 매일 아침 판단을 더해요(하이브리드). 미국장 중엔 30분마다 체결·손절·추적 손절을 자동 처리해요.</p>
+      <div class="dk-stats" id="dk-stats"></div>
+      <div class="dk-flow" id="dk-agents"></div>
+      <div class="dk-main">
+        <div class="box dk-chat-box">
+          <div class="tt-head"><h3>에이전트 대화방</h3><span class="muted small" id="dk-chat-sub"></span></div>
+          <div class="dk-chat" id="dk-chat"></div>
+        </div>
+        <div class="dk-side">
+          <div class="box"><h3 class="dk-h">보유</h3><div class="tbl-wrap"><table class="tt-tbl"><thead><tr><th>종목</th><th class="num">손익</th><th class="num">손절 / 목표</th></tr></thead><tbody id="dk-pos"></tbody></table></div></div>
+          <div class="box"><h3 class="dk-h">대기 주문</h3><ul class="ai-orders" id="dk-orders"></ul></div>
+          <div class="box"><h3 class="dk-h">Analyst 점수표 <span class="muted small">0.6↑ 통과</span></h3><div id="dk-cands"></div></div>
+          <div class="box"><h3 class="dk-h">끝난 거래</h3><ul class="ai-orders" id="dk-trades"></ul></div>
+        </div>
+      </div>
+      <p class="muted small" id="dk-rules"></p>
+    </section>
+
     <!-- ================= 뉴스 ================= -->
     <section id="tab-news" class="panel">
       <div class="rk-head"><h2>뉴스 <span class="muted small" id="nw-made"></span></h2></div>
@@ -301,23 +323,6 @@
             <label class="btn">가져오기<input type="file" id="hd-import" accept=".json" hidden /></label>
           </div>
           <p class="muted small">휴대폰과 컴퓨터에서 같이 보려면 내보내기 파일을 다른 기기에서 가져오기 하세요.</p>
-        </div>
-      </div>
-
-      <div class="box">
-        <div class="tt-head"><h3>AI 혼자 트레이딩 <span class="muted small">Claude · 가상 $10,000</span></h3><span class="muted small" id="ai-sub"></span></div>
-        <p class="muted small">Claude가 매일 아침 시장·순위·뉴스를 보고 스스로 주문을 내요. 미국장 중엔 30분마다 자동으로 체결·손절·익절이 처리돼요(Claude가 없어도). 모든 판단에 이유를 남겨요.</p>
-        <div class="pp-cards ai-cards" id="ai-cards"></div>
-        <div class="grid-2">
-          <div>
-            <div class="tbl-wrap"><table class="tt-tbl"><thead><tr><th>보유</th><th class="num">매수가</th><th class="num">현재가</th><th class="num">손익</th><th class="num">손절 / 익절</th></tr></thead><tbody id="ai-pos"></tbody></table></div>
-            <div id="ai-orders"></div>
-            <div id="ai-trades"></div>
-          </div>
-          <div>
-            <div class="co-sub">판단 일지</div>
-            <ul class="ai-journal" id="ai-journal"></ul>
-          </div>
         </div>
       </div>
 
@@ -677,7 +682,8 @@
   <script src="assets/home.js?v=b6ddf735"></script>
   <script src="assets/company.js?v=cceb89ae"></script>
   <script src="assets/turtle.js?v=92ba8b60"></script>
-  <script src="assets/invest.js?v=1b5b297e"></script>
-  <script src="assets/app.js?v=e252cf01"></script>
+  <script src="assets/invest.js?v=d30f4dad"></script>
+  <script src="assets/desk.js?v=614fc2be"></script>
+  <script src="assets/app.js?v=fa1de24c"></script>
 </body>
 </html>
