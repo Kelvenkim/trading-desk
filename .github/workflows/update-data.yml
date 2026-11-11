@@ -31,8 +31,10 @@ jobs:
       - name: 시세 받기
         run: python scripts/fetch_data.py
 
-      - name: AI 모의 트레이딩 체결 (Claude가 낸 주문·손절·익절)
+      - name: AI 데스크 체결 (주문·손절·추적 손절·급락 중단)
         run: python scripts/ai_paper.py fill || echo "AI 체결 실패 (다음에 다시)"
+      - name: AI 데스크 장 전·장중 회의 (6명 에이전트)
+        run: cd scripts && python ai_desk.py live || echo "AI 회의 실패 (다음에 다시)"
 
       - name: 뉴스·인물 발언 단어
         run: python scripts/news_build.py || echo "뉴스 갱신 실패 (다음에 다시)"

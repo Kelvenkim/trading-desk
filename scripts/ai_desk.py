@@ -12,7 +12,7 @@ AI 트레이딩 데스크 — 6명의 에이전트가 순서대로 일하고, �
 us_daily.py 끝에서 run(P)로 불러요 (장 마감 뒤 하루 한 번). 체결은 update-data.yml이 30분마다.
 """
 import json, math
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 import numpy as np
 
@@ -56,6 +56,26 @@ def ind(rows):
     return {"c": c[-1], "chg": c[-1] / c[-2] - 1, "ma20": ma(20), "ma50": ma(50), "ma200": ma(200), "N": tr[-20:].mean(), "rsi": rsi,
             "macd": m[-1] - sig[-1], "vr": v[-5:].mean() / max(1, v[-20:].mean()), "r20": c[-1] / c[-21] - 1 if n > 21 else 0,
             "dv": (c[-20:] * v[-20:]).mean(), "range": (h[-1] - l[-1]) / c[-2], "n": n}
+
+
+def score(t, x, pf, srcs, spy_r20):
+    """Analyst 일봉 점수 0~1"""
+    p_tr = 0.1 * (x["c"] > x["ma20"]) + 0.1 * (x["c"] > x["ma50"]) + 0.1 * (not math.isnan(x["ma200"]) and x["ma50"] > x["ma200"])
+    p_rsi = 0.2 if 45 <= x["rsi"] <= 70 else 0.1 if 70 < x["rsi"] <= 80 or 35 <= x["rsi"] < 45 else 0.03
+    p_macd = 0.1 if x["macd"] > 0 else 0
+    p_vol = 0.1 if x["vr"] > 1.2 and x["chg"] > 0 else 0.05 if x["vr"] > 1 else 0
+    rs = x["r20"] - (spy_r20 or 0)
+    p_rs = max(0, min(0.15, rs / 0.10 * 0.15))
+    tg = (pf.get("analyst") or {}).get("mean")
+    up = tg / x["c"] - 1 if tg else None
+    p_an = 0.1 if up and up > 0.15 else 0.05 if up and up > 0 else 0
+    p_sig = 0.05 if srcs & {"추천 바구니", "터틀 진입"} else 0.025 if srcs - {"보유 중"} else 0
+    sc = round(p_tr + p_rsi + p_macd + p_vol + p_rs + p_an + p_sig, 2)
+    why = ["추세↑" if p_tr >= 0.2 else "추세 약함" if p_tr <= 0.1 else "추세 보통", f"RSI {x['rsi']:.0f}", f"S&P 대비 {rs:+.0%}"]
+    if up is not None: why.append(f"목표가 여력 {up:+.0%}")
+    if x["vr"] > 1.2: why.append(f"거래량 {x['vr']:.1f}배")
+    return {"t": t, "score": sc, "stop_pct": min(0.12, max(0.05, 2 * x["N"] / x["c"])), "why": ", ".join(why),
+            "src": " + ".join(sorted(srcs)), "held": "보유 중" in srcs}
 
 
 def run(P, day=None):
@@ -141,32 +161,23 @@ def run(P, day=None):
         g = [r[4] for r in P["^GSPC"][-21:]]; spy_r20 = g[-1] / g[0] - 1
     scored = []
     for t in keep:
-        x = I[t]; pf = prof(t) or {}
-        p_tr = 0.1 * (x["c"] > x["ma20"]) + 0.1 * (x["c"] > x["ma50"]) + 0.1 * (not math.isnan(x["ma200"]) and x["ma50"] > x["ma200"])
-        p_rsi = 0.2 if 45 <= x["rsi"] <= 70 else 0.1 if 70 < x["rsi"] <= 80 or 35 <= x["rsi"] < 45 else 0.03
-        p_macd = 0.1 if x["macd"] > 0 else 0
-        p_vol = 0.1 if x["vr"] > 1.2 and x["chg"] > 0 else 0.05 if x["vr"] > 1 else 0
-        rs = x["r20"] - (spy_r20 or 0)
-        p_rs = max(0, min(0.15, rs / 0.10 * 0.15))
-        tg = (pf.get("analyst") or {}).get("mean")
-        up = tg / x["c"] - 1 if tg else None
-        p_an = 0.1 if up and up > 0.15 else 0.05 if up and up > 0 else 0
-        p_sig = 0.05 if C[t] & {"추천 바구니", "터틀 진입"} else 0.025 if C[t] - {"보유 중"} else 0
-        sc = round(p_tr + p_rsi + p_macd + p_vol + p_rs + p_an + p_sig, 2)
-        stop_pct = min(0.12, max(0.05, 2 * x["N"] / x["c"]))
-        if not (0.06 <= stop_pct <= 0.10):
+        z = score(t, I[t], prof(t) or {}, C[t], spy_r20)
+        z["entry"] = round(I[t]["c"] - 0.25 * I[t]["N"], 2)
+        z["stop"] = round(z["entry"] * (1 - z["stop_pct"]), 2)
+        z["target"] = round(z["entry"] * (1 + 2.5 * z["stop_pct"]), 2)
+        scored.append(z)
+    # 장중 회의용: 전체 종목 일봉 점수 저장
+    ds = {}
+    for t in ko:
+        rows = P.get(t)
+        if not rows or len(rows) < 60:
+            continue
+        try:
+            x = ind(rows[-260:]); z = score(t, x, prof(t) or {}, C.get(t, set()), spy_r20)
+            ds[t] = [z["score"], round(z["stop_pct"], 4), round(x["c"], 2), round(x["N"], 3), z["why"], round(x["dv"] / 1e6)]
+        except Exception:
             pass
-        entry = round(x["c"] - 0.25 * x["N"], 2)
-        stop = round(entry * (1 - stop_pct), 2)
-        target = round(entry * (1 + 2.5 * stop_pct), 2)
-        why = []
-        why.append("추세↑" if p_tr >= 0.2 else "추세 약함" if p_tr <= 0.1 else "추세 보통")
-        why.append(f"RSI {x['rsi']:.0f}")
-        why.append(f"S&P 대비 {rs:+.0%}")
-        if up is not None: why.append(f"목표가 여력 {up:+.0%}")
-        if x["vr"] > 1.2: why.append(f"거래량 {x['vr']:.1f}배")
-        scored.append({"t": t, "score": sc, "entry": entry, "stop": stop, "target": target, "stop_pct": stop_pct, "why": ", ".join(why),
-                       "src": " + ".join(sorted(C[t])), "held": "보유 중" in C[t]})
+    S["dscore"] = ds
     scored.sort(key=lambda z: -z["score"])
     passed = [z for z in scored if z["score"] >= 0.6 and not z["held"]]
     held_low = [z for z in scored if z["held"] and z["score"] < 0.4]
@@ -223,9 +234,168 @@ def run(P, day=None):
     print("AI 데스크:", S["agents"])
 
 
+# ======================= 장중·장전 회의 =======================
+def ny_now():
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("America/New_York"))
+
+
+def intraday(tickers, prepost=False):
+    """오늘 5분봉 → 종목별 {p: 지금가, o: 시가, vwap, vol, hi, lo, first} (오늘 것만)"""
+    import yfinance as yf, pandas as pd
+    df = yf.download(sorted(tickers), period="2d", interval="5m", group_by="ticker", auto_adjust=False, progress=False, threads=True, prepost=prepost)
+    today = ny_now().strftime("%Y-%m-%d"); out = {}
+    for t in tickers:
+        try:
+            d = df[t] if isinstance(df.columns, pd.MultiIndex) else df
+            d = d.dropna(subset=["Close"])
+            days = [ix.tz_convert("America/New_York").strftime("%Y-%m-%d") for ix in d.index]
+            prevd = [i for i, x in enumerate(days) if x < today]
+            pc = float(d["Close"].iloc[prevd[-1]]) if prevd else None
+            d = d[[x == today for x in days]]
+            if not len(d):
+                continue
+            tp = (d["High"] + d["Low"] + d["Close"]) / 3
+            v = d["Volume"].fillna(0)
+            out[t] = {"p": float(d["Close"].iloc[-1]), "o": float(d["Open"].iloc[0]), "hi": float(d["High"].max()), "lo": float(d["Low"].min()),
+                      "vwap": float((tp * v).sum() / v.sum()) if v.sum() > 0 else float(d["Close"].mean()), "vol": float(v.sum()), "bars": len(d), "pc": pc}
+        except Exception:
+            pass
+    return out
+
+
+def live():
+    """미국장 전·중에 30분마다 (update-data.yml). 장 전: 갭 점검 / 장중: 새 기회·보유 점검 / 마감 30분 전: 신규 중단"""
+    S = AP.load()
+    ny = ny_now(); hm = ny.hour * 60 + ny.minute; day = ny.strftime("%Y-%m-%d")
+    if ny.weekday() >= 5 or hm < 7 * 60 or hm >= 16 * 60:
+        print("AI 데스크: 장 시간 아님"); return
+    phase = "pre" if hm < 9 * 60 + 30 else "open" if hm < 15 * 60 + 30 else "close"
+    M = S.setdefault("meet", {})
+    if M.get("day") != day:
+        M.clear(); M["day"] = day; M["n"] = 0
+    if phase == "pre" and M.get("pre"):
+        print("AI 데스크: 장전 회의 이미 함"); return
+    say = lambda who, t, **kw: AP.say(S, who, t, **kw)
+    rank = j("rank.json", {}); ko = {r["code"]: (r.get("ko") or r["code"]) for r in rank.get("rows", [])}
+    nm = lambda t: f"{ko.get(t, t)}({t})" if ko.get(t, t) != t else t
+    ds = S.get("dscore", {})
+    mine = set(S["pos"]) | {o["sym"] for o in S["orders"]}
+    universe = set(ds) | mine | {"SPY"}
+    X = intraday(universe, prepost=(phase == "pre"))
+    spy = X.get("SPY")
+    prev = lambda t: (X.get(t) or {}).get("pc") or (ds.get(t) or [None, None, None])[2]
+    spy_prev = prev("SPY")
+    spy_chg = spy["p"] / spy_prev - 1 if spy and spy_prev else 0
+    M["n"] = M.get("n", 0) + 1
+    t_ny = ny.strftime("%H:%M")
+
+    if phase == "pre":
+        M["pre"] = True
+        say("logger", f"── {day} 장 전 회의 (뉴욕 {t_ny}) ──", sep=True)
+        msgs = []
+        for o in list(S["orders"]):
+            x = X.get(o["sym"]); pc = prev(o["sym"])
+            if not x or not pc or o["side"] != "buy":
+                continue
+            g = x["p"] / pc - 1
+            if o.get("stop") and x["p"] <= o["stop"]:
+                S["orders"].remove(o); AP.log(S, "cancel", "장 전 가격이 이미 손절가 아래", sym=o["sym"], detail=AP.desc(o))
+                msgs.append(f"{nm(o['sym'])} 장 전 {g:+.1%}로 손절가 아래라 주문 취소")
+            elif abs(g) >= 0.03:
+                msgs.append(f"{nm(o['sym'])} 장 전 {g:+.1%}")
+        held = [f"{nm(t)} {X[t]['p'] / prev(t) - 1:+.1%}" for t in S["pos"] if t in X and prev(t)]
+        say("scout", f"장 전 S&P500(SPY) {spy_chg:+.2%}." + (f" 보유 종목 장 전: {', '.join(held)}." if held else "") + (f" 대기 주문 점검: {'; '.join(msgs)}." if msgs else " 대기 주문은 그대로 가요."))
+        if spy_chg <= -0.02:
+            say("risk", f"장 전부터 {spy_chg:+.1%}예요. 개장 15분은 신규 진입 없이 지켜보고, -3% 넘으면 신규 매수를 막을게요.")
+        AP.save(S); print("AI 데스크: 장전 회의"); return
+
+    # ---- 장중 ----
+    if hm < 9 * 60 + 45:
+        print("AI 데스크: 개장 15분 관망"); AP.save(S); return
+    full = M["n"] == 1 or (hm >= 12 * 60 + 30 and not M.get("mid")) or (phase == "close" and not M.get("close"))
+    if hm >= 12 * 60 + 30: M["mid"] = True
+    if phase == "close": M["close"] = True
+    acts = []
+    # Risk: 보유 종목 장중 점검 (20일 최저 아래로 무너지면 정리 — 손절가와 별개)
+    for t, p in list(S["pos"].items()):
+        x = X.get(t); d = ds.get(t)
+        if not x or not d:
+            continue
+        chg = x["p"] / (prev(t) or d[2]) - 1
+        if chg <= -2.5 * d[3] / d[2] and x["p"] < x["vwap"]:
+            acts.append(("risk", f"{nm(t)}가 오늘 {chg:+.1%}로 평소 변동의 2.5배 넘게 빠지고 VWAP 아래예요. 손절가(${p.get('stop')})까진 여유가 있어 규칙대로 두되 지켜볼게요."))
+    # Scout: 장중 강세 (일봉 점수 0.6↑ + 오늘 시장보다 강함 + VWAP 위 + 거래 활발)
+    cands = []
+    if phase == "open" and not S.get("halt"):
+        for t, d in ds.items():
+            x = X.get(t)
+            if not x or t in mine or d[0] < 0.7 or not d[2]:
+                continue
+            chg = x["p"] / (prev(t) or d[2]) - 1
+            rel = chg - spy_chg
+            if rel < 0.01 or x["p"] < x["vwap"] or chg > 2.5 * d[3] / d[2]:       # 너무 급하게 오른 건 추격 안 함
+                continue
+            dv_est = x["vol"] * x["p"] / max(0.1, (hm - 570) / 390)                 # 오늘 하루 거래대금 추정
+            if dv_est < 1.5 * d[5] * 1e6:
+                continue
+            isc = round(min(1.0, d[0] + 0.05 + min(0.05, rel) + 0.05), 2)
+            cands.append({"t": t, "score": isc, "chg": chg, "rel": rel, "x": x, "d": d})
+        cands.sort(key=lambda z: -z["score"])
+    seen = set(M.get("seen", []))
+    new_c = [z for z in cands if z["t"] not in seen]
+    M["seen"] = sorted(seen | {z["t"] for z in cands})
+    cands = new_c                                            # 이미 오늘 이야기한 종목은 다시 안 꺼냄
+    if cands:
+        acts.append(("scout", "장중에 시장보다 강하고 VWAP 위에서 거래가 몰리는 종목: " + ", ".join(f"{nm(z['t'])} {z['chg']:+.1%}" for z in cands[:5]) + ". @Analyst"))
+        ok = [z for z in cands if z["score"] >= 0.85][:3]
+        if ok:
+            acts.append(("analyst", "일봉 점수에 장중 강도를 더했어요(장중 진입은 일봉 0.7 이상 + 합계 0.85 이상만): " + "; ".join(f"{nm(z['t'])} {z['score']:.2f} (일봉 {z['d'][0]:.2f}: {z['d'][4]} / 오늘 S&P 대비 {z['rel']:+.1%})" for z in ok) + ". @Risk"))
+            new_today = sum(1 for o in S["orders"] if o.get("src", "").startswith("장중")) + M.get("bought", 0)
+            eq = AP.equity(S); pend = sum(o["usd"] for o in S["orders"] if o["side"] == "buy")
+            room = eq * 0.80 - (eq - S["cash"]) - pend
+            placed, rej = [], []
+            for z in ok:
+                if new_today + len(placed) >= 1:
+                    rej.append((z["t"], "장중 신규는 하루 1개까지")); continue
+                sp = z["d"][1]; px = round(z["x"]["p"] * 1.002, 2)
+                usd = math.floor(min(eq * AP.MAX_RISK / sp, eq * AP.MAX_W, room) / 10) * 10
+                if usd < 200:
+                    rej.append((z["t"], "현금 20% 유지 규칙")); continue
+                o, bad = AP.place(S, z["t"], "buy", usd, "limit", px, round(px * (1 - sp), 2), round(px * (1 + 2.5 * sp), 2), 1,
+                                  f"장중 회의 {t_ny}: 일봉 {z['d'][0]:.2f} + 장중 강도 → {z['score']:.2f} ({z['d'][4]}, 오늘 S&P 대비 {z['rel']:+.1%}, VWAP 위)", src="장중 강세", score=z["score"])
+                if bad: rej.append((z["t"], bad)); continue
+                placed.append((z, o, usd)); room -= usd
+            if placed:
+                M["bought"] = M.get("bought", 0) + len(placed)
+                acts.append(("risk", "승인: " + "; ".join(f"{nm(z['t'])} ${u:,.0f} (손절 -{z['d'][1]:.1%})" for z, o, u in placed) + (" / 보류: " + "; ".join(f"{nm(t)} — {r}" for t, r in rej) if rej else "")))
+                acts.append(("executor", "지정가 넣었어요 (오늘만 유효): " + "; ".join(f"{z['t']} ${o['px']} · 손절 ${o['stop']} · 목표 ${o['target']}" for z, o, u in placed)))
+            elif rej:
+                acts.append(("risk", "보류: " + "; ".join(f"{nm(t)} — {r}" for t, r in rej)))
+    if phase == "close" and M.get("close") and full:
+        canc = [o for o in S["orders"] if o["side"] == "buy" and o.get("src") == "장중 강세"]
+        for o in canc:
+            S["orders"].remove(o); AP.log(S, "cancel", "장 마감 전 미체결 장중 주문 취소", sym=o["sym"], detail=AP.desc(o))
+        acts.append(("risk", "마감 30분 전이라 신규 진입은 여기까지예요." + (f" 안 채워진 장중 주문 {len(canc)}건 취소했어요." if canc else "")))
+    if acts or full:
+        e = AP.equity(S); r = e / 10000 - 1
+        b = (S["px"].get("SPY") / S["bench0"] - 1) if S.get("bench0") and S["px"].get("SPY") else None
+        say("logger", f"── 장중 회의 (뉴욕 {t_ny}, S&P500 {spy_chg:+.2%}) ──", sep=True)
+        for who, t in acts:
+            say(who, t)
+        if full or acts:
+            pos = ", ".join(f"{t} {S['px'].get(t, p['avg']) / p['avg'] - 1:+.1%}" for t, p in S["pos"].items()) or "없음"
+            say("logger", f"지금 계좌 ${e:,.0f} ({r:+.2%})" + (f", S&P500 대비 {r - b:+.2%}p" if b is not None else "") + f". 보유: {pos}. 대기 주문 {len(S['orders'])}건.")
+    S["agents"] = {**S.get("agents", {}), "live": f"뉴욕 {t_ny} 장중 회의 · 후보 {len(cands)}개"}
+    AP.save(S)
+    print("AI 데스크 장중:", phase, len(cands), len(acts))
+
+
 if __name__ == "__main__":
     import sys
     sys.path.insert(0, str(ROOT / "scripts"))
+    if "live" in sys.argv:
+        live(); sys.exit()
     import us_prices as UP
     rank = j("rank.json"); tt = j("turtle.json")
     tick = sorted({r["code"] for r in rank["rows"]} | set(AP.load()["pos"]) | {"SPY", "^GSPC"})
