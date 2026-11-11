@@ -49,7 +49,28 @@ const InvestUI = (() => {
   async function onShow() {
     if (!inited) init();
     renderHold();
+    renderAI();
     renderPaper();
+  }
+
+  // ================= AI 혼자 트레이딩 =================
+  async function renderAI() {
+    let A;
+    try { A = await get("data/us/ai_paper.json"); } catch (_) { $("#ai-cards").innerHTML = `<p class="muted">아직 시작 전이에요.</p>`; return; }
+    const spy = A.bench;
+    const r = A.eq_now / A.cash0 - 1, inv = A.pos.reduce((s, p) => s + (p.val || 0), 0);
+    $("#ai-sub").textContent = `${A.start} 시작 · ${A.rules}`;
+    $("#ai-cards").innerHTML = `
+      <div class="pp-card on"><span class="k">AI 계좌</span><b>${usd(A.eq_now, 0)}</b><span class="${cls(r)}">${pct(r, 2)}</span><span class="s">투자 ${usd(inv, 0)} · 현금 ${usd(A.cash, 0)}</span></div>
+      <div class="pp-card"><span class="k">같은 기간 S&P500 (SPY)</span><b class="${cls(spy)}">${spy == null ? "첫 체결 뒤부터" : pct(spy, 2)}</b><span class="s">AI가 이걸 이겨야 의미가 있어요${spy != null ? ` · 차이 <b class="${cls(r - spy)}">${pct(r - spy, 2)}</b>` : ""}</span></div>
+      <div class="pp-card"><span class="k">끝난 거래</span><b>${A.stats.n}건</b><span class="s">${A.stats.n ? `이긴 비율 ${Math.round(A.stats.win * 100)}%` : "아직 없음"}</span></div>`;
+    $("#ai-pos").innerHTML = A.pos.map((p) => `<tr><td><button class="tt-sym" data-sym="${esc(p.sym)}"><b>${esc(p.sym)}</b><span class="muted">${esc(p.since.slice(5))}부터 · ${usd(p.val, 0)}</span></button></td>
+      <td class="num">${usd(p.avg)}</td><td class="num">${usd(p.px)}</td><td class="num ${cls(p.pl)}">${pct(p.pl)}</td><td class="num">${usd(p.stop)}<span class="s">${p.target ? usd(p.target) : "—"}</span></td></tr>`).join("")
+      || `<tr class="empty-row"><td colspan="5">보유 종목 없음 — 대기 주문이 미국장에서 체결되면 여기 떠요.</td></tr>`;
+    $("#ai-orders").innerHTML = A.orders.length ? `<div class="co-sub">대기 주문</div><ul class="ai-orders">${A.orders.map((o) => `<li><b>${esc(o.desc)}</b><span class="muted small">${esc(o.why)}</span></li>`).join("")}</ul>` : "";
+    $("#ai-trades").innerHTML = A.trades.length ? `<div class="co-sub">끝난 거래</div><ul class="ai-orders">${A.trades.slice(0, 20).map((t) => `<li><b>${esc(t.sym)}</b> <span class="${cls(t.pl)}">${pct(t.pl)}</span> <span class="muted small">${esc(t.in.slice(5))} → ${esc(t.out.slice(5))} · ${esc(t.why)}</span></li>`).join("")}</ul>` : "";
+    const K = { note: "판단", order: "주문", fill: "체결", modify: "수정", cancel: "취소", expire: "만료", skip: "건너뜀" };
+    $("#ai-journal").innerHTML = A.journal.map((j) => `<li class="k-${j.k}"><span class="muted small">${esc(j.at.slice(5))}</span> <b>${K[j.k] || j.k}</b>${j.sym ? ` ${esc(j.sym)}` : ""}${j.detail ? ` <span class="small">${esc(j.detail)}</span>` : ""}<div>${esc(j.text)}</div></li>`).join("");
   }
 
   function init() {
