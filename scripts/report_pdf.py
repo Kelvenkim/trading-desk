@@ -334,6 +334,7 @@ def build(note_path):
         if not p_.strip():
             continue
         title, _, txt = p_.partition("\n")
+        txt = re.sub(r"(?m)^(?!\s*(?:[-*]|\d+\.)\s)(.+)\n(?=\s*(?:[-*]|\d+\.)\s)", r"\1\n\n", txt)   # 목록 앞 빈 줄 보정
         html = markdown.markdown(txt, extensions=["tables"])
         for key, fn in AUTO:
             if key in title:
