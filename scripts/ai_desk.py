@@ -132,7 +132,9 @@ def run(P, day=None):
     for t in C:
         rows = P.get(t)
         if not rows or len(rows) < 60:
-            kill[t] = "시세 부족"; continue
+            if "보유 중" not in C[t]:
+                kill[t] = "시세 부족"
+            continue
         x = I[t] = ind(rows[-260:])
         pf = prof(t)
         nx = pf and pf.get("earn", {}).get("next")
@@ -247,7 +249,7 @@ def feedback(S, day, force=False):
     from datetime import date as _d
     last = S.get("review_day")
     wd = _d.fromisoformat(day).weekday()
-    if not force and not (wd == 4 or not last or (_d.fromisoformat(day) - _d.fromisoformat(last)).days >= 7):
+    if not force and not (wd == 4 or (last and (_d.fromisoformat(day) - _d.fromisoformat(last)).days >= 7)):
         return
     if last == day:
         return
