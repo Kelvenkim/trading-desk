@@ -40,15 +40,6 @@ def cls(v):
     return "" if not v else "up" if v > 0 else "down"
 
 
-LOGO = """<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="logo">
-  <rect width="120" height="120" rx="26" fill="#fff"/>
-  <rect x="28" y="24" width="17" height="72" rx="3" fill="#000"/>
-  <path d="M49 62 L74 37" stroke="#000" stroke-width="15" stroke-linecap="square"/>
-  <path d="M66 27 L90 27 L90 51 Z" fill="#000"/>
-  <path d="M55 62 L86 96" stroke="#000" stroke-width="15" stroke-linecap="square"/>
-</svg>"""
-
-
 def market_block():
     m = j("market.json", {})
     rows = "".join(f"<tr><td>{a['name']}</td><td class='num'>{a['last']:,.2f}</td><td class='num {cls(a['d1'])}'>{pct(a['d1'], 2)}</td>"
@@ -100,7 +91,24 @@ def desk_block():
       <div><span>최대 낙폭</span><b>{pct(m.get('mdd'))}</b><em>현금 ${A['cash']:,.0f}</em></div></div>
       <table class='t'><thead><tr><th>보유</th><th class='num'>매수가</th><th class='num'>현재가</th><th class='num'>손익</th><th class='num'>손절</th><th class='num'>목표</th></tr></thead><tbody>{pos or "<tr><td colspan=6 class='muted'>없음</td></tr>"}</tbody></table>
       <div class='two'><div><div class='cap'>대기 주문</div><ul class='small'>{orders}</ul></div><div><div class='cap'>최근 끝난 거래</div><ul class='small'>{tr}</ul></div></div>
-      {curve_svg([("AI 데스크", "#111", eqs)])}"""
+      {curve_svg([("AI 데스크 계좌", "#111", eqs)])}
+      <h3>보유 종목별 — 어디서 샀고, 어디서 팔 계획인지</h3>
+      {''.join(pos_card(p) for p in A.get("pos", []))}
+      {''.join(sold_card(t) for t in A.get("trades", [])[:3])}"""
+
+
+def pos_card(p):
+    pts = "".join(f"<li>{x}</li>" for x in plan_text(p))
+    return (f"<div class='pcard'><div class='ph'><b>{p['sym']}</b> <span class='muted'>{p['since']} 매수 ${p['avg']:,.2f} → 지금 ${(p['px'] or 0):,.2f}</span> <b class='{cls(p['pl'])}'>{pct(p['pl'])}</b></div>"
+            f"{pos_chart(p['sym'], p['since'], p['avg'], p.get('stop'), p.get('target'))}"
+            f"<div class='two'><div><div class='cap'>왜 샀나 (매수 근거)</div><p class='small'>{p.get('why') or '—'}</p></div>"
+            f"<div><div class='cap'>매도 계획</div><ul class='small'>{pts}</ul></div></div></div>")
+
+
+def sold_card(t):
+    return (f"<div class='pcard'><div class='ph'><b>{t['sym']}</b> <span class='muted'>끝난 거래 {t['in']} → {t['out']}</span> <b class='{cls(t['pl'])}'>{pct(t['pl'])}</b> <span class='muted'>· {t['why']}</span></div>"
+            f"{pos_chart(t['sym'], t['in'], t['avg'], sell_day=t['out'], sell_px=t['px'])}"
+            f"<p class='small'><b>매수 근거:</b> {t.get('entry_why') or '—'}</p></div>")
 
 
 def rank_block():
@@ -126,6 +134,69 @@ def paper_block():
             + curve_svg([(n_, c, P["acct"][k]["eq"]) for k, (n_, c) in lab.items()]))
 
 
+def bars(sym, period="6mo"):
+    try:
+        import yfinance as yf
+        h = yf.Ticker(sym).history(period=period, interval="1d").dropna(subset=["Close"])
+        return [(ix.strftime("%Y-%m-%d"), float(r.Close)) for ix, r in h.iterrows()]
+    except Exception:
+        return []
+
+
+def pos_chart(sym, buy_day, buy_px, stop=None, target=None, sell_day=None, sell_px=None, w=520, h=190):
+    """종가 그래프 + 매수 지점(▲) · 매도 지점(▼) · 손절선(빨강) · 목표선(초록) · 20·50일선"""
+    b = bars(sym)
+    if len(b) < 30:
+        return "<p class='small muted'>그래프 자료가 부족해요.</p>"
+    c = [v for _, v in b]
+    ma = lambda k: [sum(c[max(0, i - k + 1):i + 1]) / min(k, i + 1) if i >= k - 1 else None for i in range(len(c))]
+    m20, m50 = ma(20), ma(50)
+    b = b[-90:]; c = c[-90:]; m20 = m20[-90:]; m50 = m50[-90:]
+    lv = [v for v in c] + [x for x in (stop, target, buy_px, sell_px) if x]
+    lo, hi = min(lv) * 0.98, max(lv) * 1.02
+    X = lambda i: 46 + i / (len(c) - 1) * (w - 110)
+    Y = lambda v: 10 + (hi - v) / (hi - lo) * (h - 34)
+    line = lambda arr, col, wd, dash="": "<polyline points='" + " ".join(f"{X(i):.1f},{Y(v):.1f}" for i, v in enumerate(arr) if v) + f"' fill='none' stroke='{col}' stroke-width='{wd}' {dash}/>"
+    out = [line(m50, "#c9c9c9", 1), line(m20, "#9db4e8", 1), line(c, "#111", 1.6)]
+    def hl(v, col, lab):
+        return (f"<line x1='46' x2='{w - 64}' y1='{Y(v):.1f}' y2='{Y(v):.1f}' stroke='{col}' stroke-dasharray='4 3' stroke-width='1.2'/>"
+                f"<text x='{w - 60}' y='{Y(v) + 3:.1f}' class='lb' fill='{col}'>{lab} {v:,.2f}</text>")
+    if stop: out.append(hl(stop, "#d9363e", "손절"))
+    if target: out.append(hl(target, "#1f9d55", "목표"))
+    days = [d for d, _ in b]
+    def mk(day, px, up, lab):
+        i = next((k for k, d in enumerate(days) if d >= day), len(days) - 1)
+        x, y = X(i), Y(px)
+        tri = f"{x - 5},{y + 11} {x + 5},{y + 11} {x},{y + 3}" if up else f"{x - 5},{y - 11} {x + 5},{y - 11} {x},{y - 3}"
+        col = "#1d5fd6" if up else "#d9363e"
+        return (f"<polygon points='{tri}' fill='{col}'/><circle cx='{x}' cy='{y}' r='2.5' fill='{col}'/>"
+                f"<text x='{x - 9}' y='{y + (20 if up else -14):.1f}' class='lb' fill='{col}' text-anchor='end'>{lab} {px:,.2f} ({day[5:]})</text>")
+    out.append(mk(buy_day, buy_px, True, "매수"))
+    if sell_day and sell_px: out.append(mk(sell_day, sell_px, False, "매도"))
+    ticks = "".join(f"<text x='{X(i):.1f}' y='{h - 6}' class='ax' text-anchor='middle'>{days[i][5:]}</text>" for i in range(0, len(days), 15))
+    yt = "".join(f"<text x='2' y='{Y(v) + 3:.1f}' class='ax'>{v:,.0f}</text>" for v in (hi / 1.02, (hi + lo) / 2, lo / 0.98))
+    return (f"<svg viewBox='0 0 {w} {h}' class='curve'>{yt}{ticks}{''.join(out)}"
+            f"<text x='50' y='{h - 18}' class='lg'><tspan fill='#111'>━ 종가</tspan>  <tspan fill='#9db4e8'>━ 20일선</tspan>  <tspan fill='#c9c9c9'>━ 50일선</tspan></text></svg>")
+
+
+def plan_text(p):
+    avg, st = p["avg"], p.get("stop")
+    out = []
+    if st:
+        out.append(f"손절 ${st:,.2f} ({st / avg - 1:+.1%}) — 여기 닿으면 전량 매도")
+    if p.get("target"):
+        out.append(f"목표 ${p['target']:,.2f} ({p['target'] / avg - 1:+.1%}) — 닿으면 전량 매도")
+    else:
+        out.append("목표가 없음 — 오르는 동안 계속 보유")
+    if st and st < avg:
+        R = avg - st
+        out.append(f"+{R / avg:.1%}(1R) 오르면 손절을 본전으로, +{2 * R / avg:.1%}(2R)면 +{R / avg:.1%}로 올림")
+    elif st and st >= avg:
+        out.append("이미 손절이 본전 이상 — 최악이어도 손해 없음")
+    out.append("+15%부터는 고점 대비 −8% 추적 손절")
+    return out
+
+
 AUTO = [("시장", market_block), ("AI 데스크", desk_block), ("순위", rank_block), ("모의 투자", paper_block)]
 
 CSS = """
@@ -134,16 +205,15 @@ CSS = """
 * { box-sizing: border-box; }
 body { font-family: 'Noto Sans CJK KR', 'Noto Sans KR', sans-serif; color: #111; font-size: 10.5pt; line-height: 1.65; margin: 0; }
 .cover { height: 296mm; background: #000; color: #fff; margin: 0; padding: 38mm 22mm 20mm; display: flex; flex-direction: column; page-break-after: always; }
-.cover .logo { width: 30mm; height: 30mm; }
-.brand { font-size: 13pt; font-weight: 800; letter-spacing: .02em; margin-top: 6mm; }
-.cover h1 { font-size: 34pt; line-height: 1.15; margin: 34mm 0 4mm; font-weight: 900; }
+.brand { font-size: 12pt; font-weight: 800; letter-spacing: .3em; color: #888; border-bottom: 1px solid #333; padding-bottom: 5mm; }
+.cover h1 { font-size: 40pt; line-height: 1.15; margin: 60mm 0 4mm; font-weight: 900; }
 .cover .dayn { font-size: 15pt; color: #bbb; }
 .cover .meta { margin-top: auto; color: #999; font-size: 9.5pt; border-top: 1px solid #333; padding-top: 6mm; display: flex; justify-content: space-between; }
 .cover .hl { margin-top: 14mm; font-size: 12pt; color: #ddd; max-width: 150mm; }
 .hdr { display: flex; align-items: center; gap: 8px; font-size: 8.5pt; color: #888; border-bottom: 1px solid #eee; padding-bottom: 6px; margin-bottom: 10px; }
 .hdr svg { width: 14px; height: 14px; } .hdr rect:first-child { fill: #000; } .hdr rect:not(:first-child), .hdr path { fill: #fff; stroke: #fff; }
 h2 { font-size: 14pt; margin: 18px 0 8px; padding-top: 4px; border-top: 2px solid #000; break-after: avoid; }
-h3 { font-size: 11pt; margin: 12px 0 4px; }
+h3 { font-size: 11pt; margin: 12px 0 4px; break-after: avoid; }
 p { margin: 4px 0 8px; } ul { margin: 4px 0 8px; padding-left: 18px; } li { margin: 2px 0; }
 a { color: #1d4fd6; text-decoration: none; }
 .t { width: 100%; border-collapse: collapse; font-size: 9pt; margin: 6px 0 10px; break-inside: avoid; }
@@ -161,6 +231,10 @@ a { color: #1d4fd6; text-decoration: none; }
 .kpis span { font-size: 8pt; color: #888; } .kpis b { font-size: 13pt; } .kpis em { font-style: normal; font-size: 8.5pt; color: #666; }
 .curve { width: 100%; height: auto; margin: 4px 0 8px; } .curve .lg { font-size: 9px; fill: #555; } .curve .ax { font-size: 8px; fill: #999; }
 blockquote { margin: 6px 0; padding: 6px 12px; border-left: 3px solid #000; background: #f7f7f7; }
+.pcard { border: 1px solid #e5e5e5; border-radius: 8px; padding: 8px 12px; margin: 10px 0; break-inside: avoid; }
+.ph { font-size: 10.5pt; margin-bottom: 2px; }
+.curve .lb { font-size: 8.5px; font-weight: 700; }
+.box { border: 1px solid #ddd; background: #fafafa; border-radius: 6px; padding: 8px 12px; margin: 8px 0; break-inside: avoid; }
 .foot { margin-top: 18px; font-size: 8pt; color: #999; border-top: 1px solid #eee; padding-top: 6px; }
 """
 
@@ -184,9 +258,9 @@ def build(note_path):
             if key in title:
                 html += fn()
         secs.append(f"<h2>{title.strip()}</h2>{html}")
-    hdr = f"<div class='hdr'>{LOGO.replace('class=\"logo\"', '')} K Trading Desk · {n}일차 {kind} 보고서 · {mday}</div>"
+    hdr = f"<div class='hdr'>K Trading Desk · {n}일차 {kind} 보고서 · {mday}</div>"
     html = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>{CSS}</style></head><body>
-      <section class="cover">{LOGO}<div class="brand">K TRADING DESK</div>
+      <section class="cover"><div class="brand">K TRADING DESK</div>
         <h1>{kind} 보고서</h1><div class="dayn">{n}일차 · 미국장 {mday.strftime('%Y년 %m월 %d일')} ({'월화수목금'[mday.weekday()]})</div>
         <div class="hl">{meta.get('headline', '')}</div>
         <div class="meta"><span>작성 Claude (AI 데스크 총괄)</span><span>참고용 · 투자 권유 아님</span></div></section>
