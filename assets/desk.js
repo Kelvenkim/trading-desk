@@ -52,6 +52,12 @@ const DeskUI = (() => {
     $("#dk-orders").innerHTML = A.orders.map((o) => `<li><b>${esc(o.desc)}</b><span class="muted small">${esc(o.why)}</span></li>`).join("") || `<li class="muted">없음</li>`;
     $("#dk-cands").innerHTML = (A.cands || []).slice(0, 8).map((c) => `<div class="dk-cand"><button class="tt-sym" data-sym="${esc(c.t)}"><b>${esc(c.name)}</b><span class="muted">${esc(c.t)} · ${esc(c.src)}</span></button>
       <div class="dk-bar"><i style="width:${Math.round(c.score * 100)}%" class="${c.score >= 0.6 ? "ok" : ""}"></i><span>${c.score.toFixed(2)}</span></div><span class="muted small">${esc(c.why)}</span></div>`).join("") || `<p class="muted small">회의 뒤에 채워져요.</p>`;
+    const adj = A.adj || { src: {}, sig: {} }, rv = A.review;
+    const chips = [...Object.entries(adj.src || {}).map(([k, v]) => [k, v]), ...Object.entries(adj.sig || {}).map(([k, v]) => ["장중·" + k, v])].filter(([, v]) => v);
+    $("#dk-fb").innerHTML = `
+      <div class="pp-chips">${chips.length ? chips.map(([k, v]) => `<span>${esc(k)} <b class="${cls(v)}">${v > 0 ? "+" : ""}${v.toFixed(2)}</b></span>`).join("") : `<span class="muted">아직 보정 없음</span>`}</div>
+      ${rv ? `<p class="small muted" style="margin:8px 0 4px">${esc(rv.day)} 성적표 · 끝난 거래 ${rv.n}건</p><ul class="ai-orders">${(rv.lines || []).slice(0, 8).map((l) => `<li class="small">${esc(l)}</li>`).join("")}</ul>` : `<p class="small muted">첫 성적표는 금요일 마감 회의 때 나와요.</p>`}
+      ${(A.adj_log || []).length ? `<div class="co-sub">조정 이력</div><ul class="ai-orders">${A.adj_log.slice(0, 10).map((a) => `<li class="small"><span class="muted">${esc(a.day)}</span> ${esc(a.text)}</li>`).join("")}</ul>` : ""}`;
     $("#dk-trades").innerHTML = A.trades.slice(0, 15).map((t) => `<li><b>${esc(t.sym)}</b> <span class="${cls(t.pl)}">${pct(t.pl)}</span><span class="muted small">${esc(t.in.slice(5))} → ${esc(t.out.slice(5))} · ${esc(t.why)}${t.src ? " · " + esc(t.src) : ""}</span></li>`).join("") || `<li class="muted">아직 없음</li>`;
   }
 

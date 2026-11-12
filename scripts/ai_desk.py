@@ -89,6 +89,7 @@ def run(P, day=None):
     ko = {r["code"]: (r.get("ko") or r["code"]) for r in rank.get("rows", [])}
     nm = lambda t: f"{ko.get(t, t)}({t})" if ko.get(t, t) != t else t
     say("logger", f"── {day} 미국장 마감 회의 시작 ──", sep=True)
+    feedback(S, day)                                   # 금요일(또는 7일마다) 성적표 → 오늘 점수부터 보정 반영
 
     # ① Scout
     C = {}
@@ -162,6 +163,9 @@ def run(P, day=None):
     scored = []
     for t in keep:
         z = score(t, I[t], prof(t) or {}, C[t], spy_r20)
+        b = sum(S.get("src_adj", {}).get(k, 0) for k in C[t] if k != "보유 중")
+        if b:
+            z["score"] = round(z["score"] + max(-0.15, min(0.15, b)), 2); z["why"] += f", 성적 보정 {b:+.2f}"
         z["entry"] = round(I[t]["c"] - 0.25 * I[t]["N"], 2)
         z["stop"] = round(z["entry"] * (1 - z["stop_pct"]), 2)
         z["target"] = round(z["entry"] * (1 + 2.5 * z["stop_pct"]), 2)
@@ -232,6 +236,64 @@ def run(P, day=None):
                    "logger": f"누적 {m['cum'] * 100:+.2f}% · 거래 {m['n']}건", "day": day}
     AP.save(S)
     print("AI 데스크:", S["agents"])
+
+
+# ======================= 주간 피드백 (Logger → Analyst 가중치 조정) =======================
+MIN_N, STEP, CAP = 20, 0.02, 0.10
+
+
+def feedback(S, day, force=False):
+    """매주 금요일 마감 회의(또는 7일 지남): 출처·장중 신호별 성적 → 표본 20건 이상이면 점수 보정 ±0.02 (최대 ±0.10)"""
+    from datetime import date as _d
+    last = S.get("review_day")
+    wd = _d.fromisoformat(day).weekday()
+    if not force and not (wd == 4 or not last or (_d.fromisoformat(day) - _d.fromisoformat(last)).days >= 7):
+        return
+    if last == day:
+        return
+    S["review_day"] = day
+    tr = S["trades"]
+    say = lambda who, t, **kw: AP.say(S, who, t, **kw)
+    allm = sum(x["pl"] for x in tr) / len(tr) if tr else 0
+    def group(key):
+        g = {}
+        for x in tr:
+            ks = (x.get("src") or "기타").split(" + ") if key == "src" else (x.get("sig") or [])
+            for k in ks:
+                g.setdefault(k, []).append(x["pl"])
+        return g
+    lines, changes = [], []
+    for key, store, label in (("src", "src_adj", "출처"), ("sig", "sig_adj", "장중 신호")):
+        adj = S.setdefault(store, {})
+        for k, pls in sorted(group(key).items(), key=lambda kv: -len(kv[1])):
+            n = len(pls); m = sum(pls) / n; w = sum(p > 0 for p in pls) / n
+            lines.append(f"{k} {n}건 승률 {w:.0%} 평균 {m:+.1%}")
+            if n < MIN_N:
+                continue
+            old = adj.get(k, 0.0)
+            if m < allm - 0.005 or m < -0.005:
+                new = max(-CAP, old - STEP)
+            elif m > allm + 0.005 and m > 0:
+                new = min(CAP, old + STEP)
+            else:
+                continue
+            if new != old:
+                adj[k] = round(new, 3)
+                changes.append(f"{label} '{k}' 점수 보정 {old:+.2f} → {new:+.2f} ({n}건, 평균 {m:+.1%}, 전체 평균 {allm:+.1%})")
+    # 손절 미끄러짐 (갭으로 손절가보다 더 잃은 비율)
+    st = [x for x in tr if "손절" in (x.get("why") or "") and x.get("stop_pl") is not None]
+    slip = [x for x in st if x["pl"] < x["stop_pl"] * 1.25]
+    m = AP.metrics(S)
+    S.setdefault("adj_log", []).extend({"day": day, "text": c} for c in changes)
+    S["review"] = {"day": day, "n": len(tr), "lines": lines, "changes": changes}
+    say("logger", f"── {day} 주간 성적표 ──", sep=True)
+    say("logger", f"끝난 거래 {m['n']}건" + (f" · 승률 {m['win']:.0%} · 손익비 {m['payoff']:.1f}" if m["n"] and m.get("payoff") else "") + f" · 최대 낙폭 {m['mdd'] * 100:.1f}% · 누적 {m['cum'] * 100:+.2f}%." +
+        (" 출처·신호별: " + "; ".join(lines[:10]) + "." if lines else "") +
+        (f" 손절 {len(st)}건 중 {len(slip)}건은 갭으로 손절가보다 더 잃었어요." if st else ""))
+    if changes:
+        say("analyst", "성적표 보고 점수를 조정했어요: " + "; ".join(changes) + ". 한 번에 ±0.02씩, 최대 ±0.10까지만 움직여요. @Claude 확인 부탁해요.")
+    else:
+        say("analyst", f"이번 주는 조정 없어요 — 출처·신호별로 끝난 거래가 {MIN_N}건 넘는 게 아직 없어서 우연과 구분이 안 돼요. 계속 쌓을게요.")
 
 
 # ======================= 장중·장전 회의 =======================
@@ -361,7 +423,8 @@ def live():
             p_rel = max(0, min(0.15, rel / 0.03 * 0.15))
             p_rv = max(0, min(0.12, (rv - 1) / 2 * 0.12))
             p_mom = 0.08 if x["mom30"] > 0 else 0
-            isc = round(p_sig + p_rel + p_rv + p_mom + 0.4 * d[0], 2)
+            b = sum(S.get("sig_adj", {}).get(k if not k.startswith("S&P") else "상대강도", 0) for k in sig) + S.get("src_adj", {}).get("장중 신호", 0)
+            isc = round(p_sig + p_rel + p_rv + p_mom + 0.4 * d[0] + max(-0.15, min(0.15, b)), 2)
             stop = max(x["orl"] if "개장 범위 돌파" in sig else x["vwap"] - 0.5 * d[3], x["p"] * (1 - d[1]))
             stop = min(stop, x["p"] * 0.98)                                       # 최소 2% 여유
             cands.append({"t": t, "score": isc, "chg": chg, "rel": rel, "rv": rv, "sig": sig, "x": x, "d": d, "stop": round(stop, 2)})
@@ -394,7 +457,7 @@ def live():
                 if usd < 200:
                     rej.append((z["t"], "현금 20% 유지 규칙")); continue
                 o, bad = AP.place(S, z["t"], "buy", usd, "limit", px, z["stop"], round(px * (1 + 2.5 * sp), 2), 1,
-                                  f"장중 회의 {t_ny}: {' · '.join(z['sig'])}, 거래 {z['rv']:.1f}배 속도, VWAP 위 → 장중 점수 {z['score']:.2f} (일봉 {z['d'][0]:.2f})", src="장중 신호", score=z["score"])
+                                  f"장중 회의 {t_ny}: {' · '.join(z['sig'])}, 거래 {z['rv']:.1f}배 속도, VWAP 위 → 장중 점수 {z['score']:.2f} (일봉 {z['d'][0]:.2f})", src="장중 신호", score=z["score"], sig=["상대강도" if k.startswith("S&P") else k for k in z["sig"]])
                 if bad: rej.append((z["t"], bad)); continue
                 placed.append((z, o, usd)); room -= usd
             if placed:

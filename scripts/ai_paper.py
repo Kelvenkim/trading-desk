@@ -91,7 +91,7 @@ def check(S, sym, side, usd, px, stop):
     return None
 
 
-def place(S, sym, side, usd=0, typ="market", px=None, stop=None, target=None, days=2, why="", pct=None, src=None, score=None, ref=None):
+def place(S, sym, side, usd=0, typ="market", px=None, stop=None, target=None, days=2, why="", pct=None, src=None, score=None, ref=None, sig=None):
     sym = sym.upper()
     ref = px or ref or S["px"].get(sym) or (last_price(sym) if side == "buy" else None)
     bad = check(S, sym, side, usd, ref, stop)
@@ -99,7 +99,7 @@ def place(S, sym, side, usd=0, typ="market", px=None, stop=None, target=None, da
         return None, bad
     S["seq"] += 1
     o = {"id": S["seq"], "sym": sym, "side": side, "type": typ, "px": px, "usd": usd, "pct": pct, "stop": stop, "target": target,
-         "why": why, "at": now().isoformat(), "exp": (now() + timedelta(days=days)).isoformat(), "src": src, "score": score}
+         "why": why, "at": now().isoformat(), "exp": (now() + timedelta(days=days)).isoformat(), "src": src, "score": score, "sig": sig}
     S["orders"].append(o)
     log(S, "order", why, sym=sym, side=side, detail=desc(o))
     return o, None
@@ -169,7 +169,7 @@ def fill_buy(S, o, t, px):
     if p:
         p["avg"] = (p["avg"] * p["sh"] + px * sh) / (p["sh"] + sh); p["sh"] += sh
     else:
-        p = S["pos"][o["sym"]] = {"sh": sh, "avg": px, "since": t.isoformat(), "why": o["why"], "src": o.get("src", "Claude 직접"), "score": o.get("score"), "peak": px}
+        p = S["pos"][o["sym"]] = {"sh": sh, "avg": px, "since": t.isoformat(), "why": o["why"], "src": o.get("src") or "Claude 직접", "score": o.get("score"), "sig": o.get("sig"), "stop0": o.get("stop"), "peak": px}
     if o.get("stop"): p["stop"] = o["stop"]
     if o.get("target"): p["target"] = o["target"]
     log(S, "fill", f"매수 체결 ${px:,.2f} × {sh:.4f}주", sym=o["sym"], side="buy", t=t.isoformat())
@@ -186,7 +186,8 @@ def fill_sell(S, sym, t, px, frac, why):
     S["cash"] += sh * px * (1 - FEE)
     pl = px * (1 - FEE) / (p["avg"] * (1 + FEE)) - 1
     S["trades"].append({"sym": sym, "in": p["since"][:10], "out": t.astimezone(KST).strftime("%Y-%m-%d"), "avg": round(p["avg"], 2), "px": round(px, 2),
-                        "pl": round(pl, 4), "usd": round(sh * (px - p["avg"]), 2), "why": why, "entry_why": p.get("why"), "src": p.get("src"), "score": p.get("score")})
+                        "pl": round(pl, 4), "usd": round(sh * (px - p["avg"]), 2), "why": why, "entry_why": p.get("why"), "src": p.get("src"), "score": p.get("score"), "sig": p.get("sig"),
+                        "stop_pl": round(p["stop0"] / p["avg"] - 1, 4) if p.get("stop0") else None})
     who = "risk" if ("손절" in why or "추적" in why) else "executor"
     say(S, who, f"{sym} {'전량' if frac >= 0.999 else f'{frac:.0%}'} 매도 — {why}. ${px:,.2f}, 손익 {pl * 100:+.1f}%.")
     p["sh"] -= sh
@@ -288,7 +289,7 @@ def view(S):
                    for t, p in S["pos"].items()],
            "orders": [{**o, "desc": desc(o)} for o in S["orders"]], "trades": tr[::-1][:100], "journal": S["journal"][::-1][:150],
            "stats": metrics(S),
-           "chat": S.get("chat", [])[-300:], "agents": S.get("agents", {}), "halt": S.get("halt"), "cands": S.get("cands", []),
+           "chat": S.get("chat", [])[-300:], "adj": {"src": S.get("src_adj", {}), "sig": S.get("sig_adj", {})}, "adj_log": S.get("adj_log", [])[-30:][::-1], "review": S.get("review"), "agents": S.get("agents", {}), "halt": S.get("halt"), "cands": S.get("cands", []),
            "bench": (S["px"]["SPY"] / S["bench0"] - 1) if S.get("bench0") and S["px"].get("SPY") else None,
            "rules": f"한 종목 최대 {MAX_W:.0%} · 최대 {MAX_N}종목 · 모든 매수에 손절가 · 손절 시 손실 ≤ 계좌의 {MAX_RISK:.0%} · +15%부터 고점 대비 -8% 추적 손절 · S&P500 -3%면 신규 매수 중단 · 수수료 0.1% + 체결 차이 0.05%"}
     VIEW.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":"), default=str))
