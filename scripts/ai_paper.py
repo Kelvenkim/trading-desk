@@ -298,7 +298,7 @@ def view(S):
     tr = S["trades"]; w = [x for x in tr if x["pl"] > 0]
     out = {"start": S["start"][:10], "cash0": 10000, "eq_now": round(e, 2), "cash": round(S["cash"], 2), "eq": S["eq"],
            "pos": [{"sym": t, "sh": round(p["sh"], 4), "avg": round(p["avg"], 2), "px": S["px"].get(t), "pl": (S["px"].get(t, p["avg"]) / p["avg"] - 1),
-                    "val": round(p["sh"] * S["px"].get(t, p["avg"]), 2), "stop": p.get("stop"), "target": p.get("target"), "since": p["since"][:10], "why": p.get("why")}
+                    "val": round(p["sh"] * S["px"].get(t, p["avg"]), 2), "stop": p.get("stop"), "target": p.get("target"), "since": p["since"][:10], "why": p.get("why"), "src": p.get("src")}
                    for t, p in S["pos"].items()],
            "orders": [{**o, "desc": desc(o)} for o in S["orders"]], "trades": tr[::-1][:100], "journal": S["journal"][::-1][:150],
            "stats": metrics(S),
