@@ -221,11 +221,24 @@ def cmd_fill(S):
         p = S["pos"].get(s)
         if p:
             if p.get("stop") and l <= p["stop"]:
-                fill_sell(S, s, t, min(o_, p["stop"]), 1, "추적 손절 도달" if p.get("trail") else "손절가 도달")
+                why = "추적 손절 도달" if p.get("trail") else "본전·수익 확보 손절" if p["stop"] >= p["avg"] else "손절가 도달"
+                fill_sell(S, s, t, min(o_, p["stop"]), 1, why)
             elif p.get("target") and h >= p["target"]:
                 fill_sell(S, s, t, max(o_, p["target"]), 1, "익절가 도달")
             else:
                 p["peak"] = max(p.get("peak", p["avg"]), h)
+                # 본전 손절: +1R(처음 손절 폭만큼 오름) → 손절을 본전+수수료로, +2R → 손절을 +1R로
+                p.setdefault("stop0", p.get("stop"))
+                R = p["avg"] - (p.get("stop0") or 0)
+                if p.get("stop0") and R > 0:
+                    be = round(p["avg"] * (1 + 2 * (FEE + SLIP)), 2)
+                    if p["peak"] >= p["avg"] + R and (p.get("stop") or 0) < be:
+                        p["stop"] = be
+                        say(S, "risk", f"{s}가 +{R / p['avg']:.1%}(손절 폭만큼) 올랐어요. 손절을 본전 ${be}로 올려요 — 이제 최악이어도 손해 없어요.")
+                    lv = round(p["avg"] + R, 2)
+                    if p["peak"] >= p["avg"] + 2 * R and (p.get("stop") or 0) < lv:
+                        p["stop"] = lv
+                        say(S, "risk", f"{s}가 +{2 * R / p['avg']:.1%}(손절 폭의 2배)까지 갔어요. 손절을 ${lv}(+{R / p['avg']:.1%})로 올려서 수익 일부 확보해요.")
                 if p["peak"] >= p["avg"] * (1 + TRAIL_ON):
                     ts = round(p["peak"] * (1 - TRAIL), 2)
                     if not p.get("trail"):
@@ -291,7 +304,7 @@ def view(S):
            "stats": metrics(S),
            "chat": S.get("chat", [])[-300:], "adj": {"src": S.get("src_adj", {}), "sig": S.get("sig_adj", {})}, "adj_log": S.get("adj_log", [])[-30:][::-1], "review": S.get("review"), "agents": S.get("agents", {}), "halt": S.get("halt"), "cands": S.get("cands", []),
            "bench": (S["px"]["SPY"] / S["bench0"] - 1) if S.get("bench0") and S["px"].get("SPY") else None,
-           "rules": f"한 종목 최대 {MAX_W:.0%} · 최대 {MAX_N}종목 · 모든 매수에 손절가 · 손절 시 손실 ≤ 계좌의 {MAX_RISK:.0%} · +15%부터 고점 대비 -8% 추적 손절 · S&P500 -3%면 신규 매수 중단 · 수수료 0.1% + 체결 차이 0.05%"}
+           "rules": f"한 종목 최대 {MAX_W:.0%} · 최대 {MAX_N}종목 · 모든 매수에 손절가 · 손절 시 손실 ≤ 계좌의 {MAX_RISK:.0%} · +1R이면 손절을 본전으로, +2R이면 +1R로 · +15%부터 고점 대비 -8% 추적 손절 · S&P500 -3%면 신규 매수 중단 · 수수료 0.1% + 체결 차이 0.05%"}
     VIEW.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":"), default=str))
 
 
