@@ -539,6 +539,11 @@ def main(force=False):
         ai_desk.run(P, day)
     except Exception as e:
         print("AI 데스크 실패:", e)
+    try:                                              # 데이트레이딩 계좌: 기록 저장·감시 종목·주간 자기 조정
+        import day_desk
+        day_desk.main()
+    except Exception as e:
+        print("데이 데스크 실패:", e)
     try:                                              # 매일 보고서
         import daily_report
         daily_report.main()

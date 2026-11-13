@@ -150,8 +150,17 @@ def paper_block():
     for k, (n_, _) in lab.items():
         e = P["acct"][k]["eq"]; v = e[-1][1]; d1 = v / e[-2][1] - 1 if len(e) > 1 else None
         rows += f"<tr><td>{n_}</td><td class='num'>${v:,.0f}</td><td class='num {cls(v / P['cash0'] - 1)}'>{pct(v / P['cash0'] - 1, 2)}</td><td class='num {cls(d1)}'>{pct(d1, 2)}</td><td class='num'>{len(P['acct'][k]['pos'])}</td></tr>"
+    A = j("ai_paper.json") or {}; Dd = j("day_desk.json") or {}
+    series = [(n_, c, P["acct"][k]["eq"]) for k, (n_, c) in lab.items()]
+    if A.get("eq"):
+        v = A["eq_now"]; rows += f"<tr><td>AI 데스크 (스윙)</td><td class='num'>${v:,.0f}</td><td class='num {cls(v / 10000 - 1)}'>{pct(v / 10000 - 1, 2)}</td><td class='num'>—</td><td class='num'>{len(A.get('pos', []))}</td></tr>"
+        series.append(("AI 데스크", "#2fa36b", A["eq"]))
+    if Dd.get("eq"):
+        v = Dd["eq"][-1][1]; trs = Dd.get("trades", []); w_ = sum(t["pl"] > 0 for t in trs)
+        rows += f"<tr><td>데이트레이딩 (당일 청산)</td><td class='num'>${v:,.0f}</td><td class='num {cls(v / 10000 - 1)}'>{pct(v / 10000 - 1, 2)}</td><td class='num'>{len(trs)}번 · 승률 {w_ / len(trs) * 100 if trs else 0:.0f}%</td><td class='num'>{len(Dd.get('pos', {}))}</td></tr>"
+        series.append(("데이", "#e5484d", Dd["eq"]))
     return (f"<table class='t'><thead><tr><th>계좌 ($10,000 시작, {P['start']}~)</th><th class='num'>평가액</th><th class='num'>누적</th><th class='num'>하루</th><th class='num'>보유</th></tr></thead><tbody>{rows}</tbody></table>"
-            + curve_svg([(n_, c, P["acct"][k]["eq"]) for k, (n_, c) in lab.items()]))
+            + curve_svg(series))
 
 
 def bars(sym, period="6mo"):

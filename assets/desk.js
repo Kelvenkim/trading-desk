@@ -24,6 +24,53 @@ const DeskUI = (() => {
       $("#tab-desk").addEventListener("click", (e) => { const b = e.target.closest("[data-sym]"); if (b) App.openChart(b.dataset.sym); });
     }
     render();
+    renderDay();
+  }
+
+  // ---------- 데이트레이딩 계좌 (중계 서버에서 실시간, 없으면 저장본) ----------
+  async function renderDay() {
+    let S = null, live = false;
+    const px = Data.getProxy && Data.getProxy();
+    if (px) { try { const r = await fetch(px.replace(/\/$/, "") + "/day", { cache: "no-store" }); if (r.ok) { S = await r.json(); live = !!S.eq; } } catch (_) {} }
+    if (!S || !S.eq) { try { const r = await fetch("data/us/day_desk.json?t=" + Date.now()); if (r.ok) S = await r.json(); } catch (_) {} }
+    let P = null; try { const r = await fetch("data/us/day_params.json?t=" + Date.now()); if (r.ok) P = await r.json(); } catch (_) {}
+    if (!S || !S.eq || !S.eq.length) {
+      $("#dd-stats").innerHTML = `<p class="muted">아직 시작 전이에요. 중계 서버에 예약 실행(5분마다)과 저장소(KV)를 연결하면 미국장 시간에 혼자 매매를 시작해요.</p>`;
+      $("#dd-chat").innerHTML = ""; renderParams(P); return;
+    }
+    const e = S.eq[S.eq.length - 1][1], r = e / 10000 - 1, tr = S.trades || [];
+    const td = tr.filter((t) => t.day === (S.today || {}).day), w = tr.filter((t) => t.pl > 0).length;
+    const sp = S.spy0 && S.spy_now ? S.spy_now / S.spy0 - 1 : null;
+    const R = tr.length ? tr.reduce((a, t) => a + (t.R || 0), 0) / tr.length : null;
+    $("#dd-sub").textContent = `${S.start} 시작 · ${live ? "실시간" : "저장본"} · 뉴욕 ${S.ny || ""} 갱신`;
+    $("#dd-stats").innerHTML = [
+      ["계좌", usd(e, 0), `<span class="${cls(r)}">${pct(r, 2)}</span>`],
+      ["같은 기간 S&P500", sp == null ? "—" : `<span class="${cls(sp)}">${pct(sp, 2)}</span>`, sp == null ? "" : `차이 <b class="${cls(r - sp)}">${pct(r - sp, 2)}</b>`],
+      ["오늘 매매", `${td.length}번`, `하루 최대 ${(P && P.max_trades) || 5}번`],
+      ["전체 매매", `${tr.length}번`, tr.length ? `승률 ${Math.round(w / tr.length * 100)}%` : "—"],
+      ["평균 R", R == null ? "—" : (R >= 0 ? "+" : "") + R.toFixed(2) + "R", "거래당 손익 ÷ 처음 손절 폭"],
+      ["상태", S.halt ? `<b class="down">신규 중단</b>` : "정상", `지금 보유 ${Object.keys(S.pos || {}).length}종목`],
+    ].map(([k, v, s_]) => `<div class="hd-stat"><span class="k">${k}</span><b>${v}</b><span class="s">${s_}</span></div>`).join("");
+    $("#dd-pos").innerHTML = Object.entries(S.pos || {}).map(([s_, p]) => `<tr><td><button class="tt-sym" data-sym="${esc(s_)}"><b>${esc(s_)}</b></button></td><td class="num">${usd(p.entry)}</td><td class="num">${usd(p.stop)}<span class="s">${usd(p.target)}</span></td><td class="small">${esc((p.sig || []).join("·"))}</td></tr>`).join("")
+      || `<tr class="empty-row"><td colspan="4">없음</td></tr>`;
+    $("#dd-trades").innerHTML = tr.slice(-15).reverse().map((t) => `<tr><td><b>${esc(t.sym)}</b><span class="s">${esc(t.day.slice(5))} · ${esc((t.sig || []).join("·"))}</span></td><td class="num ${cls(t.pl)}">${pct(t.pl, 2)}</td><td class="num ${cls(t.R)}">${(t.R >= 0 ? "+" : "") + (t.R || 0).toFixed(1)}</td><td class="small">${esc(t.why)}</td></tr>`).join("")
+      || `<tr class="empty-row"><td colspan="4">아직 없음</td></tr>`;
+    const NM = { scout: ["Scout", "S", "#4fd1a5"], risk: ["Risk", "R", "#f0525c"], executor: ["Executor", "E", "#ffffff"], logger: ["Logger", "L", "#c792ea"], analyst: ["Analyst", "A", "#7aa2ff"], claude: ["Claude", "C", "#f5c26b"] };
+    $("#dd-chat").innerHTML = (S.chat || []).slice(-200).map((c) => {
+      const [nm, ini, col] = NM[c.who] || [c.who, "?", "#888"];
+      const t = new Date(c.at).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+      return c.text.startsWith("──") ? `<div class="dk-meet">${esc(c.text)}</div>` : `<div class="dk-msg"><span class="dk-av" style="--c:${col}">${ini}</span><div class="dk-bub"><div class="dk-who"><b style="color:${col}">${nm}</b><span class="muted small">${t}</span></div><div>${esc(c.text)}</div></div></div>`;
+    }).join("");
+    const box = $("#dd-chat"); box.scrollTop = box.scrollHeight;
+    renderParams(P);
+  }
+  function renderParams(P) {
+    if (!P) { $("#dd-params").innerHTML = ""; return; }
+    const on = Object.entries(P.on || {}).map(([k, v]) => `${{ orb: "개장 범위 돌파", vwap: "VWAP 회복", rs: "상대강도" }[k] || k} ${v ? "켬" : "<b class='down'>끔</b>"}`).join(" · ");
+    const wt = Object.entries(P.w || {}).map(([k, v]) => `<span>${{ orb: "돌파", vwap: "VWAP", rs: "강도", rv: "거래", mom: "모멘텀" }[k] || k} <b>${v.toFixed(2)}</b></span>`).join("");
+    $("#dd-params").innerHTML = `<p class="small">설정 v${P.v || 1} · 진입 기준 ${P.min_score} · 신호: ${on}</p><div class="pp-chips">${wt}</div>
+      ${(P.history || []).length ? `<ul class="ai-orders">${P.history.slice(-6).reverse().map((h) => `<li class="small"><span class="muted">${esc(h.day)} v${h.v}</span> ${esc(h.changes.join(" / "))}</li>`).join("")}</ul>` : `<p class="small muted">아직 바꾼 것 없음 — 신호별로 15건 넘게 쌓이면 금요일마다 성적 보고 조정해요.</p>`}
+      <p class="small muted">감시 ${(P.watch || []).length}종목: ${(P.watch || []).slice(0, 14).map(esc).join(", ")}…</p>`;
   }
 
   function render() {
