@@ -89,6 +89,19 @@ def run(P, day=None):
     ko = {r["code"]: (r.get("ko") or r["code"]) for r in rank.get("rows", [])}
     nm = lambda t: f"{ko.get(t, t)}({t})" if ko.get(t, t) != t else t
     say("logger", f"── {day} 미국장 마감 회의 시작 ──", sep=True)
+    # 시장 국면 → 파는 방식 자동 선택 (2015~2026 검증: 강세·불안장은 길게 들고 가기, 약세장은 +1R 전량 익절이 평균 우위)
+    try:
+        g = [r[4] for r in P["^GSPC"][-200:]]
+        ma50, ma200 = sum(g[-50:]) / 50, sum(g) / 200
+        vix_ = next((a["last"] for a in j("market.json", {}).get("assets", []) if a["t"] == "^VIX"), None)
+        mode = "약세" if (g[-1] < ma200 or (vix_ or 0) >= 28) else "불안" if (g[-1] < ma50 or (vix_ or 0) >= 20) else "강세"
+        why = f"S&P500 {g[-1]:,.0f} · 50일선 {ma50:,.0f} · 200일선 {ma200:,.0f} · VIX {vix_ or 0:.1f}"
+        rule = {"강세": "길게 들고 가기(목표 2.5R·본전 손절·추적 손절)", "불안": "길게 들고 가기(지금 방식 유지)", "약세": "+1R 오면 전량 익절"}[mode]
+        if S.get("mode") != mode:
+            say("risk", f"시장 국면이 '{S.get('mode') or '처음'}' → '{mode}'로 바뀌었어요 ({why}). 파는 방식: {rule}.")
+        S["mode"], S["mode_why"] = mode, f"{why} → {rule}"
+    except Exception as e:
+        print("국면 판단 실패:", e)
     feedback(S, day)                                   # 금요일(또는 7일마다) 성적표 → 오늘 점수부터 보정 반영
 
     # ① Scout

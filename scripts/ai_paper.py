@@ -230,6 +230,10 @@ def cmd_fill(S):
                 # 본전 손절: +1R(처음 손절 폭만큼 오름) → 손절을 본전+수수료로, +2R → 손절을 +1R로
                 p.setdefault("stop0", p.get("stop"))
                 R = p["avg"] - (p.get("stop0") or 0)
+                if p.get("stop0") and R > 0 and S.get("mode") == "약세" and h >= p["avg"] + R:
+                    # 약세장(S&P500 200일선 아래 또는 VIX 28↑)에서는 +1R에서 전량 익절 — 과거 검증상 이쪽이 평균이 더 좋음
+                    fill_sell(S, s, t, max(o_, p["avg"] + R), 1, "약세장 +1R 익절")
+                    continue
                 if p.get("stop0") and R > 0:
                     be = round(p["avg"] * (1 + 2 * (FEE + SLIP)), 2)
                     if p["peak"] >= p["avg"] + R and (p.get("stop") or 0) < be:
@@ -304,7 +308,7 @@ def view(S):
            "stats": metrics(S),
            "chat": S.get("chat", [])[-300:], "adj": {"src": S.get("src_adj", {}), "sig": S.get("sig_adj", {})}, "adj_log": S.get("adj_log", [])[-30:][::-1], "review": S.get("review"), "agents": S.get("agents", {}), "halt": S.get("halt"), "cands": S.get("cands", []),
            "bench": (S["px"]["SPY"] / S["bench0"] - 1) if S.get("bench0") and S["px"].get("SPY") else None,
-           "rules": f"한 종목 최대 {MAX_W:.0%} · 최대 {MAX_N}종목 · 모든 매수에 손절가 · 손절 시 손실 ≤ 계좌의 {MAX_RISK:.0%} · +1R이면 손절을 본전으로, +2R이면 +1R로 · +15%부터 고점 대비 -8% 추적 손절 · S&P500 -3%면 신규 매수 중단 · 수수료 0.1% + 체결 차이 0.05%"}
+           "mode": S.get("mode"), "mode_why": S.get("mode_why"), "rules": f"한 종목 최대 {MAX_W:.0%} · 최대 {MAX_N}종목 · 모든 매수에 손절가 · 손절 시 손실 ≤ 계좌의 {MAX_RISK:.0%} · +1R이면 손절을 본전으로, +2R이면 +1R로 · +15%부터 고점 대비 -8% 추적 손절 · S&P500 -3%면 신규 매수 중단 · 수수료 0.1% + 체결 차이 0.05%"}
     VIEW.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":"), default=str))
 
 
