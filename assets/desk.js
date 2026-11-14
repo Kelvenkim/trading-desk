@@ -25,6 +25,37 @@ const DeskUI = (() => {
     }
     render();
     renderDay();
+    renderCoin();
+  }
+
+  // ---------- 코인 계좌 (data/us/crypto_paper.json) ----------
+  async function renderCoin() {
+    let C = null; try { const r = await fetch("data/us/crypto_paper.json?t=" + Date.now()); if (r.ok) C = await r.json(); } catch (_) {}
+    if (!C) { $("#cx-stats").innerHTML = `<p class="muted">아직 시작 전이에요.</p>`; return; }
+    const r = C.eq_now / 10000 - 1, tr = C.trades || [], w = tr.filter((t) => t.pl > 0).length;
+    $("#cx-sub").textContent = `${C.start} 시작 · ${new Date(C.made).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })} 갱신`;
+    $("#cx-stats").innerHTML = [
+      ["계좌", usd(C.eq_now, 0), `<span class="${cls(r)}">${pct(r, 2)}</span>`],
+      ["같은 기간 비트코인", `<span class="${cls(C.btc_ret)}">${pct(C.btc_ret, 2)}</span>`, `차이 <b class="${cls(r - C.btc_ret)}">${pct(r - C.btc_ret, 2)}</b>`],
+      ["현금", usd(C.cash, 0), `보유 ${C.pos.length}개`],
+      ["끝난 매매", `${tr.length}번`, tr.length ? `승률 ${Math.round(w / tr.length * 100)}%` : "아직 없음"],
+      ["최대 낙폭", pct(C.mdd, 1), "고점 대비"],
+      ["지금 규칙", esc(C.rule_txt), (C.history || []).length ? `${C.history.length}번 바뀜` : "시작 규칙 그대로"],
+    ].map(([k, v, s_]) => `<div class="hd-stat"><span class="k">${k}</span><b>${v}</b><span class="s">${s_}</span></div>`).join("");
+    const P = Object.fromEntries(C.pos.map((p) => [p.sym, p]));
+    $("#cx-watch").innerHTML = C.watch.map((x) => { const p = P[x.sym], g = x.ma50 ? x.close / x.ma50 - 1 : null;
+      return `<tr><td><button class="tt-sym" data-sym="${esc(x.sym)}"><b>${esc(x.name)}</b><span class="muted">${esc(x.sym)}</span></button></td><td class="num">${usd(x.now, x.now > 1000 ? 0 : 2)}</td><td class="num">${usd(x.ma50, 0)}<span class="s">${usd(x.ma200, 0)}</span></td>
+        <td class="small">${p ? `<b class="up">보유</b> ${pct(p.pl)}` : `현금 대기`}<span class="s">어제 종가가 50일선 ${pct(g)}</span></td></tr>`; }).join("");
+    const nm = { ma50: "50일선", ma200: "200일선", gold: "50>200 + 50일선", don: "돈치안 20/10", hold: "그냥 보유" };
+    $("#cx-shadow").innerHTML = Object.entries(C.shadow || {}).sort((a, b) => b[1].ret - a[1].ret).map(([k, v]) => `<tr><td>${k === C.rule ? "<b>▶ " : ""}${esc(nm[k] || k)}${k === C.rule ? "</b>" : ""}<span class="s">${esc(v.name)}</span></td><td class="num ${cls(v.ret)}">${pct(v.ret, 2)}</td><td class="num">${pct(v.mdd, 1)}</td></tr>`).join("");
+    $("#cx-trades").innerHTML = tr.slice(-10).reverse().map((t) => `<tr><td><b>${esc(t.sym.replace("-USD", ""))}</b><span class="s">${esc(t.in.slice(5))} → ${esc(t.out.slice(5))}</span></td><td class="num ${cls(t.pl)}">${pct(t.pl, 2)}</td></tr>`).join("") || `<tr class="empty-row"><td colspan="2">아직 없음</td></tr>`;
+    const NM = { scout: ["Scout", "S", "#4fd1a5"], risk: ["Risk", "R", "#f0525c"], executor: ["Executor", "E", "#ffffff"], logger: ["Logger", "L", "#c792ea"], analyst: ["Analyst", "A", "#7aa2ff"], claude: ["Claude", "C", "#f5c26b"] };
+    $("#cx-chat").innerHTML = (C.chat || []).map((c) => {
+      const [n_, ini, col] = NM[c.who] || [c.who, "?", "#888"];
+      const t = new Date(c.at).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+      return c.text.startsWith("──") ? `<div class="dk-meet">${esc(c.text)}</div>` : `<div class="dk-msg"><span class="dk-av" style="--c:${col}">${ini}</span><div class="dk-bub"><div class="dk-who"><b style="color:${col}">${n_}</b><span class="muted small">${t}</span></div><div>${esc(c.text)}</div></div></div>`;
+    }).join("");
+    const box = $("#cx-chat"); box.scrollTop = box.scrollHeight;
   }
 
   // ---------- 데이트레이딩 계좌 (중계 서버에서 실시간, 없으면 저장본) ----------

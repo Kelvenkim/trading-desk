@@ -159,6 +159,11 @@ def paper_block():
         v = Dd["eq"][-1][1]; trs = Dd.get("trades", []); w_ = sum(t["pl"] > 0 for t in trs)
         rows += f"<tr><td>데이트레이딩 (당일 청산)</td><td class='num'>${v:,.0f}</td><td class='num {cls(v / 10000 - 1)}'>{pct(v / 10000 - 1, 2)}</td><td class='num'>{len(trs)}번 · 승률 {w_ / len(trs) * 100 if trs else 0:.0f}%</td><td class='num'>{len(Dd.get('pos', {}))}</td></tr>"
         series.append(("데이", "#e5484d", Dd["eq"]))
+    Cx = j("crypto_paper.json") or {}
+    if Cx.get("eq"):
+        v = Cx["eq_now"]; trs = Cx.get("trades", [])
+        rows += f"<tr><td>코인 (BTC·ETH, {Cx.get('rule_txt', '')})</td><td class='num'>${v:,.0f}</td><td class='num {cls(v / 10000 - 1)}'>{pct(v / 10000 - 1, 2)}</td><td class='num'>BTC {pct(Cx.get('btc_ret'), 2)}</td><td class='num'>{len(Cx.get('pos', []))}</td></tr>"
+        series.append(("코인", "#9b6bd8", [[d_, v_] for d_, v_ in {e_[0][:10]: e_[1] for e_ in Cx["eq"]}.items()]))
     return (f"<table class='t'><thead><tr><th>계좌 ($10,000 시작, {P['start']}~)</th><th class='num'>평가액</th><th class='num'>누적</th><th class='num'>하루</th><th class='num'>보유</th></tr></thead><tbody>{rows}</tbody></table>"
             + curve_svg(series))
 

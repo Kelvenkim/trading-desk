@@ -36,6 +36,9 @@ jobs:
       - name: AI 데스크 장 전·장중 회의 (6명 에이전트)
         run: cd scripts && python ai_desk.py live || echo "AI 회의 실패 (다음에 다시)"
 
+      - name: 코인 모의 계좌 (BTC·ETH, 주말 포함 — 일봉 마감 뒤 판단)
+        run: python scripts/crypto_paper.py || echo "코인 계좌 실패 (다음에 다시)"
+
       - name: 뉴스·인물 발언 단어
         run: python scripts/news_build.py || echo "뉴스 갱신 실패 (다음에 다시)"
 
