@@ -70,7 +70,7 @@ def run():
             S["cash"] += max(0, val)
             pl = val / p["margin0"] - 1
             S["trades"].append({"in": p["since"], "out": today, "entry": p["entry"], "exit": px, "pl": pl, "liq": False})
-            cp.say(S, "executor", ff"{LEV}배 롱 정리 @ ${px:,.0f} — 증거금 대비 {pl * 100:+.1f}% (50일선 아래 마감)")
+            cp.say(S, "executor", f"{LEV}배 롱 정리 @ ${px:,.0f} — 증거금 대비 {pl * 100:+.1f}% (50일선 아래 마감)")
             S["pos"] = p = None
         elif want and not p:
             eqv = S["cash"]
@@ -80,7 +80,7 @@ def run():
                 fee = m * LEV * COST
                 S["pos"] = p = {"since": today, "at": t.isoformat(), "entry": px, "margin0": m, "margin": m - fee, "liq": liq_px(px)}
                 S["fund_day"] = today
-                cp.say(S, "executor", ff"{LEV}배 롱 진입 @ ${px:,.0f} · 증거금 ${m:,.0f} → 포지션 ${m * LEV:,.0f} · 강제 청산가 ${p['liq']:,.0f}")
+                cp.say(S, "executor", f"{LEV}배 롱 진입 @ ${px:,.0f} · 증거금 ${m:,.0f} → 포지션 ${m * LEV:,.0f} · 강제 청산가 ${p['liq']:,.0f}")
         else:
             cp.say(S, "logger", "변화 없음 — " + (f"{LEV}배 롱 유지" if p else "현금 대기 (50일선 아래)"))
     # 3) 평가
