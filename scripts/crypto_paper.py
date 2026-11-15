@@ -47,9 +47,18 @@ def load_bars():
     out = {}
     for s in COINS:
         h = yf.Ticker(s).history(period="400d", interval="1d").dropna(subset=["Close"])
-        days = [ix.strftime("%Y-%m-%d") for ix in h.index]
-        cl = [float(x) for x in h.Close]
+        bar = {ix.strftime("%Y-%m-%d"): float(x) for ix, x in h.Close.items()}
         today = now().strftime("%Y-%m-%d")
+        # yfinance 일봉이 가끔 하루씩 빠짐(11/14 사례) → 최근 10일은 1시간봉으로 일봉 종가를 다시 만들어 채움
+        try:
+            h1 = yf.Ticker(s).history(period="10d", interval="1h").dropna(subset=["Close"])
+            h1.index = h1.index.tz_convert("UTC")
+            for dd, g in h1.groupby(h1.index.strftime("%Y-%m-%d")):
+                if dd < today and len(g) >= 20:
+                    bar[dd] = float(g.Close.iloc[-1])
+        except Exception as e:
+            print("1시간봉 보정 실패:", e)
+        days = sorted(bar); cl = [bar[x] for x in days]
         live = cl[-1]
         try:
             m = yf.Ticker(s).history(period="1d", interval="5m").dropna(subset=["Close"])
