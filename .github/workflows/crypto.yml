@@ -24,8 +24,8 @@ jobs:
       - run: pip install -r requirements.txt
       - name: 코인 계좌
         run: python scripts/crypto_paper.py
-      - name: 10배 레버리지 실험 계좌
-        run: python scripts/crypto_lev.py || echo "10배 계좌 실패"
+      - name: 5배 레버리지 실험 계좌
+        run: python scripts/crypto_lev.py || echo "5배 계좌 실패"
       - name: 저장
         run: |
           git config user.name "github-actions[bot]"

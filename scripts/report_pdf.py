@@ -167,7 +167,7 @@ def paper_block():
     Lv = j("crypto_lev.json") or {}
     if Lv.get("eq"):
         v = Lv["eq_now"]
-        rows += f"<tr><td>🧪 코인 10배 레버리지 (BTC)</td><td class='num'>${v:,.0f}</td><td class='num {cls(v / 10000 - 1)}'>{pct(v / 10000 - 1, 2)}</td><td class='num'>강제 청산 {Lv.get('liq_n', 0)}번</td><td class='num'>{1 if Lv.get('pos') else 0}</td></tr>"
+        rows += f"<tr><td>🧪 코인 {Lv.get('lev', 5)}배 레버리지 (BTC)</td><td class='num'>${v:,.0f}</td><td class='num {cls(v / 10000 - 1)}'>{pct(v / 10000 - 1, 2)}</td><td class='num'>강제 청산 {Lv.get('liq_n', 0)}번</td><td class='num'>{1 if Lv.get('pos') else 0}</td></tr>"
     return (f"<table class='t'><thead><tr><th>계좌 ($10,000 시작, {P['start']}~)</th><th class='num'>평가액</th><th class='num'>누적</th><th class='num'>하루</th><th class='num'>보유</th></tr></thead><tbody>{rows}</tbody></table>"
             + curve_svg(series))
 

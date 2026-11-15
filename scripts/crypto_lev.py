@@ -1,10 +1,10 @@
 """
-코인 10배 레버리지 실험 계좌 — 가상 $10,000, 비트코인만 (사용자 요청 실험, 11/15~)
+코인 5배 레버리지 실험 계좌 (11/15 사용자 요청으로 10배→5배) — 가상 $10,000, 비트코인만 (사용자 요청 실험, 11/15~)
   규칙은 코인 본 계좌와 같음: 일봉 종가가 50일선 위면 롱, 아래면 정리 (본 계좌가 숏 규칙으로 바뀌어도 이건 롱만)
-  레버리지: 들어갈 때 계좌의 50%를 증거금으로 걸고 10배 → 포지션 = 계좌의 5배 (격리 증거금)
-    - 진입가에서 약 -9.5% 내려가면 강제 청산 = 그 증거금 전부 잃음 (나머지 50%는 남아서 다음 신호 때 다시 50% 걸기)
+  레버리지: 들어갈 때 계좌의 50%를 증거금으로 걸고 5배 → 포지션 = 계좌의 2.5배 (격리 증거금)
+    - 진입가에서 약 -19.5% 내려가면 강제 청산 = 그 증거금 전부 잃음 (나머지 50%는 남아서 다음 신호 때 다시 50% 걸기)
     - 강제 청산은 하루 중 언제든 일어나니 1시간봉 저가로 확인
-    - 비용: 매매 0.15% × 10배(증거금의 1.5%), 펀딩 하루 0.03% × 10배(증거금의 0.3%/일)
+    - 비용: 매매 0.15% × 5배(증거금의 0.75%), 펀딩 하루 0.03% × 5배(증거금의 0.15%/일)
   시험(2018~): 10배는 강제 청산 7번·최대 낙폭 -99%, 2022년 시작이면 그해 11월에 거의 0. 5배·3배가 오히려 나았음.
   결과: data/us/crypto_lev.json, 상태: data/us/crypto_lev_state.json
 """
@@ -16,7 +16,7 @@ import crypto_paper as cp
 
 D = cp.D
 SF, OF = D / "crypto_lev_state.json", D / "crypto_lev.json"
-SYM, LEV, MARGIN_W, COST, FUND, MM = "BTC-USD", 10, 0.5, 0.0015, 0.0003, 0.005
+SYM, LEV, MARGIN_W, COST, FUND, MM = "BTC-USD", 5, 0.5, 0.0015, 0.0003, 0.005
 CASH0 = 10000.0
 
 
@@ -70,7 +70,7 @@ def run():
             S["cash"] += max(0, val)
             pl = val / p["margin0"] - 1
             S["trades"].append({"in": p["since"], "out": today, "entry": p["entry"], "exit": px, "pl": pl, "liq": False})
-            cp.say(S, "executor", f"10배 롱 정리 @ ${px:,.0f} — 증거금 대비 {pl * 100:+.1f}% (50일선 아래 마감)")
+            cp.say(S, "executor", ff"{LEV}배 롱 정리 @ ${px:,.0f} — 증거금 대비 {pl * 100:+.1f}% (50일선 아래 마감)")
             S["pos"] = p = None
         elif want and not p:
             eqv = S["cash"]
@@ -80,9 +80,9 @@ def run():
                 fee = m * LEV * COST
                 S["pos"] = p = {"since": today, "at": t.isoformat(), "entry": px, "margin0": m, "margin": m - fee, "liq": liq_px(px)}
                 S["fund_day"] = today
-                cp.say(S, "executor", f"10배 롱 진입 @ ${px:,.0f} · 증거금 ${m:,.0f} → 포지션 ${m * LEV:,.0f} · 강제 청산가 ${p['liq']:,.0f}")
+                cp.say(S, "executor", ff"{LEV}배 롱 진입 @ ${px:,.0f} · 증거금 ${m:,.0f} → 포지션 ${m * LEV:,.0f} · 강제 청산가 ${p['liq']:,.0f}")
         else:
-            cp.say(S, "logger", "변화 없음 — " + ("10배 롱 유지" if p else "현금 대기 (50일선 아래)"))
+            cp.say(S, "logger", "변화 없음 — " + (f"{LEV}배 롱 유지" if p else "현금 대기 (50일선 아래)"))
     # 3) 평가
     eqv = S["cash"] + (pval(p, px) if p else 0)
     hr = t.strftime("%Y-%m-%dT%H:00")
@@ -99,7 +99,7 @@ def run():
         "pos": ({**p, "val": pval(p, px), "pl": pval(p, px) / p["margin0"] - 1, "dist": px / p["liq"] - 1} if p else None),
         "trades": S["trades"][-20:], "chat": S["chat"][-100:], "eq": S["eq"][-500:],
     }, ensure_ascii=False, separators=(",", ":")))
-    print(f"10배 계좌 ${eqv:,.2f} ({eqv / CASH0 - 1:+.2%}) 포지션 {'있음' if p else '없음'} 강제청산 {S['liq']}번")
+    print(f"{LEV}배 계좌 ${eqv:,.2f} ({eqv / CASH0 - 1:+.2%}) 포지션 {'있음' if p else '없음'} 강제청산 {S['liq']}번")
 
 
 if __name__ == "__main__":
