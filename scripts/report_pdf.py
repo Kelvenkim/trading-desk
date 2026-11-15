@@ -164,6 +164,10 @@ def paper_block():
         v = Cx["eq_now"]; trs = Cx.get("trades", [])
         rows += f"<tr><td>코인 (BTC·ETH, {Cx.get('rule_txt', '')})</td><td class='num'>${v:,.0f}</td><td class='num {cls(v / 10000 - 1)}'>{pct(v / 10000 - 1, 2)}</td><td class='num'>BTC {pct(Cx.get('btc_ret'), 2)}</td><td class='num'>{len(Cx.get('pos', []))}</td></tr>"
         series.append(("코인", "#9b6bd8", [[d_, v_] for d_, v_ in {e_[0][:10]: e_[1] for e_ in Cx["eq"]}.items()]))
+    Lv = j("crypto_lev.json") or {}
+    if Lv.get("eq"):
+        v = Lv["eq_now"]
+        rows += f"<tr><td>🧪 코인 10배 레버리지 (BTC)</td><td class='num'>${v:,.0f}</td><td class='num {cls(v / 10000 - 1)}'>{pct(v / 10000 - 1, 2)}</td><td class='num'>강제 청산 {Lv.get('liq_n', 0)}번</td><td class='num'>{1 if Lv.get('pos') else 0}</td></tr>"
     return (f"<table class='t'><thead><tr><th>계좌 ($10,000 시작, {P['start']}~)</th><th class='num'>평가액</th><th class='num'>누적</th><th class='num'>하루</th><th class='num'>보유</th></tr></thead><tbody>{rows}</tbody></table>"
             + curve_svg(series))
 

@@ -38,6 +38,8 @@ jobs:
 
       - name: 코인 모의 계좌 (BTC·ETH, 주말 포함 — 일봉 마감 뒤 판단)
         run: python scripts/crypto_paper.py || echo "코인 계좌 실패 (다음에 다시)"
+      - name: 10배 레버리지 실험 계좌
+        run: python scripts/crypto_lev.py || echo "10배 계좌 실패"
 
       - name: 뉴스·인물 발언 단어
         run: python scripts/news_build.py || echo "뉴스 갱신 실패 (다음에 다시)"

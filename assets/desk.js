@@ -56,6 +56,13 @@ const DeskUI = (() => {
       return c.text.startsWith("──") ? `<div class="dk-meet">${esc(c.text)}</div>` : `<div class="dk-msg"><span class="dk-av" style="--c:${col}">${ini}</span><div class="dk-bub"><div class="dk-who"><b style="color:${col}">${n_}</b><span class="muted small">${t}</span></div><div>${esc(c.text)}</div></div></div>`;
     }).join("");
     const box = $("#cx-chat"); box.scrollTop = box.scrollHeight;
+    let V = null; try { const r2 = await fetch("data/us/crypto_lev.json?t=" + Date.now()); if (r2.ok) V = await r2.json(); } catch (_) {}
+    if (V) {
+      const rv = V.eq_now / 10000 - 1, p = V.pos, last = (V.chat || []).slice(-3);
+      $("#cx-lev").innerHTML = `<div class="pp-chips"><span>계좌 <b>${usd(V.eq_now, 0)}</b> <b class="${cls(rv)}">${pct(rv, 2)}</b></span><span>최대 낙폭 <b>${pct(V.mdd, 1)}</b></span><span>강제 청산 <b class="${V.liq_n ? "down" : ""}">${V.liq_n}번</b></span></div>
+        <p class="small">${p ? `10배 롱 ${usd(p.margin0, 0)} 증거금 · 진입 ${usd(p.entry, 0)} · <b class="${cls(p.pl)}">${pct(p.pl, 1)}</b> · 강제 청산가 ${usd(p.liq, 0)} (지금보다 ${pct(-p.dist, 1)})` : `현금 대기 — 비트코인이 50일선 위로 마감하면 10배 롱 진입`}</p>
+        <ul class="ai-orders">${last.map((c) => `<li class="small">${esc(c.text)}</li>`).join("")}</ul>`;
+    }
   }
 
   // ---------- 데이트레이딩 계좌 (중계 서버에서 실시간, 없으면 저장본) ----------
