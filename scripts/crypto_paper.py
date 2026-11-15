@@ -208,7 +208,9 @@ def run():
         b_ = sh[best]
         line = " · ".join(f"{k} {sh[k]['ret'] * 100:+.1f}%" for k in RULES)
         say(S, "logger", f"── 주간 점검 ({age}일째) ── 그림자 계좌 성적: {line}")
-        if age >= SWITCH_DAYS and b_["ret"] - me["ret"] > SWITCH_GAP and b_["mdd"] >= me["mdd"]:
+        if S.get("lock"):
+            say(S, "analyst", f"규칙 고정 중 ({S['lock']}) — 비교만 기록하고 자동 교체는 안 해요.")
+        elif age >= SWITCH_DAYS and b_["ret"] - me["ret"] > SWITCH_GAP and b_["mdd"] >= me["mdd"]:
             S["history"].append({"day": today, "from": rule, "to": best, "why": f"{age}일 동안 {b_['ret'] * 100:+.1f}% vs {me['ret'] * 100:+.1f}%, 낙폭 {b_['mdd'] * 100:.1f}% vs {me['mdd'] * 100:.1f}%"})
             S["rule"] = best
             say(S, "analyst", f"규칙 변경: '{RULES[rule]}' → '{RULES[best]}' ({S['history'][-1]['why']}). 다음 일봉부터 적용.")
