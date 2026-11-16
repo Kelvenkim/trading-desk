@@ -6,7 +6,7 @@
   <title>Trading Desk</title>
   <meta name="theme-color" content="#000000" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="assets/style.css?v=44273b85" />
+  <link rel="stylesheet" href="assets/style.css?v=8d40c10a" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -258,8 +258,24 @@
 
     <!-- ================= AI 트레이딩 데스크 ================= -->
     <section id="tab-desk" class="panel">
-      <div class="rk-head"><h2>AI 트레이딩 데스크 <span class="muted small" id="dk-date"></span></h2></div>
-      <p class="muted small dk-intro">6명의 에이전트가 가상 $10,000로 미국 주식을 굴려요. 규칙으로 걸러내고 점수 매기고, Claude가 매일 아침 판단을 더해요(하이브리드). 미국장 중엔 30분마다 체결·손절·추적 손절을 자동 처리해요.</p>
+      <div class="rk-head"><h2>AI 트레이딩 <span class="muted small" id="sm-made"></span></h2></div>
+      <p class="muted small dk-intro">AI가 가상 돈으로 혼자 사고팔아요. 위에서 계좌별 성적 → 지금 들고 있는 것 → 사고 판 기록 순서로 보면 돼요. 자세한 대화·점수는 맨 아래 펼치기.</p>
+      <div class="sm-accts" id="sm-accts"></div>
+
+      <div class="box">
+        <div class="tt-head"><h3>지금 들고 있는 것</h3><span class="muted small" id="sm-pos-sub"></span></div>
+        <div class="tbl-wrap"><table class="tt-tbl sm-tbl"><thead><tr><th>계좌</th><th>종목</th><th class="num">산 가격 → 지금</th><th class="num">수익률</th><th class="num hide-sm">손절 / 목표</th><th class="hide-sm">산 이유</th></tr></thead><tbody id="sm-pos"></tbody></table></div>
+        <div id="sm-orders"></div>
+      </div>
+
+      <div class="box">
+        <div class="tt-head"><h3>사고 판 기록</h3>
+          <div class="seg small" id="sm-filter"><button class="on" data-f="all">전체</button><button data-f="stock">주식</button><button data-f="coin">코인</button></div></div>
+        <div class="tbl-wrap"><table class="tt-tbl sm-tbl"><thead><tr><th class="hide-sm">날짜</th><th>계좌</th><th>종목</th><th class="num">매수 → 매도</th><th class="num">결과</th><th class="hide-sm">이유</th></tr></thead><tbody id="sm-log"></tbody></table></div>
+      </div>
+
+      <h3 class="sm-more-h">자세히 보기</h3>
+      <details class="dk-more" id="more-ai"><summary><b>AI 데스크 (주식 스윙)</b> <span class="muted small">에이전트 6명 · 대화방 · 점수표 · 주간 피드백 · 규칙</span><span class="muted small dk-date" id="dk-date"></span></summary>
       <div class="dk-stats" id="dk-stats"></div>
       <div class="dk-flow" id="dk-agents"></div>
       <div class="dk-main">
@@ -277,6 +293,8 @@
       </div>
       <p class="muted small" id="dk-rules"></p>
 
+      </details>
+      <details class="dk-more" id="more-day"><summary><b>데이트레이딩</b> <span class="muted small">대화방 · 신호 · 스스로 바꾼 설정</span></summary>
       <div class="box dd-box">
         <div class="tt-head"><h3>데이트레이딩 계좌 <span class="muted small">가상 $10,000 · 그날 산 건 그날 다 팔아요</span></h3><span class="muted small" id="dd-sub"></span></div>
         <div class="dk-stats" id="dd-stats"></div>
@@ -289,6 +307,8 @@
           </div>
         </div>
       </div>
+      </details>
+      <details class="dk-more" id="more-coin"><summary><b>코인 · 5배 실험</b> <span class="muted small">대화방 · 50일선 상태 · 규칙 비교</span></summary>
       <div class="box dd-box">
         <div class="tt-head"><h3>코인 계좌 <span class="muted small">가상 $10,000 · 비트코인·이더리움 · 주말에도 24시간</span></h3><span class="muted small" id="cx-sub"></span></div>
         <div class="dk-stats" id="cx-stats"></div>
@@ -302,6 +322,7 @@
           </div>
         </div>
       </div>
+      </details>
     </section>
 
     <!-- ================= 뉴스 ================= -->
@@ -710,7 +731,7 @@
   <script src="assets/company.js?v=cceb89ae"></script>
   <script src="assets/turtle.js?v=92ba8b60"></script>
   <script src="assets/invest.js?v=d30f4dad"></script>
-  <script src="assets/desk.js?v=10dd100b"></script>
+  <script src="assets/desk.js?v=a9d6d19f"></script>
   <script src="assets/app.js?v=fa1de24c"></script>
 </body>
 </html>

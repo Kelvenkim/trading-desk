@@ -843,3 +843,33 @@ body.no-scroll { overflow: hidden; }
 @media (max-width: 640px) { .dk-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dk-chat { height: 520px; } .dk-agent { min-width: 170px; } }
 .dd-box { margin-top: 14px; }
 .dd-chat { height: 460px; }
+
+/* ---------- AI 트레이딩 요약 ---------- */
+.sm-accts { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; margin: 6px 0 14px; }
+.sm-acct { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 12px 14px; display: grid; gap: 3px; text-align: left; color: var(--text); font: inherit; cursor: pointer; }
+.sm-acct:hover { border-color: var(--muted); }
+.sm-acct .nm { font-weight: 700; font-size: 13.5px; }
+.sm-acct .how { color: var(--muted); font-size: 11.5px; line-height: 1.35; min-height: 2.7em; }
+.sm-acct .ret { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.sm-acct .eq { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.sm-acct.bench { background: transparent; border-style: dashed; }
+.sm-acct.off .ret { color: var(--muted); font-size: 15px; }
+.sm-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); white-space: nowrap; }
+.sm-side { font-size: 11px; font-weight: 700; margin-left: 5px; padding: 1px 5px; border-radius: 4px; background: color-mix(in srgb, var(--down) 18%, transparent); }
+.sm-tbl td { vertical-align: middle; }
+.sm-tbl .why { color: var(--muted); font-size: 12px; max-width: 360px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sm-tbl .pl { font-weight: 700; font-size: 14px; }
+.sm-tbl tr.open td:first-child { box-shadow: inset 2px 0 0 var(--up); }
+.sm-orders { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+.sm-orders b { color: var(--text); }
+.sm-more-h { margin: 22px 0 8px; font-size: 14px; color: var(--muted); }
+.dk-more { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); margin-bottom: 10px; }
+.dk-more > summary { cursor: pointer; padding: 13px 18px; list-style: none; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.dk-more > summary::-webkit-details-marker { display: none; }
+.dk-more > summary::before { content: "▸"; color: var(--muted); }
+.dk-more[open] > summary::before { content: "▾"; }
+.dk-more[open] { padding-bottom: 6px; }
+.dk-more > :not(summary) { margin-left: 14px; margin-right: 14px; }
+.dk-more .dd-box { margin-top: 0; border: 0; padding-top: 0; background: transparent; }
+.dk-more .dk-date { margin-left: auto; }
+@media (max-width: 720px) { .hide-sm { display: none; } .sm-tbl .sm-tag { font-size: 10px; padding: 2px 5px; } .sm-tbl td, .sm-tbl th { padding: 7px 5px; } .sm-accts { grid-template-columns: repeat(2, 1fr); } .sm-acct .ret { font-size: 19px; } }
