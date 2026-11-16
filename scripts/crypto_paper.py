@@ -28,6 +28,7 @@ RULES = {
     "hold": "그냥 계속 보유",
     "ls50": "50일선 위면 롱, 아래면 숏",
     "ls_bear": "50일선 위면 롱, 50<200 약세에서 50일선 아래면 숏",
+    "vote": "20·50·100·200일선 중 위에 있는 비율만큼 보유 (선 하나에 기대지 않기)",
 }
 FUND = 0.0003  # 숏 유지 비용(펀딩) 하루 0.03%
 SWITCH_DAYS, SWITCH_GAP = 28, 0.05
@@ -94,6 +95,9 @@ def want(rule, c, i, prev):
         return 1 if up else -1
     if rule == "ls_bear":
         return 1 if up else (-1 if m200 is not None and m50 < m200 else 0)
+    if rule == "vote":
+        ms = [ma(c, L, i) for L in (20, 50, 100, 200)]
+        return 0 if None in ms else round(sum(c[i] > m for m in ms) / 4, 2)
     if rule == "don":
         if i < 21:
             return 0
