@@ -54,7 +54,7 @@ const DeskUI = (() => {
     if (A) for (const p of A.pos) rows.push({ k: "ai", sym: p.sym, side: 1, since: p.since, entry: p.avg, now: p.px, pl: p.pl, stop: p.stop, target: p.target, why: p.why });
     if (D && D.pos) for (const [sym, p] of Object.entries(D.pos)) rows.push({ k: "day", sym, side: 1, since: D.today && D.today.day, entry: p.entry, now: null, pl: null, stop: p.stop, target: p.target, why: (p.sig || []).join(" · ") });
     if (C) for (const p of C.pos) rows.push({ k: "coin", sym: p.sym, nm: p.name, side: p.side, since: p.since, entry: p.entry, now: p.now, pl: p.pl, stop: null, target: null, why: "50일선 " + (p.side < 0 ? "아래 → 숏" : "위 → 롱") + " (종가 기준, 50일선 반대로 넘으면 정리)" });
-    if (L && L.pos) { const p = L.pos; rows.push({ k: "lev", sym: "BTC-USD", nm: "비트코인", side: p.side, since: p.since, entry: p.entry, now: L.now, pl: p.pl, stop: p.liq, stopLbl: "강제 청산", target: null, why: `증거금 ${usd(p.margin0, 0)} × ${L.lev}배 · 증거금 대비 수익률` }); }
+    if (L && L.pos) { const p = L.pos; rows.push({ k: "lev", sym: "BTC-USD", nm: "비트코인", side: p.side, since: p.since, entry: p.entry, now: L.now, pl: p.pl, stop: p.stop, stopLbl: `추적 손절 · 청산 ${px$(p.liq)}`, target: null, why: `계좌의 ${(p.expo || 0).toFixed(2)}배 노출 (증거금 × ${L.lev}배, 변동성 맞춤) · 수익률은 계좌 대비` }); }
     const order = Object.keys(ACC);
     rows.sort((a, b) => order.indexOf(a.k) - order.indexOf(b.k) || (b.pl ?? -9) - (a.pl ?? -9));
     $("#sm-pos-sub").textContent = rows.length ? `${rows.length}개 · 수익률은 산 가격 대비 (수수료 전)` : "";
@@ -139,7 +139,7 @@ const DeskUI = (() => {
     if (V) {
       const rv = V.eq_now / 10000 - 1, p = V.pos, last = (V.chat || []).slice(-3);
       $("#cx-lev").innerHTML = `<div class="pp-chips"><span>계좌 <b>${usd(V.eq_now, 0)}</b> <b class="${cls(rv)}">${pct(rv, 2)}</b></span><span>최대 낙폭 <b>${pct(V.mdd, 1)}</b></span><span>강제 청산 <b class="${V.liq_n ? "down" : ""}">${V.liq_n}번</b></span></div>
-        <p class="small">${p ? `${V.lev}배 ${p.side < 0 ? "<b class='down'>숏</b>" : "<b class='up'>롱</b>"} ${usd(p.margin0, 0)} 증거금 · 진입 ${usd(p.entry, 0)} · <b class="${cls(p.pl)}">${pct(p.pl, 1)}</b> · 강제 청산가 ${usd(p.liq, 0)} (지금에서 ${(p.dist * 100).toFixed(1)}% ${p.side < 0 ? "오르면" : "빠지면"})` : `현금 대기 — 다음 일봉 마감 때 50일선 위면 롱, 아래면 숏`}</p>
+        <p class="small">${p ? `${p.side < 0 ? "<b class='down'>숏</b>" : "<b class='up'>롱</b>"} @ ${usd(p.entry, 0)} · 계좌의 ${(p.expo || 0).toFixed(2)}배 노출 · 계좌 대비 <b class="${cls(p.pl)}">${pct(p.pl, 1)}</b><br>추적 손절 ${usd(p.stop, 0)} · 강제 청산 ${usd(p.liq, 0)}` : V.block ? `추적 손절 뒤 대기 — 50일선 신호가 바뀌면 다시 진입` : `현금 대기 — 다음 일봉 마감 때 50일선 위면 롱, 아래면 숏`}</p>
         <ul class="ai-orders">${last.map((c) => `<li class="small">${esc(c.text)}</li>`).join("")}</ul>`;
     }
   }

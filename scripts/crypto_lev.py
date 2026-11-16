@@ -1,11 +1,16 @@
 """
-코인 5배 레버리지 실험 계좌 (11/15 사용자 요청으로 10배→5배) — 가상 $10,000, 비트코인만 (사용자 요청 실험, 11/15~)
-  규칙은 코인 본 계좌와 같음: 일봉 종가가 50일선 위면 롱, 아래면 정리 (본 계좌가 숏 규칙으로 바뀌어도 이건 롱만)
-  레버리지: 들어갈 때 계좌의 50%를 증거금으로 걸고 5배 → 포지션 = 계좌의 2.5배 (격리 증거금)
-    - 진입가에서 약 -19.5% 내려가면 강제 청산 = 그 증거금 전부 잃음 (나머지 50%는 남아서 다음 신호 때 다시 50% 걸기)
-    - 강제 청산은 하루 중 언제든 일어나니 1시간봉 저가로 확인
-    - 비용: 매매 0.15% × 5배(증거금의 0.75%), 펀딩 하루 0.03% × 5배(증거금의 0.15%/일)
-  시험(2018~): 10배는 강제 청산 7번·최대 낙폭 -99%, 2022년 시작이면 그해 11월에 거의 0. 5배·3배가 오히려 나았음.
+코인 5배 레버리지 실험 계좌 — 가상 $10,000, 비트코인만 (11/15 사용자 요청: 10배→5배, 50일선 아래 숏)
+  방향: 일봉 종가가 50일선 위면 롱, 아래면 숏 (하루 한 번, 일봉 마감 뒤)
+  위험 줄이기 (11/16 추가, 2018~ 시험으로 고름):
+    ① 크기 = 변동성 맞춤: 계좌 대비 노출 = min(2.5배, 연 60% ÷ 최근 20일 변동성). 출렁이는 때일수록 작게.
+       증거금은 그 노출의 1/5 (5배 격리 증거금) → 강제 청산선은 진입가 ±19.5% 그대로.
+    ② 추적 손절 -8%: 들고 있는 동안 가장 좋았던 가격에서 8% 되돌리면 1시간 단위로 바로 정리.
+       정리 뒤엔 같은 방향 재진입 안 함 — 50일선 신호가 한 번 바뀌어야 다시 들어감.
+    ③ 노출이 목표와 25% 넘게 벌어지면 일봉 마감 때 크기 조정.
+    시험(수익·최대 낙폭): 그대로 5배 롱+숏 2018~ -78%·-98% / 2022~ -84%·-97%
+                         ①+② 2018~ +2,675%·-47% / 2022~ +657%·-41% / 24.11~ +224%·-41%
+    주의: 비트코인 하나·과거 데이터로 고른 값이라 실제는 이보다 나쁠 수 있음 (추적 폭 6~15%에 따라 결과가 크게 갈림)
+  비용: 매매 0.15% × 포지션, 펀딩 하루 0.03% × 포지션 (롱·숏 모두 냄으로 보수적으로)
   결과: data/us/crypto_lev.json, 상태: data/us/crypto_lev_state.json
 """
 import json
@@ -16,7 +21,8 @@ import crypto_paper as cp
 
 D = cp.D
 SF, OF = D / "crypto_lev_state.json", D / "crypto_lev.json"
-SYM, LEV, MARGIN_W, COST, FUND, MM = "BTC-USD", 5, 0.5, 0.0015, 0.0003, 0.005
+SYM, LEV, MAXE, COST, FUND, MM = "BTC-USD", 5, 2.5, 0.0015, 0.0003, 0.005
+VT, TRAIL, REBAL = 0.60, 0.08, 0.25
 CASH0 = 10000.0
 
 
@@ -29,6 +35,38 @@ def pval(p, px):
     return max(0.0, p["margin"] * (1 + p.get("side", 1) * LEV * (px / p["entry"] - 1)))
 
 
+def vol20(c):
+    import math
+    r = [math.log(c[i] / c[i - 1]) for i in range(len(c) - 20, len(c))]
+    m = sum(r) / len(r)
+    return (sum((x - m) ** 2 for x in r) / (len(r) - 1)) ** 0.5 * math.sqrt(365)
+
+
+def notional(p, px):
+    return p["margin"] * LEV * px / p["entry"]
+
+
+def close(S, p, px, today, why, liq=False):
+    val = 0.0 if liq else max(0.0, pval(p, px) - notional(p, px) * COST)
+    S["cash"] += val
+    pl_usd = val - p["basis"]
+    S["trades"].append({"side": p["side"], "in": p["since"], "out": today, "entry": p["entry0"], "exit": px, "pl": pl_usd / p["eq_in"],
+                        "usd": round(pl_usd, 2), "liq": liq, "why": why})
+    S["pos"] = None
+    return pl_usd
+
+
+def open_(S, side, px, eqv, E, today, t):
+    m = eqv * E / LEV
+    m = min(m, S["cash"])
+    S["cash"] -= m
+    fee = m * LEV * COST
+    S["pos"] = {"side": side, "since": today, "at": t.isoformat(), "entry": px, "entry0": px, "margin": m - fee, "basis": m,
+                "margin0": m, "liq": liq_px(px, side), "ext": px, "E": E, "eq_in": eqv}
+    S["fund_day"] = today
+    return S["pos"]
+
+
 def run():
     import yfinance as yf
     t = cp.now(); today = t.strftime("%Y-%m-%d")
@@ -37,57 +75,73 @@ def run():
     S = json.loads(SF.read_text()) if SF.exists() else {}
     if not S:
         S = {"start": today, "cash": CASH0, "pos": None, "trades": [], "eq": [], "last_bar": None, "liq": 0, "last_chk": t.isoformat(), "p0": px}
-        cp.say(S, "claude", "── 10배 레버리지 실험 계좌 개설 · 가상 $10,000 · 비트코인만 ──")
-        cp.say(S, "risk", f"들어갈 때 계좌의 50%를 증거금으로 10배 → 포지션은 계좌의 5배. 진입가에서 약 {(1 / LEV - MM) * 100:.1f}% 빠지면 강제 청산(증거금 전부 손실).")
-        cp.say(S, "analyst", "시험(2018~): 1배 +760%(낙폭 -35%) · 5배 +5,985%(낙폭 -88%) · 10배 +270%(강제 청산 7번, 낙폭 -99%). 2022년에 시작했으면 10배는 그해 11월 거의 0. 실험이니 기록용으로 굴려봐요.")
+        cp.say(S, "claude", "── 5배 레버리지 실험 계좌 개설 · 가상 $10,000 · 비트코인만 ──")
     p = S["pos"]
-    # 1) 강제 청산 확인: 마지막 확인 이후 1시간봉 최저가(롱)·최고가(숏)
+    nm = lambda x: "롱" if x > 0 else "숏"
+    if p:  # 옛 형식 → 새 형식
+        p.setdefault("side", 1); p.setdefault("entry0", p["entry"]); p.setdefault("basis", p.get("margin0", p["margin"])); p.setdefault("ext", p["entry"]); p.setdefault("eq_in", CASH0)
+        p.setdefault("E", p["margin0"] * LEV / CASH0 if "margin0" in p else MAXE)
+    # 1) 1시간 단위: 펀딩, 강제 청산, 추적 손절
     if p:
-        side = p.setdefault("side", 1)
+        side = p["side"]
+        days_held = max(0, (t.date() - datetime.fromisoformat(S.get("fund_day") or p["since"]).date()).days)
+        if days_held:
+            p["margin"] -= notional(p, px) * FUND * days_held; S["fund_day"] = today
         try:
             h1 = yf.Ticker(SYM).history(period="5d", interval="1h").dropna(subset=["Low"])
             h1.index = h1.index.tz_convert("UTC")
             since = datetime.fromisoformat(S.get("last_chk") or p["at"])
-            w_ = h1[h1.index >= since.replace(minute=0, second=0, microsecond=0)]
-            low, high = float(w_.Low.min()), float(w_.High.max())
+            bars = [(float(r.High), float(r.Low)) for ix, r in h1[h1.index >= since.replace(minute=0, second=0, microsecond=0)].iterrows()]
         except Exception:
-            low = high = px
-        low, high = min(low, px), max(high, px)
-        days_held = max(0, (t.date() - datetime.fromisoformat(S.get("fund_day") or p["since"]).date()).days)
-        if days_held:
-            p["margin"] *= (1 - FUND * LEV) ** days_held; S["fund_day"] = today
-        hit = low <= p["liq"] if side > 0 else high >= p["liq"]
-        if hit:
-            S["trades"].append({"side": side, "in": p["since"], "out": today, "entry": p["entry"], "exit": p["liq"], "pl": -1.0, "liq": True})
-            S["liq"] += 1
-            cp.say(S, "risk", f"💥 강제 청산 — 비트코인이 ${(low if side > 0 else high):,.0f}까지 {'빠져' if side > 0 else '올라'} 청산가 ${p['liq']:,.0f} 터치. {LEV}배 {'롱' if side > 0 else '숏'} 증거금 ${p['margin']:,.0f} 전부 손실.")
-            S["pos"] = p = None
+            bars = []
+        bars.append((px, px))
+        for hi_, lo_ in bars:
+            stop = p["ext"] * (1 - side * TRAIL)
+            adverse = lo_ if side > 0 else hi_
+            if (side > 0 and adverse <= p["liq"]) or (side < 0 and adverse >= p["liq"]):
+                if not ((side > 0 and stop > p["liq"]) or (side < 0 and stop < p["liq"])):
+                    m_ = p["margin"]; close(S, p, p["liq"], today, "강제 청산", liq=True); S["liq"] += 1; S["block"] = side
+                    cp.say(S, "risk", f"💥 강제 청산 — 비트코인 ${adverse:,.0f}, 청산가 ${p['liq']:,.0f}. 증거금 ${m_:,.0f} 전부 손실.")
+                    p = None; break
+            if (side > 0 and adverse <= stop) or (side < 0 and adverse >= stop):
+                pl_usd = close(S, p, stop, today, f"추적 손절 (최고점 ${p['ext']:,.0f}에서 {TRAIL:.0%} 되돌림)")
+                S["block"] = side
+                cp.say(S, "risk", f"✂️ 추적 손절 — {nm(side)} 정리 @ ${stop:,.0f} (가장 좋았던 ${p['ext']:,.0f}에서 {TRAIL:.0%} 되돌림) · {pl_usd:+,.0f}$. 50일선 신호가 바뀌기 전엔 같은 방향 재진입 안 함.")
+                p = None; break
+            p["ext"] = max(p["ext"], hi_) if side > 0 else min(p["ext"], lo_)
     S["last_chk"] = t.isoformat()
-    # 2) 새 일봉 마감 때 판단: 50일선 위 롱, 아래 숏
+    # 2) 새 일봉 마감 때: 방향 · 크기
     if c and S["last_bar"] != d[-1]:
         S["last_bar"] = d[-1]
         m50 = cp.ma(c, 50, len(c) - 1)
         want = 0 if m50 is None else (1 if c[-1] > m50 else -1)
+        if S.get("block") and want != S["block"]:
+            S.pop("block")
+        v = vol20(c); E = round(min(MAXE, VT / v), 2)
         cur = p["side"] if p else 0
-        nm = lambda x: "롱" if x > 0 else "숏"
-        cp.say(S, "scout", f"비트코인 {d[-1]} 마감 ${c[-1]:,.0f} · 50일선 ${m50:,.0f} ({(c[-1] / m50 - 1) * 100:+.1f}%)")
+        cp.say(S, "scout", f"비트코인 {d[-1]} 마감 ${c[-1]:,.0f} · 50일선 ${m50:,.0f} ({(c[-1] / m50 - 1) * 100:+.1f}%) · 20일 변동성 연 {v:.0%} → 목표 노출 {E:.2f}배")
         if p and want != cur:
-            val = pval(p, px) - p["margin"] * LEV * COST * px / p["entry"]
-            S["cash"] += max(0, val)
-            pl = val / p["margin0"] - 1
-            S["trades"].append({"side": cur, "in": p["since"], "out": today, "entry": p["entry"], "exit": px, "pl": pl, "liq": False})
-            cp.say(S, "executor", f"{LEV}배 {nm(cur)} 정리 @ ${px:,.0f} — 증거금 대비 {pl * 100:+.1f}% (50일선 {'아래' if cur > 0 else '위'}로 마감)")
-            S["pos"] = p = None
-        if want and want != cur:
-            m = S["cash"] * MARGIN_W
-            if m > 10:
-                S["cash"] -= m
-                fee = m * LEV * COST
-                S["pos"] = p = {"side": want, "since": today, "at": t.isoformat(), "entry": px, "margin0": m, "margin": m - fee, "liq": liq_px(px, want)}
-                S["fund_day"] = today
-                cp.say(S, "executor", f"{LEV}배 {nm(want)} 진입 @ ${px:,.0f} · 증거금 ${m:,.0f} → 포지션 ${m * LEV:,.0f} · 강제 청산가 ${p['liq']:,.0f}")
-        elif want == cur:
-            cp.say(S, "logger", "변화 없음 — " + (f"{LEV}배 {nm(cur)} 유지" if p else "현금 대기"))
+            pl_usd = close(S, p, px, today, f"50일선 {'아래' if cur > 0 else '위'}로 마감")
+            cp.say(S, "executor", f"{nm(cur)} 정리 @ ${px:,.0f} · {pl_usd:+,.0f}$ (50일선 {'아래' if cur > 0 else '위'}로 마감)")
+            p = None
+        eqv = S["cash"] + (pval(p, px) if p else 0)
+        if want and not p:
+            if S.get("block") == want:
+                cp.say(S, "logger", f"{nm(want)} 신호지만 추적 손절 뒤라 대기 — 50일선 신호가 바뀐 뒤 다시 진입")
+            else:
+                p = open_(S, want, px, eqv, E, today, t)
+                cp.say(S, "executor", f"{nm(want)} 진입 @ ${px:,.0f} · 증거금 ${p['basis']:,.0f} × {LEV}배 = 포지션 ${p['basis'] * LEV:,.0f} (계좌의 {E:.2f}배) · 강제 청산 ${p['liq']:,.0f} · 추적 손절 ${px * (1 - want * TRAIL):,.0f}")
+        elif p:
+            curE = notional(p, px) / eqv if eqv else 0
+            if curE and abs(E - curE) / curE > REBAL:
+                val = pval(p, px); S["cash"] += val
+                fee = abs(eqv * E - notional(p, px)) * COST
+                newm = min(eqv * E / LEV, S["cash"]); S["cash"] -= newm
+                p["basis"] += newm - val
+                p.update({"entry": px, "margin": newm - fee, "liq": liq_px(px, p["side"]), "E": E})
+                cp.say(S, "risk", f"크기 조정 {curE:.2f}배 → {E:.2f}배 (변동성 연 {v:.0%}) · 강제 청산가 ${p['liq']:,.0f}로 다시 계산")
+            else:
+                cp.say(S, "logger", f"변화 없음 — {nm(p['side'])} 유지 · 지금 노출 {curE:.2f}배 · 추적 손절 ${p['ext'] * (1 - p['side'] * TRAIL):,.0f}")
     # 3) 평가
     eqv = S["cash"] + (pval(p, px) if p else 0)
     hr = t.strftime("%Y-%m-%dT%H:00")
@@ -95,16 +149,19 @@ def run():
         S["eq"].append([hr, round(eqv, 2)])
     S["eq"] = S["eq"][-2000:]
     peak, mdd = CASH0, 0.0
-    for _, v in S["eq"]:
-        peak = max(peak, v); mdd = min(mdd, v / peak - 1)
+    for _, v_ in S["eq"]:
+        peak = max(peak, v_); mdd = min(mdd, v_ / peak - 1)
     SF.write_text(json.dumps(S, ensure_ascii=False, separators=(",", ":")))
+    view_p = None
+    if p:
+        view_p = {**p, "entry": p["entry0"], "val": pval(p, px), "pl": (pval(p, px) - p["basis"]) / p["eq_in"], "dist": abs(p["liq"] / px - 1),
+                  "stop": p["ext"] * (1 - p["side"] * TRAIL), "expo": notional(p, px) / eqv if eqv else 0, "margin0": p["basis"]}
     OF.write_text(json.dumps({
         "start": S["start"], "made": t.isoformat(timespec="minutes"), "eq_now": round(eqv, 2), "cash": round(S["cash"], 2), "mdd": mdd,
-        "lev": LEV, "btc_ret": px / S["p0"] - 1, "now": px, "liq_n": S["liq"],
-        "pos": ({**p, "val": pval(p, px), "pl": pval(p, px) / p["margin0"] - 1, "dist": abs(p["liq"] / px - 1)} if p else None),
-        "trades": S["trades"][-20:], "chat": S["chat"][-100:], "eq": S["eq"][-500:],
+        "lev": LEV, "btc_ret": px / S["p0"] - 1, "now": px, "liq_n": S["liq"], "trail": TRAIL, "vt": VT, "block": S.get("block"),
+        "pos": view_p, "trades": S["trades"][-20:], "chat": S["chat"][-100:], "eq": S["eq"][-500:],
     }, ensure_ascii=False, separators=(",", ":")))
-    print(f"{LEV}배 계좌 ${eqv:,.2f} ({eqv / CASH0 - 1:+.2%}) 포지션 {'있음' if p else '없음'} 강제청산 {S['liq']}번")
+    print(f"{LEV}배 계좌 ${eqv:,.2f} ({eqv / CASH0 - 1:+.2%}) 포지션 {nm(p['side']) if p else '없음'} 강제청산 {S['liq']}번")
 
 
 if __name__ == "__main__":
