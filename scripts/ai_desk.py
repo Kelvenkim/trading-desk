@@ -1,7 +1,7 @@
 """
 AI 트레이딩 데스크 — 6명의 에이전트가 순서대로 일하고, 서로 대화방에 이야기를 남김
   Scout → Filter → Analyst → Risk → Executor → Logger   (규칙 기반 + Claude의 판단을 더하는 하이브리드)
-  · Scout   후보 찾기: 추천 바구니, 터틀 진입·돌파 직전, 오늘 급등·거래량 급증, 이미 보유 중인 종목
+  · Scout   후보 찾기: 추천 바구니, 오늘 급등·거래량 급증, 이미 보유 중인 종목
   · Filter  걸러내기: 3일 안 실적 발표, 하루 거래대금 $2,000만 미만, 주가 $5 미만, 하루 변동 10% 넘는 과열, 이미 많이 오른 자리(50일선 +8%↑ & RSI 65↑), 시장 이상(VIX 35↑)
   · Analyst 0~1점: 추세(20·50·200일선) 0.30, RSI 0.20, MACD 0.10, 거래량 0.10, S&P500 대비 강도 0.15, 애널리스트 여력 0.10, 사이트 신호 0.05
             0.6 미만 탈락. 진입가(종가 − ¼N 지정가), 손절(기본 -8%, 변동성 2N에 맞춰 5~12%), 목표(손절 폭의 2.5배)
@@ -74,7 +74,7 @@ def score(t, x, pf, srcs, spy_r20):
     tg = (pf.get("analyst") or {}).get("mean")
     up = tg / x["c"] - 1 if tg else None
     p_an = 0.1 if up and up > 0.15 else 0.05 if up and up > 0 else 0
-    p_sig = 0.05 if srcs & {"추천 바구니", "터틀 진입"} else 0.025 if srcs - {"보유 중"} else 0
+    p_sig = 0.05 if srcs & {"추천 바구니"} else 0.025 if srcs - {"보유 중"} else 0
     sc = round(p_tr + p_rsi + p_macd + p_vol + p_rs + p_an + p_sig, 2)
     why = ["추세↑" if p_tr >= 0.2 else "추세 약함" if p_tr <= 0.1 else "추세 보통", f"RSI {x['rsi']:.0f}", f"S&P 대비 {rs:+.0%}"]
     if up is not None: why.append(f"목표가 여력 {up:+.0%}")
@@ -114,11 +114,6 @@ def run(P, day=None):
     for r in rank.get("rows", []):
         if r.get("basket"):
             C.setdefault(r["code"], set()).add("추천 바구니")
-    for r in tt.get("rows", []):
-        if r["st"]["kind"] == "new":
-            C.setdefault(r["code"], set()).add("터틀 진입")
-        elif r["st"]["kind"] == "near" and r["st"].get("distN", 9) <= 0.5:
-            C.setdefault(r["code"], set()).add("터틀 돌파 직전")
     for x in (mk.get("up") or [])[:10]:
         t = x.get("t") or x.get("code")
         if t:

@@ -80,11 +80,11 @@ def main():
     # 4) 모의 투자
     if paper:
         L.append("\n### 3. 모의 투자 ($10,000씩)")
-        for k, lbl in (("basket", "추천 바구니"), ("turtle", "터틀"), ("spy", "S&P500 보유")):
+        for k, lbl in (("basket", "추천 바구니"), ("spy", "S&P500 보유")):
             a = paper["acct"][k]; e = a["eq"]
             d1 = e[-1][1] / e[-2][1] - 1 if len(e) > 1 else None
             L.append(f"- {lbl}: ${e[-1][1]:,.0f} (시작 대비 {pct(e[-1][1] / paper['cash0'] - 1, 2)}, 하루 {pct(d1, 2)}) · 보유 {len(a['pos'])}종목")
-        for k, lbl in (("basket", "바구니"), ("turtle", "터틀")):
+        for k, lbl in (("basket", "바구니"),):
             lg = [x for x in paper["acct"][k]["log"] if x["d"] == paper["date"]]
             buys = [x["t"] for x in lg if x["k"] == "buy"]
             sells = [f"{x['t']} {pct(x.get('pl'))}" for x in lg if x["k"] == "sell"]
@@ -96,12 +96,9 @@ def main():
             if bits: L.append(f"- {lbl} 오늘: " + " · ".join(bits))
             o = paper["acct"][k]["orders"]
             if o: L.append(f"- {lbl} 내일 주문 {len(o)}건")
-        st = paper["acct"]["turtle"]["stats"]
-        if st["n"]:
-            L.append(f"- 터틀 끝난 거래 {st['n']}건 · 이긴 비율 {st['win'] * 100:.0f}%")
 
-    # 5) 터틀
-    if tt:
+    # 5) 터틀 — 11/18 중단
+    if False:
         new = [r for r in tt["rows"] if r["st"]["kind"] == "new"]
         near = [r for r in tt["rows"] if r["st"]["kind"] == "near"]
         L.append(f"\n### 4. 터틀 신호\n- 오늘 진입 {len(new)} ({', '.join((r.get('ko') or r['code']) for r in new[:6]) or '없음'}) · 돌파 대기 {len(near)} · 청산 {tt['count'].get('exit', 0)}")

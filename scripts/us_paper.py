@@ -186,17 +186,14 @@ def order_turtle(a, P, day, tt):
 
 def run(P, day=None):
     rank = json.loads((OUT / "rank.json").read_text())
-    tt = json.loads((OUT / "turtle.json").read_text())
     day = day or rank["date"]
-    S = json.loads(STATE.read_text()) if STATE.exists() else {"start": day, "last": None, "acct": {k: new_acct(k) for k in ("basket", "turtle", "spy")}}
+    S = json.loads(STATE.read_text()) if STATE.exists() else {"start": day, "last": None, "acct": {k: new_acct(k) for k in ("basket", "spy")}}
+    S["acct"].pop("turtle", None) and S.setdefault("stopped", {}).update(turtle=day)   # 11/18 사용자 요청으로 터틀 계좌 중단
     A = S["acct"]
-    A["turtle"].setdefault("units", 0)
     if S["last"] and day <= S["last"]:
         print("모의 투자: 이미 처리한 날", day); return
     if S["last"]:
         fill_basket(A["basket"], P, day)
-        fill_turtle(A["turtle"], P, day)
-        A["turtle"]["units"] = sum(p["units"] for p in A["turtle"]["pos"].values())
         sp = A["spy"]
         for o in sp["orders"]:
             b = bar(P, "^GSPC", day)
@@ -206,7 +203,6 @@ def run(P, day=None):
     for k, a in A.items():
         a["eq"].append([day, round(equity(a, P, day), 2)])
     order_basket(A["basket"], P, day, rank)
-    order_turtle(A["turtle"], P, day, tt)
     if not A["spy"]["pos"] and not A["spy"]["orders"]:
         A["spy"]["orders"].append({"t": "^GSPC", "side": "buy"})
     S["last"] = day
@@ -238,6 +234,6 @@ if __name__ == "__main__":
     import sys
     sys.path.insert(0, str(ROOT / "scripts"))
     import us_prices as UP
-    rank = json.loads((OUT / "rank.json").read_text()); tt = json.loads((OUT / "turtle.json").read_text())
+    rank = json.loads((OUT / "rank.json").read_text())
     tick = sorted({r["code"] for r in rank["rows"]} | {"^GSPC"})
     run(UP.download(tick, period="3mo"))

@@ -17,11 +17,11 @@ const InvestUI = (() => {
 
   async function context() {
     if (ctx) return ctx;
-    const [mk, rank, theme, tt] = await Promise.all(["data/us/market.json", "data/us/rank.json", "data/us/theme.json", "data/us/turtle.json"].map((p) => get(p).catch(() => null)));
+    const [mk, rank, theme] = await Promise.all(["data/us/market.json", "data/us/rank.json", "data/us/theme.json"].map((p) => get(p).catch(() => null)));
     const fx = mk && (mk.assets || []).find((a) => a.t === "KRW=X");
     const themeOf = {};
     if (theme) theme.rows.forEach((r) => (r.stocks || []).forEach((s) => { (themeOf[s.code] = themeOf[s.code] || []).push(r.name); }));
-    ctx = { fx: fx ? fx.last : null, rank, themeOf, tt, regime: mk && mk.regime };
+    ctx = { fx: fx ? fx.last : null, rank, themeOf, regime: mk && mk.regime };
     return ctx;
   }
   async function profile(t) {
@@ -156,10 +156,10 @@ const InvestUI = (() => {
     const ch = p && (p.changes || [])[0];
     if (ch) out.push([ch.Action === "down" || ch.priceTargetAction === "Lowers" ? "neg" : ch.Action === "up" || ch.priceTargetAction === "Raises" ? "pos" : "",
       `최근 의견: ${esc(ch.GradeDate.slice(5))} ${esc(ch.Firm)} ${esc(ch.ToGrade)}${ch.currentPriceTarget ? ` · 목표가 ${usd(ch.currentPriceTarget, 0)}${ch.priorPriceTarget && ch.priorPriceTarget !== ch.currentPriceTarget ? ` ← ${usd(ch.priorPriceTarget, 0)}` : ""}` : ""}`]);
-    const ts = C.tt && C.tt.rows.find((x) => x.code === r.t);
+    const ts = null;
     const lines = a.err ? "" : `<div class="hd-lines">
         <div><span class="k">하루 평균 변동 (N)</span><b>${usd(a.N)}</b><span class="s">${pct(a.N / r.px)}</span></div>
-        <div><span class="k">2N 아래</span><b>${usd(r.px - 2 * a.N)}</b><span class="s">${pct(-2 * a.N / r.px)} · 터틀식 손절 폭</span></div>
+        <div><span class="k">2N 아래</span><b>${usd(r.px - 2 * a.N)}</b><span class="s">${pct(-2 * a.N / r.px)} · 변동폭(N)의 2배</span></div>
         <div><span class="k">20일 최저 (추세 이탈선)</span><b class="${r.px < a.lo20 ? "down" : ""}">${usd(a.lo20)}</b><span class="s">${pct(a.lo20 / r.px - 1)}</span></div>
         <div><span class="k">20일 최고 (돌파선)</span><b>${usd(a.hi20)}</b><span class="s">${pct(a.hi20 / r.px - 1)}</span></div>
       </div>`;
@@ -176,7 +176,7 @@ const InvestUI = (() => {
 
   // ================= 모의 투자 =================
   let P = null;
-  const ACCT = { basket: ["추천 바구니", "오늘의 순위 바구니 20종목, 5거래일마다 교체"], turtle: ["터틀", "20·55일 돌파, 2N 손절, 12유닛"], spy: ["S&P500 보유", "비교 기준"] };
+  const ACCT = { basket: ["추천 바구니", "오늘의 순위 바구니 20종목, 5거래일마다 교체"], spy: ["S&P500 보유", "비교 기준"] };
   async function renderPaper() {
     if (!P) { try { P = await get("data/us/paper.json"); } catch (_) { $("#pp-cards").innerHTML = `<p class="muted">아직 모의 투자 기록이 없어요.</p>`; return; } }
     const days = P.acct.spy.eq.length;
@@ -207,7 +207,7 @@ const InvestUI = (() => {
     el.innerHTML = "";
     const LC = LightweightCharts;
     pchart = LC.createChart(el, { ...LC_OPTS(), layout: { ...LC_OPTS().layout, attributionLogo: false }, handleScroll: false, handleScale: false, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } });
-    [["spy", "#9a9aa2"], ["basket", "#ffffff"], ["turtle", "#3d8bfd"]].forEach(([k, c]) => {
+    [["spy", "#9a9aa2"], ["basket", "#ffffff"]].forEach(([k, c]) => {
       const s = pchart.addSeries(LC.LineSeries, { color: c, lineWidth: k === acctSel ? 3 : 2, priceLineVisible: false, lastValueVisible: true });
       s.setData(P.acct[k].eq.map(([d, v]) => ({ time: d, value: v })));
     });

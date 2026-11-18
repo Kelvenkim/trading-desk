@@ -6,7 +6,7 @@ const DeskUI = (() => {
   const cls = (v) => (!has(v) ? "" : v > 0 ? "up" : v < 0 ? "down" : "");
   const usd = (v, d = 2) => (has(v) ? "$" + v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }) : "—");
   const AG = {
-    scout: ["Scout", "S", "#4fd1a5", "시장 탐색", "순위·터틀·급등·거래량 급증에서 후보를 찾아요"],
+    scout: ["Scout", "S", "#4fd1a5", "시장 탐색", "순위 바구니·급등·거래량 급증에서 후보를 찾아요"],
     filter: ["Filter", "F", "#b8b8be", "걸러내기", "실적 임박·거래대금 부족·$5 미만·과열·시장 이상을 빼요"],
     analyst: ["Analyst", "A", "#7aa2ff", "분석", "추세·RSI·MACD·거래량·상대강도·목표가로 0~1점, 0.6 미만 탈락"],
     risk: ["Risk", "R", "#f0525c", "위험 관리", "손절 필수, 손실 ≤ 계좌 2%, +15%부터 추적 손절, 급락 땐 신규 중단"],
@@ -23,7 +23,6 @@ const DeskUI = (() => {
     coin: ["코인", "#9b6bd8", "BTC·ETH · 50일선 위 롱·아래 숏", "more-coin", "coin"],
     lev: ["코인 5배", "#d86bb4", "BTC 5배 레버리지 실험", "more-coin", "coin"],
     basket: ["추천 바구니", "#3b6fd8", "순위 상위 · 5일마다 재분배", "", "stock"],
-    turtle: ["터틀", "#f0a43a", "추세 돌파 · 고전 규칙", "", "stock"],
     spy: ["S&P500", "#8a8f98", "비교 기준 · 그냥 보유", "", "stock"],
   };
   let SM = { log: [], f: "all" };
@@ -43,7 +42,7 @@ const DeskUI = (() => {
     if (D && D.eq && D.eq.length) card("day", D.eq[D.eq.length - 1][1], 10000, D.start, `매매 ${(D.trades || []).length}번`); else cards.push({ k: "day", off: "시작 전", extra: "Cloudflare 설정 뒤 시작" });
     if (C) card("coin", C.eq_now, 10000, C.start, `같은 기간 BTC ${pct(C.btc_ret, 1)}`);
     if (L) card("lev", L.eq_now, 10000, L.start, `강제 청산 ${L.liq_n}번`);
-    if (P) for (const k of ["basket", "turtle", "spy"]) { const e = P.acct[k].eq; card(k, e[e.length - 1][1], P.cash0, P.start, `보유 ${P.acct[k].pos.length}종목`); }
+    if (P) for (const k of ["basket", "spy"]) { const e = P.acct[k].eq; card(k, e[e.length - 1][1], P.cash0, P.start, `보유 ${P.acct[k].pos.length}종목`); }
     $("#sm-accts").innerHTML = cards.map((c) => { const [nm, col, how, tgt] = ACC[c.k];
       return `<button class="sm-acct ${c.k === "spy" ? "bench" : ""} ${c.off ? "off" : ""}" data-open="${tgt}" style="border-top:3px solid ${col}">
         <span class="nm">${nm}</span><span class="how">${how}</span>
