@@ -468,10 +468,11 @@ def live():
             room = eq * 0.80 - (eq - S["cash"]) - pend
             placed, rej = [], []
             for z in ok:
-                if new_today + len(placed) >= 2:
-                    rej.append((z["t"], "장중 신규는 하루 2개까지")); continue
+                weak = S.get("mode") == "약세"          # 11/19: 약세 국면 규칙(크기 절반·하루 1개)을 장중 매수에도 똑같이
+                if new_today + len(placed) >= (1 if weak else 2):
+                    rej.append((z["t"], "약세장이라 장중 신규는 하루 1개까지" if weak else "장중 신규는 하루 2개까지")); continue
                 px = round(z["x"]["p"] * 1.002, 2); sp = 1 - z["stop"] / px
-                usd = math.floor(min(eq * AP.MAX_RISK / sp, eq * AP.MAX_W, room) / 10) * 10
+                usd = math.floor(min(eq * AP.MAX_RISK / sp * (0.5 if weak else 1), eq * AP.MAX_W, room) / 10) * 10
                 if usd < 200:
                     rej.append((z["t"], "현금 20% 유지 규칙")); continue
                 o, bad = AP.place(S, z["t"], "buy", usd, "limit", px, z["stop"], round(px * (1 + 2.5 * sp), 2), 1,
