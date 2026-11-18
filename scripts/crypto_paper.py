@@ -29,6 +29,7 @@ RULES = {
     "ls50": "50일선 위면 롱, 아래면 숏",
     "ls_bear": "50일선 위면 롱, 50<200 약세에서 50일선 아래면 숏",
     "vote": "20·50·100·200일선 중 위에 있는 비율만큼 보유 (선 하나에 기대지 않기)",
+    "ens_vt": "추세 신호 10개 중 켜진 비율 × 변동성 맞춤(연 40%, 최대 2배) — 11/19 미션 최종 후보",
 }
 FUND = 0.0003  # 숏 유지 비용(펀딩) 하루 0.03%
 SWITCH_DAYS, SWITCH_GAP = 28, 0.05
@@ -77,6 +78,37 @@ def ma(c, k, i):
     return sum(c[i - k + 1:i + 1]) / k if i >= k - 1 else None
 
 
+_ENS = {}
+
+
+def ens_vt_series(c):
+    """11/19 미션 결과: 이평20·50·100, EMA20·50, 모멘텀30·60·90, MACD, 돈치안20/10(종가 기준) 중 켜진 비율
+    × 크기(연 40% ÷ 최근 20일 변동성, 최대 2배). 롱만. research/crypto/btc_mission.md 참고"""
+    key = (len(c), c[-1])
+    if key in _ENS:
+        return _ENS[key]
+    import numpy as np, pandas as pd
+    x = pd.Series(c, dtype=float)
+    sm = lambda n: x.rolling(n).mean()
+    em = lambda n: x.ewm(span=n, adjust=False).mean()
+    parts = [x > sm(20), x > sm(50), x > sm(100), x > em(20), x > em(50),
+             x > x.shift(30), x > x.shift(60), x > x.shift(90)]
+    m = em(12) - em(26); parts.append(m > m.ewm(span=9, adjust=False).mean())
+    hi, lo = x.rolling(20).max().shift(1), x.rolling(10).min().shift(1)
+    dc = np.zeros(len(x)); st = 0
+    for j in range(len(x)):
+        if not np.isnan(hi.iloc[j]):
+            if st and x.iloc[j] < lo.iloc[j]: st = 0
+            elif not st and x.iloc[j] > hi.iloc[j]: st = 1
+        dc[j] = st
+    E = sum(p_.astype(float) for p_ in parts) + pd.Series(dc)
+    E = (E / 10).where(sm(100).notna(), 0)
+    vol = np.log(x).diff().rolling(20).std() * np.sqrt(365)
+    out = (E * (0.40 / vol).clip(upper=2.0)).fillna(0).round(3).tolist()
+    _ENS.clear(); _ENS[key] = out
+    return out
+
+
 def want(rule, c, i, prev):
     """i번째 마감 봉 기준 목표 방향: 1 롱, 0 현금, -1 숏. prev = 직전 방향(돈치안용)"""
     if rule == "hold":
@@ -95,6 +127,8 @@ def want(rule, c, i, prev):
         return 1 if up else -1
     if rule == "ls_bear":
         return 1 if up else (-1 if m200 is not None and m50 < m200 else 0)
+    if rule == "ens_vt":
+        return ens_vt_series(c)[i]
     if rule == "vote":
         ms = [ma(c, L, i) for L in (20, 50, 100, 200)]
         return 0 if None in ms else round(sum(c[i] > m for m in ms) / 4, 2)
