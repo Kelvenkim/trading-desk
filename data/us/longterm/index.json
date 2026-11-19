@@ -1,0 +1,11 @@
+{
+ "industries": [
+  {
+   "key": "quantum",
+   "name": "양자컴퓨팅",
+   "asof": "2026-11-19",
+   "verdict": "비우호",
+   "n": 12
+  }
+ ]
+}

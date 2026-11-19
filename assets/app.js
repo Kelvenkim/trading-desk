@@ -227,7 +227,7 @@
     if (name === "portfolio") renderPF();
     if (name === "backtest") { try { BTUI.onShow(cur.sym); } catch (_) {} }
     if (name === "rank") { try { RankUI.onShow(); } catch (e) { console.error(e); } }
-    if (name === "theme") { try { ThemeUI.onShow(); } catch (e) { console.error(e); } }
+    if (name === "theme") { try { ThemeUI.onShow(); } catch (e) { console.error(e); } try { LongUI.onShow(); } catch (e) { console.error(e); } }
     if (name === "desk") { try { DeskUI.onShow(); } catch (e) { console.error(e); } }
     if (name === "news") { try { NewsUI.onShow(); } catch (e) { console.error(e); } }
     if (name === "home") { try { HomeUI.onShow(); } catch (e) { console.error(e); } }
@@ -258,7 +258,7 @@
       el.innerHTML = `<span><b>K TRADING DESK</b></span><span>NY ${m.ny}</span><span>SEOUL ${m.kst}</span><span>US ${m.state}</span><span>/ 종목 검색</span>`; };
     tick(); setInterval(tick, 30000);
     window.App = { go: (t) => showTab(t), openChart: (sym) => { showTab("chart"); openSymbol(sym, "1d"); },
-      showTheme: (key) => { showTab("theme"); ThemeUI.openKey(key); } };
+      showTheme: (key) => { showTab("theme"); LongUI.pane("th"); ThemeUI.openKey(key); } };
     const last = store.get(LAST_KEY, null);
     const okLast = last && last.sym && !Data.isKR(last.sym);           // 예전 한국 종목 기록은 무시
     const first = (okLast && last.sym) || (Data.meta.symbols[0] && Data.meta.symbols[0].symbol);

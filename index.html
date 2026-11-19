@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="assets/style.css?v=b59bb203" />
+  <link rel="stylesheet" href="assets/style.css?v=066f344a" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -48,7 +48,7 @@
       <button class="tab active" data-tab="home">홈</button>
       <button class="tab" data-tab="chart">차트</button>
       <button class="tab" data-tab="rank">오늘의 순위</button>
-      <button class="tab" data-tab="theme">장기 테마</button>
+      <button class="tab" data-tab="theme">장기 투자</button>
       <button class="tab" data-tab="news">뉴스</button>
       <button class="tab" data-tab="desk">AI 데스크</button>
       <button class="tab" data-tab="portfolio">내 투자</button>
@@ -193,8 +193,18 @@
 
     <!-- ================= 장기 테마 ================= -->
     <section id="tab-theme" class="panel">
-      <div class="rk-head"><h2>장기 테마 <span class="muted small" id="th-date"></span></h2>
-        <p class="muted small th-intro">종목보다 먼저 "어떤 기술·트렌드·정책 이야기에 올라탈지"를 보는 곳이에요. 3개월~1년 관점이에요. 테마를 누르면 이야기·근거·지수 차트·종목·내 판단이 펼쳐져요.</p></div>
+      <div class="rk-head"><h2>장기 투자 <span class="muted small" id="th-date"></span></h2>
+        <p class="muted small th-intro">산업 리서치(매크로 → 산업 이야기 → 공급망 병목 → 상장 공급사 → 회사 검증 → 시나리오 → 분류)와 테마 점수를 한곳에 모았어요. 결론이 아니라 "어떤 조건이면 좋고, 어떤 조건이 깨지면 가설이 무너지는지"로 적어요.</p></div>
+      <div class="lt-tabs"><button class="lt-tab on" data-lt="res">산업·종목 리서치</button><button class="lt-tab" data-lt="th">테마 점수</button></div>
+      <div id="lt-root" class="lt-pane" data-pane="res">
+        <div class="lt-legend small"><span class="lt-k lt-f">사실</span> 공시·보도로 확인 <span class="lt-k lt-e">추정</span> 판단·가정 <span class="lt-k lt-u">모름</span> 확인 못 함</div>
+        <div class="lt-inds" id="lt-inds"></div>
+        <div class="box" id="lt-body"><p class="muted">불러오는 중…</p></div>
+        <div class="box"><div class="box-head"><h2>우리가 검증한 공식 <span class="muted small">모든 회사에 자동 적용</span></h2></div><ul class="lt-forms" id="lt-formulas"></ul>
+          <p class="hint">'검증' = 과거 데이터로 앞·뒤 기간 모두 확인한 것. 과거 성적이 미래를 보장하지 않아요.</p></div>
+      </div>
+      <div class="lt-pane" data-pane="th" hidden>
+      <div class="rk-head"><p class="muted small th-intro">종목보다 먼저 "어떤 기술·트렌드·정책 이야기에 올라탈지"를 보는 곳이에요. 3개월~1년 관점이에요. 테마를 누르면 이야기·근거·지수 차트·종목·내 판단이 펼쳐져요.</p></div>
       <div class="box trust" id="th-trust"></div>
       <div class="box" id="th-macro"></div>
       <div class="grid-2">
@@ -205,6 +215,7 @@
             <div class="table-wrap"><table class="tbl" id="th-bf"></table></div>
             <p class="hint">매달 '주가 추세 점수' 상위 3개 테마를 골랐을 때 그 뒤 성적이에요. 지금 테마 구성으로 과거를 계산해서 실제보다 좋게 나왔을 수 있어요. 테마 점수가 높다고 오른다는 보장은 없어요.</p></div>
         </div>
+      </div>
       </div>
     </section>
 
@@ -658,6 +669,8 @@
     </div>
   </dialog>
 
+  <dialog id="lt-dialog" class="lt-dialog"><div id="lt-dlg-body"></div></dialog>
+
   <dialog id="pine-dialog">
     <div class="box-head">
       <h2>TradingView Pine Script</h2>
@@ -678,11 +691,12 @@
   <script src="assets/levels.js?v=dfcb1e20"></script>
   <script src="assets/rank.js?v=379e9e82"></script>
   <script src="assets/theme.js?v=eb3ce486"></script>
+  <script src="assets/longterm.js?v=2bbfa43d"></script>
   <script src="assets/news.js?v=639cc198"></script>
   <script src="assets/home.js?v=b6ddf735"></script>
   <script src="assets/company.js?v=cceb89ae"></script>
   <script src="assets/invest.js?v=d55ba1ff"></script>
   <script src="assets/desk.js?v=c58e75c9"></script>
-  <script src="assets/app.js?v=69869941"></script>
+  <script src="assets/app.js?v=5349e7ca"></script>
 </body>
 </html>

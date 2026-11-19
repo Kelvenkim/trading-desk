@@ -34,11 +34,20 @@ jobs:
       - name: 기업 정보 (관심·추천 종목 매일 + 나머지 하루 90개씩 돌아가며)
         run: timeout 35m python scripts/us_profiles.py
         continue-on-error: true
+      - name: 장기 투자 리서치 숫자 갱신 (시총·거래대금·검증 공식)
+        run: timeout 10m python scripts/longterm_metrics.py
+        continue-on-error: true
+      - name: 장기 투자 리서치 PDF
+        run: |
+          sudo apt-get install -y -qq fonts-noto-cjk >/dev/null
+          pip install -q playwright && python -m playwright install --with-deps chromium >/dev/null
+          timeout 10m python scripts/longterm_pdf.py
+        continue-on-error: true
       - name: 커밋
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/us
+          git add data/us reports/longterm
           if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
           git commit -m "us: 미국 순위·테마 $(TZ=America/New_York date '+%Y-%m-%d')"
           for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
