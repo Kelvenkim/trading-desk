@@ -10,6 +10,12 @@ const InvestUI = (() => {
   const get = async (p) => { const r = await fetch(p + "?t=" + Date.now()); if (!r.ok) throw new Error(p); return r.json(); };
   const load = () => store.get(KEY, { holdings: [], cash: 0 });
   const save = (x) => store.set(KEY, x);
+  // 장기 손익비 (기댓값 = G×pG + L×pL) — 종목별 값은 브라우저에만 저장
+  const EVKEY = "tradingdesk.ev.us";
+  const evLoad = () => store.get(EVKEY, {});
+  const evSave = (x) => store.set(EVKEY, x);
+  // Claude 시나리오(11/19, 2029년 기준) — 아이온큐만 미리 채워 둠. 확률은 형이 정하는 값 — 보수적으로 30%에서 시작
+  const EV_PRESET = { IONQ: { g: 120, l: 7.5, pg: 30, note: "Claude 2029 시나리오: 아주 강세 $120 · 약세 $5~10 (강세 $65, 기본 $20)" } };
   const daysTo = (d) => Math.round((new Date(d + "T12:00:00") - new Date()) / 864e5);
 
   let ctx = null, inited = false, acctSel = "basket", pchart = null, seq = 0;
@@ -75,7 +81,16 @@ const InvestUI = (() => {
       catch (_) { toast("파일 형식이 맞지 않아요. 내보내기로 만든 파일을 골라주세요.", true); }
       e.target.value = "";
     });
+    $("#tab-portfolio").addEventListener("change", (e) => {
+      const inp = e.target.closest(".ev-in input"); if (!inp) return;
+      const box = inp.closest(".ev-in"), t = box.dataset.ev, st = evLoad();
+      const v = {}; box.querySelectorAll("input").forEach((x) => (v[x.dataset.k] = +x.value));
+      if (!(v.g > 0) || !(v.l >= 0) || !(v.pg >= 0 && v.pg <= 100)) { toast("가격은 0보다 크게, 확률은 0~100 사이로 넣어 주세요.", true); return; }
+      st[t] = { ...v, note: "직접 넣은 값이에요." }; evSave(st); renderHold();
+    });
     $("#tab-portfolio").addEventListener("click", (e) => {
+      const rs = e.target.closest("[data-evreset]");
+      if (rs) { e.preventDefault(); const st = evLoad(); delete st[rs.dataset.evreset]; evSave(st); renderHold(); return; }
       const ed = e.target.closest("[data-edit]");
       if (ed) { const h = load().holdings.find((x) => x.t === ed.dataset.edit); if (h) { s.set(h.t); $("#hd-qty").value = h.qty; $("#hd-avg").value = h.avg; $("#hd-qty").focus(); } return; }
       const del = e.target.closest("[data-del]");
@@ -156,7 +171,6 @@ const InvestUI = (() => {
     const ch = p && (p.changes || [])[0];
     if (ch) out.push([ch.Action === "down" || ch.priceTargetAction === "Lowers" ? "neg" : ch.Action === "up" || ch.priceTargetAction === "Raises" ? "pos" : "",
       `최근 의견: ${esc(ch.GradeDate.slice(5))} ${esc(ch.Firm)} ${esc(ch.ToGrade)}${ch.currentPriceTarget ? ` · 목표가 ${usd(ch.currentPriceTarget, 0)}${ch.priorPriceTarget && ch.priorPriceTarget !== ch.currentPriceTarget ? ` ← ${usd(ch.priorPriceTarget, 0)}` : ""}` : ""}`]);
-    const ts = null;
     const lines = a.err ? "" : `<div class="hd-lines">
         <div><span class="k">하루 평균 변동 (N)</span><b>${usd(a.N)}</b><span class="s">${pct(a.N / r.px)}</span></div>
         <div><span class="k">2N 아래</span><b>${usd(r.px - 2 * a.N)}</b><span class="s">${pct(-2 * a.N / r.px)} · 변동폭(N)의 2배</span></div>
@@ -169,9 +183,46 @@ const InvestUI = (() => {
         <div class="hd-val"><b>${usd(r.val)}</b><span class="${cls(r.pl)}">${pct(r.pl)} (${usd(r.val - r.cost)})</span><span class="muted small">비중 ${Math.round(r.w * 100)}% · 오늘 <span class="${cls(r.day)}">${pct(r.day)}</span></span></div>
       </div>
       ${lines}
-      <ul class="hd-notes">${out.map(([c, t]) => `<li class="${c}">${t}</li>`).join("")}${ts ? `<li>터틀 규칙: ${esc({ hold: "보유 상태", new: "오늘 진입", near: "돌파 대기", exit: "오늘 청산" }[ts.st.kind] || "")}</li>` : ""}</ul>
+      <ul class="hd-notes">${out.map(([c, t]) => `<li class="${c}">${t}</li>`).join("")}</ul>
+      ${evBox(r)}
       <div class="hd-btns"><button class="link-btn" data-edit="${esc(r.t)}">수정</button><button class="link-btn" data-del="${esc(r.t)}">삭제</button></div>
     </div>`;
+  }
+
+  // ---------- 장기 손익비 ----------
+  function evDefault(r) {
+    const pre = EV_PRESET[r.t]; if (pre) return { ...pre };
+    const hi = r.p && r.p.analyst && r.p.analyst.high;
+    return { g: has(hi) ? Math.round(hi * 100) / 100 : Math.round(r.px * 2 * 100) / 100, l: Math.round(r.px * 0.5 * 100) / 100, pg: 50, note: "기본값(월가 최고 목표가 · 반토막)이에요. 직접 바꿔 주세요." };
+  }
+  function evCalc(px, e) {
+    const G = e.g / px - 1, L = e.l / px - 1, pG = e.pg / 100, pL = 1 - pG;
+    const ev = G * pG + L * pL, ratio = L < 0 ? G / -L : null, be = (G - L) > 0 ? -L / (G - L) : null;
+    const ideal = G >= 3 && L >= -0.5;        // 상방 4배(+300%) 이상 & 하방 반토막(−50%) 이내
+    const grade = ev <= 0 ? ["neg", "기댓값 마이너스 — 이 가정이면 사면 손해예요"] : ideal ? ["pos", "이상적: 상방 4배↑ · 하방 반토막 이내"] :
+      ratio >= 4 ? ["pos", "좋음: 이익이 손실의 4배 이상"] : ratio >= 2 ? ["", "보통: 이익이 손실의 2~4배"] : ["warn", "약함: 이익이 손실의 2배 미만"];
+    return { G, L, pG, pL, ev, ratio, be, grade };
+  }
+  function evBox(r) {
+    if (!has(r.px)) return "";
+    const st = evLoad(), e = st[r.t] || evDefault(r), c = evCalc(r.px, e), ca = has(r.avg) && r.avg > 0 ? evCalc(r.avg, e) : null;
+    const w = (v) => Math.min(100, Math.abs(v) * 100 / 5);   // 막대: +500%를 꽉 찬 길이로
+    return `<details class="ev-box" ${st[r.t] ? "open" : ""}><summary><b>장기 손익비</b> <span class="muted small">기댓값 = G×pG + L×pL</span>
+        <span class="ev-sum ${c.grade[0]}">${pct(c.ev, 0)} · ${c.ratio == null ? "—" : c.ratio.toFixed(1) + " : 1"}</span></summary>
+      <div class="ev-in" data-ev="${esc(r.t)}">
+        <label>잘 풀리면 가격 <span class="muted">G</span><input type="number" step="0.01" data-k="g" value="${e.g}"></label>
+        <label>안 풀리면 가격 <span class="muted">L</span><input type="number" step="0.01" data-k="l" value="${e.l}"></label>
+        <label>잘 풀릴 확률 <span class="muted">pG %</span><input type="number" step="1" min="0" max="100" data-k="pg" value="${e.pg}"></label>
+        <button class="link-btn" data-evreset="${esc(r.t)}">기본값</button>
+      </div>
+      <div class="ev-bars"><div class="ev-bar"><span class="k">상방 G</span><i class="up-bg" style="width:${w(c.G)}%"></i><b class="up">${pct(c.G, 0)}</b><span class="s">${(1 + c.G).toFixed(1)}배</span></div>
+        <div class="ev-bar"><span class="k">하방 L</span><i class="down-bg" style="width:${w(c.L)}%"></i><b class="down">${pct(c.L, 0)}</b><span class="s">${(1 + c.L).toFixed(2)}배</span></div></div>
+      <ul class="hd-notes">
+        <li class="${c.grade[0]}"><b>지금 가격 ${usd(r.px)}에서 사면:</b> 기댓값 <b class="${cls(c.ev)}">${pct(c.ev, 0)}</b> = (${pct(c.G, 0)} × ${Math.round(c.pG * 100)}%) + (${pct(c.L, 0)} × ${Math.round(c.pL * 100)}%) · 손익비 <b>${c.ratio == null ? "—" : c.ratio.toFixed(1) + " : 1"}</b> · ${c.grade[1]}</li>
+        <li>본전이 되는 확률: 잘 풀릴 확률이 <b>${c.be == null ? "—" : Math.round(c.be * 100) + "%"}</b>만 넘으면 기댓값이 플러스예요.</li>
+        ${ca ? `<li class="muted">내 평단 ${usd(r.avg)} 기준이면: 기댓값 ${pct(ca.ev, 0)} · 상방 ${pct(ca.G, 0)} · 하방 ${pct(ca.L, 0)}</li>` : ""}
+        <li class="muted small">${esc(e.note || "직접 넣은 값이에요.")} 이상적인 기준: 상방 4~5배(+300~400%), 하방 반토막(−50%).</li>
+      </ul></details>`;
   }
 
   // ================= 모의 투자 =================

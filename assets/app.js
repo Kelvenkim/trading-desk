@@ -253,6 +253,10 @@
     safe("장기 테마", () => ThemeUI.init());
     safe("뉴스", () => NewsUI.init());
     safe("홈", () => HomeUI.init());
+    // 터미널 상태줄: 뉴욕·서울 시각, 미국장 상태
+    const tick = () => { const el = document.getElementById("term-status"); if (!el) return; const m = U.usMarket();
+      el.innerHTML = `<span><b>K TRADING DESK</b></span><span>NY ${m.ny}</span><span>SEOUL ${m.kst}</span><span>US ${m.state}</span><span>/ 종목 검색</span>`; };
+    tick(); setInterval(tick, 30000);
     window.App = { go: (t) => showTab(t), openChart: (sym) => { showTab("chart"); openSymbol(sym, "1d"); },
       showTheme: (key) => { showTab("theme"); ThemeUI.openKey(key); } };
     const last = store.get(LAST_KEY, null);
