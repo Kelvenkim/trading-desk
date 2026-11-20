@@ -65,10 +65,10 @@ const U = (() => {
 
   const LC_OPTS = () => ({
     autoSize: true,
-    layout: { background: { color: "transparent" }, textColor: "#b08a4a", fontSize: 11, fontFamily: "IBM Plex Mono, Pretendard Variable, monospace" },
-    grid: { vertLines: { color: "rgba(255,159,26,.07)" }, horzLines: { color: "rgba(255,159,26,.07)" } },
-    rightPriceScale: { borderColor: "#3a2a0c" },
-    timeScale: { borderColor: "#3a2a0c", timeVisible: true, secondsVisible: false },
+    layout: { background: { color: "transparent" }, textColor: "#9097a3", fontSize: 11, fontFamily: "Pretendard Variable, Pretendard, system-ui, sans-serif" },
+    grid: { vertLines: { color: "rgba(255,255,255,.04)" }, horzLines: { color: "rgba(255,255,255,.04)" } },
+    rightPriceScale: { borderColor: "#2b2e35" },
+    timeScale: { borderColor: "#2b2e35", timeVisible: true, secondsVisible: false },
     crosshair: { mode: 0 }, localization: { locale: "ko-KR" },
   });
   // 미국 시장 상태 (뉴욕 시각 기준, 공휴일은 반영 안 함)

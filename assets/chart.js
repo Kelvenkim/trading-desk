@@ -7,7 +7,7 @@
 const ChartView = (() => {
   const LC = LightweightCharts;
   const COL = {
-    up: "#ff4d4d", down: "#3fa9ff", grid: "rgba(255,159,26,.07)", line: "#3a2a0c", text: "#b08a4a",
+    up: "#ff5f6b", down: "#4ea3ff", grid: "rgba(255,255,255,.05)", line: "#2b2e35", text: "#9097a3",
     gold: "#ffffff", upA: "rgba(240,82,92,.32)", downA: "rgba(61,139,253,.32)",
   };
   const MA = [[5, "#8a8a92"], [20, "#ffffff"], [60, "#7aa2ff"], [120, "#c792ea"]];
