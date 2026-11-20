@@ -329,7 +329,7 @@
     "rsi": 45.8,
     "hi52": 668.17,
     "lo52": 431.38,
-    "mom121": 0.19177778657064848,
+    "mom121": 0.19177770797704352,
     "formulas": [
      {
       "k": "trend200",
@@ -847,19 +847,19 @@
     "https://admiralmarkets.com/education/articles/shares/rheinmetall-stock-2026-slump"
    ],
    "m": {
-    "px": 713.4,
+    "px": 713.0,
     "cur": "EUR",
     "day": "2026-11-20",
-    "mcap": 33292998656,
-    "adv": 235713542,
-    "ps": 2.7169087,
+    "mcap": 33274329088,
+    "adv": 235915747,
+    "ps": 2.715385,
     "rev": 12254000128,
     "rev_g": 0.364,
-    "ma50": 946.64,
+    "ma50": 946.63,
     "ma200": 1195.04,
     "rsi": 23.2,
     "hi52": 1901.0,
-    "lo52": 713.4,
+    "lo52": 713.0,
     "mom121": -0.325340182750659,
     "formulas": [
      {
@@ -983,7 +983,7 @@
     "cur": "KRW",
     "day": "2026-11-20",
     "mcap": 31126517186560,
-    "adv": 126559930200,
+    "adv": 126563076200,
     "ps": 1.0544561,
     "rev": 29519027109888,
     "rev_g": -0.067,
@@ -1425,81 +1425,84 @@
    "t": "RDW",
    "name": "레드와이어",
    "exch": "NYSE",
-   "layer": "L8 위성 부품(태양전지판·구조) + L6 드론",
-   "products": "우주 태양전지판(ROSA), 우주 구조물, 스토커·펭귄 무인기",
-   "customers": "NASA, 국방부, DARPA(사브레샛), 주방위군",
+   "layer": "L8 위성 부품(태양전지판 ROSA·구조물) + L6 군용 드론(스토커·펭귄)",
+   "products": "우주 태양전지판(ROSA·ELSA), 우주 구조물·궤도 제조, 초저궤도 위성 사브레샛, 군용 무인기(엣지 오토노미: 스토커·펭귄)",
+   "customers": "NASA·ISS, 액시엄 스페이스, DARPA, 미 주방위군·국방부, 해외(매출의 40%)",
    "growth": [
-    "3분기 매출 $1.09억(+5%, 예상 $1.26억 미달). 잔고 $6.2억(+75%), 수주/매출 1.73배. 연간 전망 $4.5~5억 유지",
+    "3분기 매출 $1.09억(+5%, 예상 $1.26~1.36억 크게 미달) → 다음 날 주가 약 −21%. 1~9월 $3.23억, 연간 전망 $4.5~5억 유지 — 맞추려면 4분기에 최소 $1.27억(3분기보다 +17%) 필요",
     "사실"
    ],
    "v": {
     "pos": [
-     "태양전지판 등 틈새 부품 공급 (추정)",
+     "ROSA 태양전지판은 ISS·액시엄 모듈에 반복 공급되는 검증 제품. 다만 대형 업체(예: 위성 제작사 자체 생산)도 만들 수 있는 틈새 부품 (추정)",
      "추정"
     ],
     "sub": [
-     "대형 업체도 만들 수 있는 부품 — 대체 가능 (추정)",
+     "태양전지판·구조물은 대체 가능, 군용 소형 무인기는 경쟁 업체 다수 (추정)",
      "추정"
     ],
-    "grade": "B",
-    "grade_why": "DARPA $2,000만·주방위군 $1,380만 등 공식, 대형 반복 고객 공개는 제한적",
+    "grade": "A",
+    "grade_why": "NASA·액시엄·DARPA·주방위군 등 공식 고객 이름과 후속 주문 공시 — 단 건당 계약 규모가 작음($0.1~0.3억대)",
     "capa": [
-     "무인기 신모델 전환(블록 30→40)으로 인도 지연, 수출 승인·공급사 지연",
+     "무인기 신모델 전환(스토커 블록 30→40, 펭귄 Mk3)으로 출하 지연, 수출 승인·공급사 지연이 분기 매출을 흔듦. 4분기 출하용 재고 $0.47억 쌓아둠",
      "사실"
     ],
     "fin": [
-     "유동성 $5.39억. 주당 −$0.09 손실",
+     "현금 $4.89억, 부채 약 $0.47억(리스 제외) — 빚은 적음. 대신 3분기 FCF −$0.66억, 1~9월 −$1.14억, 조정 EBITDA −$0.05억(적자 확대). 순손실 $0.23억(개선)",
      "사실"
     ],
     "dil": [
-     "모름 — 이번 자료에서 확인 못 함",
-     "모름"
+     "매우 높음: 주식 수 1.92억 → 2.50억(9개월 +30%), 증자로 $5.67억 조달. 현금 소진이 계속되면 추가 증자 가능 (추정)",
+     "사실"
     ],
     "mgmt": [
-     "인도 지연 반복",
+     "CEO 피터 카니토. 총마진 16% → 32%로 개선(저마진 사업 정리·가격 규율)은 실행 성과. 반면 매출 예상 미달·출하 지연 반복",
      "사실"
     ],
     "geo": [
-     "무인기 수출 승인 필요",
-     "사실"
+     "무인기 수출은 미국 승인 필요, 국방·NASA 예산 정치 영향 (추정)",
+     "추정"
     ],
     "val": [
-     "시총 약 $16억, 매출 대비 약 3.8배. 고점 $25.9 → $6.51(−75%)",
+     "시총 약 $16억, 매출 대비 약 3.8배. 고점 $25.9 → $6.51(−75%), 200일선($10.79) −40%, 52주 최저 $5.06 근처",
      "사실"
     ]
    },
    "sc": {
     "best": {
-     "assume": "잔고가 매출로 빠르게 전환 + 마진 개선",
-     "evidence": "잔고 +75%, 총마진 32%",
-     "weak": "인도 지연",
-     "rerate": "흑자 전환",
+     "assume": "잔고 $6.2억(+75%)이 빠르게 매출로 + 마진 32% 유지 → 흑자 전환 + 우주·국방 예산 확대",
+     "evidence": "수주/매출 1.73배(1년 1.63배), 총마진 2배, ELSA 첫해 $0.28억 수주",
+     "weak": "매출 전환이 계속 늦음",
+     "rerate": "EBITDA 흑자 + FCF 플러스 2분기 연속",
      "mult": 3.0
     },
     "base": {
-     "assume": "천천히 성장",
-     "evidence": "—",
-     "why_weak": "실적 미달 반복",
-     "mult": 1.1
+     "assume": "천천히 성장하며 손익분기 근처",
+     "evidence": "잔고 증가",
+     "why_weak": "적자·희석이 주당 가치를 깎음, 소형 우주주 투자 심리 약함",
+     "mult": 1.15
     },
     "worst": {
-     "assume": "지연 + 자금 조달",
-     "risks": "실행·희석",
-     "evidence": "예상 미달",
-     "loss": "증자 → 하락",
-     "mult": 0.4
+     "assume": "4분기도 미달 → 연간 전망 하향 + 현금 소진 → 추가 증자",
+     "risks": "희석(9개월 +30% 이력), 실행(출하 지연), 수출 승인",
+     "evidence": "3분기 예상 미달, FCF −$1.14억(9개월)",
+     "loss": "가이던스 하향 → 증자 → 주당 가치 하락 → $3~4대",
+     "mult": 0.35
     }
    },
    "cls": "투기 — 조건 부족",
-   "good_if": "4분기 무인기 인도 정상화 + 연간 전망 달성",
-   "break_if": "연간 전망 하향 또는 증자",
+   "good_if": "① 4분기 매출 $1.27억+ (연간 전망 하단 달성) ② 조정 EBITDA 흑자 ③ 추가 증자 없음 ④ 잔고 증가 지속",
+   "break_if": "연간 전망 하향, 대규모 추가 증자, 무인기 출하 지연이 2분기 이상 지속",
    "ev": {
     "g": 3.0,
-    "l": 0.4,
+    "l": 0.35,
     "pg": 30
    },
    "src": [
-    "https://zacks.com/stock/news/3025730/rdw-q3-earnings-call-highlights-backlog-growth-and-revenue-delays"
+    "https://zacks.com/stock/news/3025730/rdw-q3-earnings-call-highlights-backlog-growth-and-revenue-delays",
+    "https://www.sec.gov/Archives/edgar/data/0001819810/000181981026000139/exhibit991redwire09302026e.htm",
+    "https://www.fool.com/investing/2026/11/05/why-redwire-stock-is-plummeting-today/",
+    "https://www.mitrade.com/insights/news/live-news/article-8-2247303-20261111"
    ],
    "m": {
     "px": 6.51,
@@ -1544,11 +1547,11 @@
     ],
     "ev": {
      "G": 2.0,
-     "L": -0.6,
+     "L": -0.65,
      "pG": 0.3,
-     "value": 0.18,
-     "ratio": 3.3333333333333335,
-     "be": 0.23076923076923075,
+     "value": 0.14500000000000002,
+     "ratio": 3.0769230769230766,
+     "be": 0.24528301886792456,
      "ideal": false
     }
    }
@@ -1638,15 +1641,18 @@
   "https://thewallstreetrepublic.substack.com/p/anthropic-closes-at-9717-s-and-p",
   "https://vistapglobal.com/stock-market-today-november-19-2026-anthropic-ipo-pops-wall-street-loses-its-appetite-amd-ant-eprx-insm-jpm-ma-modd-panw-ser-sls-v-wmt/",
   "https://www.cnas.org/publications/reports/munitions-procurement-and-the-fiscal-year-2027-defense-budget",
+  "https://www.fool.com/investing/2026/11/05/why-redwire-stock-is-plummeting-today/",
   "https://www.govexec.com/defense/2026/08/how-congress-reshaping-administrations-fy27-budget/415336/",
   "https://www.investmentnews.com/equities/the-fed-came-close-to-an-october-rate-hike-fomc-minutes-show/269079",
   "https://www.koreatimes.co.kr/business/companies/20261029/hanwha-aerospace-swings-to-q3-net-loss-due-to-delayed-weapons-deliveries",
+  "https://www.mitrade.com/insights/news/live-news/article-8-2247303-20261111",
   "https://www.mpamag.com/us/mortgage-industry/industry-trends/fed-rate-hike-odds-hit-100-as-waller-floats-bigger-december-move/596880",
   "https://www.panabee.com/news/northrop-grumman-earnings-q3-2026-report",
+  "https://www.sec.gov/Archives/edgar/data/0001819810/000181981026000139/exhibit991redwire09302026e.htm",
   "https://www.space.com/space-exploration/launches-spacecraft/whats-next-for-spacexs-starship-v3-megarocket-after-its-historic-debut-flight",
   "https://www.startuphub.ai/news/spacex-spcx-earnings-lockup-august-2026",
   "https://www.webull.com/news/15781329697057792",
   "https://zacks.com/stock/news/3025730/rdw-q3-earnings-call-highlights-backlog-growth-and-revenue-delays"
  ],
- "metrics_at": "2026-11-20T10:13+00:00"
+ "metrics_at": "2026-11-20T10:34+00:00"
 }
