@@ -58,7 +58,7 @@ def ind(rows):
             "dv": (c[-20:] * v[-20:]).mean(), "range": (h[-1] - l[-1]) / c[-2], "n": n}
 
 
-# 손절은 산 가격의 최대 -7% (11/16 사용자 요청 "손절을 너무 아래에 두지 마") → 11/20 "항상 -7%"로 고정(ai_paper.STOP).
+# 손절은 산 가격의 최대 -7% (11/16 사용자 요청 "손절을 너무 아래에 두지 마").
 # 검증(2015~2026 2만 건): 한도 없음 건당 +0.55%·최악 5% 평균 -11.8% → -7% 한도 +0.46%·-8.5%. 평균은 조금 줄지만 큰 손실이 줄어듦
 MAX_STOP = 0.07
 
@@ -79,7 +79,7 @@ def score(t, x, pf, srcs, spy_r20):
     why = ["추세↑" if p_tr >= 0.2 else "추세 약함" if p_tr <= 0.1 else "추세 보통", f"RSI {x['rsi']:.0f}", f"S&P 대비 {rs:+.0%}"]
     if up is not None: why.append(f"목표가 여력 {up:+.0%}")
     if x["vr"] > 1.2: why.append(f"거래량 {x['vr']:.1f}배")
-    return {"t": t, "score": sc, "stop_pct": MAX_STOP, "why": ", ".join(why),
+    return {"t": t, "score": sc, "stop_pct": min(MAX_STOP, max(0.05, 2 * x["N"] / x["c"])), "why": ", ".join(why),
             "src": " + ".join(sorted(srcs)), "held": "보유 중" in srcs}
 
 
@@ -443,7 +443,7 @@ def live():
             p_mom = 0.08 if x["mom30"] > 0 else 0
             b = sum(S.get("sig_adj", {}).get(k if not k.startswith("S&P") else "상대강도", 0) for k in sig) + S.get("src_adj", {}).get("장중 신호", 0)
             isc = round(p_sig + p_rel + p_rv + p_mom + 0.4 * d[0] + max(-0.15, min(0.15, b)), 2)
-            stop = x["p"] * (1 - MAX_STOP)  # 11/20: 손절은 항상 −7%
+            stop = max(x["orl"] if "개장 범위 돌파" in sig else x["vwap"] - 0.5 * d[3], x["p"] * (1 - d[1]))
             stop = min(stop, x["p"] * 0.98)                                       # 최소 2% 여유
             cands.append({"t": t, "score": isc, "chg": chg, "rel": rel, "rv": rv, "sig": sig, "x": x, "d": d, "stop": round(stop, 2)})
         cands.sort(key=lambda z: -z["score"])
