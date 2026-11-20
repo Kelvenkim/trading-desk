@@ -727,7 +727,7 @@
     "rsi": 52.4,
     "hi52": 761.19,
     "lo52": 473.46,
-    "mom121": -0.03291960149005635,
+    "mom121": -0.03291970733416827,
     "formulas": [
      {
       "k": "trend200",
@@ -847,25 +847,25 @@
     "https://admiralmarkets.com/education/articles/shares/rheinmetall-stock-2026-slump"
    ],
    "m": {
-    "px": 707.5,
+    "px": 713.4,
     "cur": "EUR",
     "day": "2026-11-20",
-    "mcap": 33017655296,
-    "adv": 234986736,
-    "ps": 2.694439,
+    "mcap": 33292998656,
+    "adv": 235713542,
+    "ps": 2.7169087,
     "rev": 12254000128,
     "rev_g": 0.364,
-    "ma50": 946.52,
-    "ma200": 1195.01,
-    "rsi": 22.8,
+    "ma50": 946.64,
+    "ma200": 1195.04,
+    "rsi": 23.2,
     "hi52": 1901.0,
-    "lo52": 707.5,
+    "lo52": 713.4,
     "mom121": -0.325340182750659,
     "formulas": [
      {
       "k": "trend200",
       "ok": false,
-      "t": "200일선 아래 (-41%)",
+      "t": "200일선 아래 (-40%)",
       "why": "S&P500 2000~: 200일선 위에서만 보유하면 최대 낙폭 −57% → −26% (수익은 줄어듦)"
      },
      {
@@ -983,7 +983,7 @@
     "cur": "KRW",
     "day": "2026-11-20",
     "mcap": 31126517186560,
-    "adv": 126549554450,
+    "adv": 126559930200,
     "ps": 1.0544561,
     "rev": 29519027109888,
     "rev_g": -0.067,
@@ -1166,81 +1166,87 @@
    "t": "SPCX",
    "name": "스페이스X",
    "exch": "Nasdaq",
-   "layer": "L7 우주 발사 + L8 위성(스타링크) + 우주 요격(SBI)",
-   "products": "팰컨·스타십 발사, 스타링크 통신, AI 컴퓨팅('슈퍼 인텔리전스' 부문), 커서",
-   "customers": "NASA·우주군, 소비자 1,360만 명, 기업",
+   "layer": "L7 우주 발사 + L8 위성(스타링크) + 우주 요격(SBI) — 실제로는 AI 컴퓨팅 회사",
+   "products": "AI 컴퓨팅 클라우드·그록·커서(슈퍼 인텔리전스 부문), 스타링크 통신, 팰컨·스타십 발사",
+   "customers": "소비자 1,360만 명, 기업·정부, AI 클라우드 고객(이름 비공개), NASA·우주군",
    "growth": [
-    "3분기 매출 $146억(+161%) — 그중 AI 컴퓨팅 $75.6억, 통신 $52.5억(+69%), 우주 $17.7억(+6%)",
+    "3분기 매출 $146억(+161%, 예상 $126억 상회) — AI $75.6억(전 분기 $26억), 통신 $52.5억(+69%), 우주 $17.7억(+6%). 2027년 1분기 매출 전망 $330~370억",
     "사실"
    ],
    "v": {
     "pos": [
-     "미국 발사 시장 압도적 1위 — 없으면 미국 우주 방어 일정이 멈춤 (추정)",
+     "발사는 미국 압도적 1위(분기 35회). 하지만 매출의 절반 이상인 AI 컴퓨팅은 '병목'이 아니라 빅테크·네오클라우드와 경쟁하는 사업 (추정)",
      "추정"
     ],
     "sub": [
-     "발사 대안(뉴트론·뉴글렌)이 늦어지는 중 — 단기 대체 어려움",
+     "발사는 단기 대체 어려움(뉴트론·뉴글렌 지연). AI 컴퓨팅은 대체 쉬움 — 단기 계약 의존이라 가격 경쟁 노출",
      "추정"
     ],
     "grade": "A",
-    "grade_why": "NASA·우주군 공식 계약, SBI 시제품 12곳 중 하나, 스타링크 반복 매출",
+    "grade_why": "NASA·우주군 공식 계약, 스타링크 반복 매출. AI 부문 잔고 $630억(1년 안 약 $420억)은 공시됐지만 고객 이름은 비공개",
     "capa": [
-     "분기 설비 투자 $196억(그중 AI $164억) — 확장 능력은 충분, 대신 돈을 많이 씀",
+     "4분기 설비 투자 $350~400억(3분기 $196억의 약 2배). 컴퓨팅 연말 2.5~3GW → 2027년 말 13GW 목표 — 전력·냉각·GPU가 제약",
      "사실"
     ],
     "fin": [
-     "현금 $513억 + 증권 $386억. 1~9월 순손실 $4.1억",
+     "현금 $513억 + 증권 $386억. 3분기 순이익 $44억이지만 영업이익은 $28억(나머지는 영업 밖 이익). 1~9월 순손실 $4.1억, 1~9월 설비 투자 $481억",
      "사실"
     ],
     "dil": [
-     "상장 직후 — 보호예수 해제 물량 일정 모름",
-     "모름"
+     "높음: 커서 인수($600억)로 3년간 주식 보상 약 $230억(3분기만 $12억). 8/6 보호예수 해제 9.1억 주(약 $1,160억어치). 설비 투자를 빚·증자로 메울 가능성 (추정)",
+     "사실"
     ],
     "mgmt": [
-     "일론 머스크 경영 — 여러 회사 겸직, 결정이 빠르지만 집중도 위험 (추정)",
-     "추정"
+     "머스크가 지분 약 42%로 의결권 약 79%(차등 의결권) — 일반 주주 영향력 거의 없음. 일정 지연 반복(스타십 주간 발사 2027 상반기로, 스타링크 모바일 2028 초로). 테슬라와 합병 검토 특별위원회 구성(조건 미정) — 이해 상충",
+     "사실"
     ],
     "geo": [
-     "정부 계약 의존 + 정치 위험 (추정)",
-     "추정"
+     "정부 계약·정치 위험, 중간선거 뒤 데이터센터 반대 정서, 스타십 FAA 사고 조사 이력 (5월 V3 첫 비행 뒤 부스터 착륙 사고)",
+     "사실"
     ],
     "val": [
-     "시총 약 $1.88조, 매출 대비 약 59배 — 방산·우주가 아니라 AI 성장주 몸값. 우주 사업 매출은 전체의 12%",
+     "시총 약 $1.88조. 지난 12개월 매출 대비 약 59배, 1분기 전망 연환산(약 $1,400억) 대비 약 13배, 내년 이익 대비 약 45배. 공모가 $135 → 고점 $211(종가) → 저점 $108 → 지금 $138",
      "사실"
     ]
    },
    "sc": {
     "best": {
-     "assume": "AI·스타링크·우주 모두 고성장",
-     "evidence": "매출 +161%",
-     "weak": "이미 $1.9조 몸값",
-     "rerate": "—",
-     "mult": 2.0
+     "assume": "AI 클라우드 연 매출 $1,000억 돌파(회사 목표, 12월 기준) + 스타링크 모바일 + 스타십 상업화 + 테슬라 합병 시너지",
+     "evidence": "1분기 전망 $330~370억(3분기의 2.4배), AI 잔고 $630억, 머스크 '2027년 말 연 매출 $5,000억~1조 가능'(회사 주장)",
+     "weak": "분기 설비 투자 $350~400억 — 투자금이 계속 이익을 넘음",
+     "rerate": "AI 부문 영업이익률이 EBITDA 수준으로 따라오고 설비 투자 회수가 1년 안에 확인될 때",
+     "mult": 2.5
     },
     "base": {
-     "assume": "성장하지만 몸값이 성장을 이미 반영",
-     "evidence": "—",
-     "why_weak": "PS 59배",
-     "mult": 1.0
+     "assume": "매출은 크게 늘지만 설비 투자·주식 보상이 이익을 먹고, 몸값(이익 45배)이 성장만큼 내려옴",
+     "evidence": "애널리스트 39명 평균 목표 $255(최고 $500), 매출 성장 +161%",
+     "why_weak": "이미 $1.9조 — 성장을 상당 부분 반영. AI 공급망 전체가 6월 이후 −40~−60%로 재평가 중",
+     "mult": 1.1
     },
     "worst": {
-     "assume": "AI 투자 둔화 + 보호예수 물량",
-     "risks": "몸값·집중",
-     "evidence": "분기 설비 $196억",
-     "loss": "몸값 정상화",
+     "assume": "AI 컴퓨팅 공급 과잉으로 단기 계약 가격 하락 + 자금 조달(빚·증자) + 테슬라 합병 조건이 기존 주주에 불리",
+     "risks": "희석(보호예수·주식 보상·증자), 지배구조(의결권 79%), 실행(스타십·모바일 지연), 정치(데이터센터 반대)",
+     "evidence": "1~9월 순손실, 단기 계약 의존, 8월 −14% 사례",
+     "loss": "AI 매출 성장 둔화 → 이익 45배 몸값 해제 → 공모가($135) 아래 $100 이하 구간",
      "mult": 0.45
     }
    },
-   "cls": "방산·우주 투자 수단으로는 부적합(AI 성장주)",
-   "good_if": "AI 컴퓨팅 수익화(영업이익) 확인",
-   "break_if": "AI 투자 사이클 꺾임 — 우주 사업과 무관하게 주가가 움직임",
+   "cls": "투기적 성장 — 조건 확인 (방산·우주 투자 수단으로는 부적합)",
+   "good_if": "① 1분기 매출 $330억+ 실제 달성 ② AI 부문 영업이익률 상승 ③ 설비 투자를 빚·증자 없이 감당 ④ 테슬라 합병 조건이 공정",
+   "break_if": "1분기 가이던스 미달, AI 클라우드 가격 하락·대형 고객 이탈, 대규모 증자·전환사채, 합병이 머스크 쪽에 유리한 조건으로 진행",
    "ev": {
-    "g": 2.0,
+    "g": 2.5,
     "l": 0.45,
     "pg": 40
    },
    "src": [
     "https://pulse2.com/spacex-q3-revenue-surges-161-to-14-6-billion-as-super-intelligence-and-starlink-growth-accelerate/",
+    "https://finviz.com/news/405179/spacex-crushes-q3-estimates-and-guides-to-a-revenue-step-change-but-doubled-capex-and-margin-normalization-complicate-the-story",
+    "https://www.startuphub.ai/news/spacex-spcx-earnings-lockup-august-2026",
+    "https://thenextweb.com/news/spacex-ipo-s1-musk-voting-control",
+    "https://247wallst.com/investing/2026/10/21/tesla-and-spacex-just-formed-special-committees-to-weigh-a-merger/",
+    "https://247wallst.com/investing/2026/11/13/spacex-drops-more-than-13-over-30-days-this-wall-street-pro-projects-260-gains-within-12-months/",
+    "https://www.space.com/space-exploration/launches-spacecraft/whats-next-for-spacexs-starship-v3-megarocket-after-its-historic-debut-flight",
     "https://satellitetoday.com/government-military/2026/04/26/space-force-awards-3-2-billion-to-12-companies-for-space-based-interceptor-work"
    ],
    "m": {
@@ -1273,12 +1279,12 @@
      }
     ],
     "ev": {
-     "G": 1.0,
+     "G": 1.5,
      "L": -0.55,
      "pG": 0.4,
-     "value": 0.07,
-     "ratio": 1.8181818181818181,
-     "be": 0.3548387096774194,
+     "value": 0.2700000000000001,
+     "ratio": 2.727272727272727,
+     "be": 0.26829268292682934,
      "ideal": false
     }
    }
@@ -1603,17 +1609,20 @@
    "성장 잔고는 있지만 현금 소진·증자·인도 지연"
   ],
   [
-   "방산 투자 수단으로 부적합",
+   "방산 투자 수단으로 부적합 — 투기적 성장주",
    [
     "SPCX"
    ],
-   "회사는 크게 성장 중이지만 주가는 AI 성장주로 움직임(우주 매출 12%)"
+   "회사는 크게 성장 중이지만 매출 절반 이상이 AI 컴퓨팅, 우주 매출 12% — 주가는 AI 투자 사이클과 머스크 지배구조로 움직임"
   ]
  ],
  "sources": [
+  "https://247wallst.com/investing/2026/10/21/tesla-and-spacex-just-formed-special-committees-to-weigh-a-merger/",
+  "https://247wallst.com/investing/2026/11/13/spacex-drops-more-than-13-over-30-days-this-wall-street-pro-projects-260-gains-within-12-months/",
   "https://admiralmarkets.com/education/articles/shares/rheinmetall-stock-2026-slump",
   "https://breakingdefense.com/2026/04/the-pentagon-wants-a-188-percent-bump-for-missile-procurement-can-industry-deliver/",
   "https://finance.yahoo.com/markets/stocks/articles/europe-defense-stocks-slide-russia-182944735.html",
+  "https://finviz.com/news/405179/spacex-crushes-q3-estimates-and-guides-to-a-revenue-step-change-but-doubled-capex-and-margin-normalization-complicate-the-story",
   "https://finviz.com/news/406166/lockheed-martin-reports-third-quarter-2026-financial-results",
   "https://finviz.com/news/411150/l3harris-delivers-record-backlog-and-strong-third-quarter-results",
   "https://finviz.com/news/418176/kratos-matches-the-whisper-and-posts-record-bookings-but-cash-burn-and-a-below-street-2027-guide-leave-shares-near-a-52-week-low",
@@ -1624,6 +1633,8 @@
   "https://quartr.com/events/rheinmetall-ag-rhm-q3-2026_oqaC7FD2",
   "https://rtx.com/news/news-center/2026/10/20/rtx-reports-q3-2026-results",
   "https://satellitetoday.com/government-military/2026/04/26/space-force-awards-3-2-billion-to-12-companies-for-space-based-interceptor-work",
+  "https://teslanorth.com/2026/10/20/spacex-2027-arr-500b-1t-q1-guidance/",
+  "https://thenextweb.com/news/spacex-ipo-s1-musk-voting-control",
   "https://thewallstreetrepublic.substack.com/p/anthropic-closes-at-9717-s-and-p",
   "https://vistapglobal.com/stock-market-today-november-19-2026-anthropic-ipo-pops-wall-street-loses-its-appetite-amd-ant-eprx-insm-jpm-ma-modd-panw-ser-sls-v-wmt/",
   "https://www.cnas.org/publications/reports/munitions-procurement-and-the-fiscal-year-2027-defense-budget",
@@ -1632,8 +1643,10 @@
   "https://www.koreatimes.co.kr/business/companies/20261029/hanwha-aerospace-swings-to-q3-net-loss-due-to-delayed-weapons-deliveries",
   "https://www.mpamag.com/us/mortgage-industry/industry-trends/fed-rate-hike-odds-hit-100-as-waller-floats-bigger-december-move/596880",
   "https://www.panabee.com/news/northrop-grumman-earnings-q3-2026-report",
+  "https://www.space.com/space-exploration/launches-spacecraft/whats-next-for-spacexs-starship-v3-megarocket-after-its-historic-debut-flight",
+  "https://www.startuphub.ai/news/spacex-spcx-earnings-lockup-august-2026",
   "https://www.webull.com/news/15781329697057792",
   "https://zacks.com/stock/news/3025730/rdw-q3-earnings-call-highlights-backlog-growth-and-revenue-delays"
  ],
- "metrics_at": "2026-11-20T09:28+00:00"
+ "metrics_at": "2026-11-20T10:13+00:00"
 }
