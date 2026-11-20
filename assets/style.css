@@ -1095,3 +1095,33 @@ body { padding-bottom: 26px; }
 .quote .q-name { grid-column: 1 / -1; }
 .center.full .q-keys, .center.full .q-nav { display: none; }
 @media (max-width: 640px) { .q-keys .qk:nth-child(7) { display: none; } }
+
+/* ===== 부제목 vs 누르면 열리는 내용 구분 (11/21) =====
+   부제목: 왼쪽 보라 막대 + 굵은 글씨 / 누르는 항목: ▸ 표시 + 줄 배경 / 열린 내용: 더 어두운 박스 안에 */
+#nw-person h3, #nw-person h4, .co-h, .lt-step h4, .dk-h, .tt-head h3 {
+  position: relative; padding-left: 11px; margin: 20px 0 10px; font-size: 15px; font-weight: 700; color: var(--text); }
+#nw-person h3::before, #nw-person h4::before, .co-h::before, .lt-step h4::before, .dk-h::before, .tt-head h3::before {
+  content: ""; position: absolute; left: 0; top: 3px; bottom: 3px; width: 3px; border-radius: 3px; background: var(--accent); }
+#nw-person h4 { font-size: 13.5px; color: var(--muted); }
+#nw-person h4::before { background: var(--faint); }
+#nw-person > h3:first-child, #nw-person .nw-sub h3 { margin-top: 6px; }
+
+/* 누르는 항목 (단어 줄) */
+.wlist { gap: 4px; }
+.w-item > summary.w { padding: 8px 10px 8px 26px; border-radius: 10px; position: relative; transition: background .12s; }
+.w-item > summary.w::before { content: "▸"; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--faint); font-size: 11px; transition: transform .15s; }
+.w-item > summary.w:hover { background: var(--hover); }
+.w-item[open] > summary.w { background: var(--accent-soft); }
+.w-item[open] > summary.w::before { transform: translateY(-50%) rotate(90deg); color: var(--accent); }
+.w-item[open] .w-name { color: var(--text); font-weight: 700; }
+
+/* 열린 내용: 검은 박스 */
+.w-ex, .ev-box[open] > :not(summary), .lt-step[open] > :not(summary) {
+  background: #08090b; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 12px; }
+.w-ex { margin: 6px 0 10px 12px; padding: 10px 14px 10px 28px; font-size: 12.5px; }
+.w-ex li { margin: 4px 0; } .w-ex li a { color: var(--text); }
+.ev-box[open] > :not(summary) { padding: 10px 12px; margin-top: 8px; }
+.lt-step[open] > :not(summary) { padding: 10px 14px 10px 26px; margin-top: 8px; }
+
+/* 다른 펼치기(▸) 제목도 같은 표시 */
+.dk-more > summary, .ev-box > summary, .lt-step > summary, .lt-frame > summary { cursor: pointer; }
