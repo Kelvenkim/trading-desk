@@ -1056,3 +1056,8 @@ body { padding-bottom: 22px; }
 .lt-frame summary { cursor: pointer; }
 .lt-steps { margin: 10px 0 4px; padding-left: 20px; font-size: 13px; line-height: 1.6; }
 .lt-steps li { margin: 3px 0; }
+.rp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+.rp-item { display: grid; gap: 2px; padding: 9px 11px; border: 1px solid var(--line); background: var(--raised); color: var(--text); text-decoration: none; font-size: 12.5px; }
+.rp-item:hover { border-color: var(--accent, #ff9f1a); }
+.rp-item .rp-dl { color: var(--accent, #ff9f1a); font-size: 11.5px; }
+@media (max-width: 640px) { .rp-list { grid-template-columns: 1fr 1fr; } .rp-item { padding: 7px 9px; } }

@@ -33,7 +33,15 @@ const DeskUI = (() => {
   const sideTxt = (sd) => sd < 0 ? `<span class="sm-side down">숏</span>` : "";
   const px$ = (v) => !has(v) ? "—" : usd(v, v >= 1000 ? 0 : 2);
 
+  async function renderReports() {
+    const el = $("#rp-list"); if (!el) return;
+    try {
+      const L = await (await fetch("reports/pdf/index.json?t=" + Date.now())).json();
+      el.innerHTML = L.map((r) => `<a class="rp-item" href="reports/pdf/${encodeURIComponent(r.file)}" target="_blank" rel="noopener"><b>${esc(r.date)}</b><span>${esc(r.n)} · ${esc(r.kind)}</span><span class="rp-dl">PDF ↓</span></a>`).join("") || `<p class="muted">아직 없어요.</p>`;
+    } catch (_) { el.innerHTML = `<p class="muted">목록을 못 불러왔어요.</p>`; }
+  }
   async function renderSummary() {
+    renderReports();
     const [A, D, C, L, P] = await Promise.all(["data/us/ai_paper.json", "data/us/day_desk.json", "data/us/crypto_paper.json", "data/us/crypto_lev.json", "data/us/paper.json"].map(getj));
     // 1) 계좌 카드
     const cards = [];

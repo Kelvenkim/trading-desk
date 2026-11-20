@@ -379,8 +379,19 @@ def build(note_path):
                footer_template="<div style='font-size:7px;color:#999;width:100%;text-align:center'><span class='pageNumber'></span> / <span class='totalPages'></span></div>")
         b.close()
     hp.unlink()
+    write_index()
     print(pp)
     return pp
+
+
+def write_index():
+    """사이트 보고서 목록용: reports/pdf/index.json (최신 순)"""
+    import json
+    L = []
+    for f in sorted(OUT.glob("*.pdf"), reverse=True):
+        d, n, k = (f.stem.split("_") + ["", "", ""])[:3]
+        L.append({"file": f.name, "date": d, "n": n, "kind": k.replace("보고서", "")})
+    (OUT / "index.json").write_text(json.dumps(L, ensure_ascii=False, indent=1))
 
 
 if __name__ == "__main__":
