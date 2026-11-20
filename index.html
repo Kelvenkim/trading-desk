@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="assets/style.css?v=066f344a" />
+  <link rel="stylesheet" href="assets/style.css?v=27d3af2d" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -198,6 +198,18 @@
       <div class="lt-tabs"><button class="lt-tab on" data-lt="res">산업·종목 리서치</button><button class="lt-tab" data-lt="th">테마 점수</button></div>
       <div id="lt-root" class="lt-pane" data-pane="res">
         <div class="lt-legend small"><span class="lt-k lt-f">사실</span> 공시·보도로 확인 <span class="lt-k lt-e">추정</span> 판단·가정 <span class="lt-k lt-u">모름</span> 확인 못 함</div>
+        <details class="box lt-frame"><summary><b>모든 장기 종목 판단의 기본 틀</b> <span class="muted small">7단계 · 건너뛰지 않기 · <span id="lt-progress"></span></span></summary>
+          <ol class="lt-steps">
+            <li><b>매크로</b> — 우호·비우호 요인, 유동성, 지정학 → 우호/중립/비우호 판정</li>
+            <li><b>산업 내러티브</b> — 큰 이야기, 사실·정책·트렌드 3축의 뒷받침, 시장 선반영 0/50/75%, 강화·약화 시나리오</li>
+            <li><b>공급망 병목</b> — 백지에서 층을 나누고, 층마다 병목 강도(매우 강함~단순 테마)·발생 시점·유지 기간</li>
+            <li><b>상장 공급사</b> — 병목 층별 글로벌 상장사, 시총·거래대금·제품·고객·최근 성장</li>
+            <li><b>회사 검증 8항목</b> — 공급망 지위·대체 가능성, 고객 등급 A~E, 생산 확장 제약, 재무, 희석, 경영진, 지정학·규제, 몸값</li>
+            <li><b>시나리오</b> — 최고·기본·최악 모두 (가정·근거·약점·손실 경로)</li>
+            <li><b>분류</b> — 핵심 후보 / 관찰 / 병목 노출 / 투기 / 부적합 / 제외</li>
+          </ol>
+          <p class="hint">원칙: ① 백지에서 시작(예전에 자주 본 종목이라도 이번에 새로 검증 안 되면 넣지 않음) ② 결론이 아니라 조건(어떤 조건이면 좋고, 어떤 조건이 깨지면 가설이 무너지는지) ③ 사실·추정·모름 구분, 모르면 모른다고.</p>
+        </details>
         <div class="lt-inds" id="lt-inds"></div>
         <div class="box" id="lt-body"><p class="muted">불러오는 중…</p></div>
         <div class="box"><div class="box-head"><h2>우리가 검증한 공식 <span class="muted small">모든 회사에 자동 적용</span></h2></div><ul class="lt-forms" id="lt-formulas"></ul>
@@ -691,7 +703,7 @@
   <script src="assets/levels.js?v=dfcb1e20"></script>
   <script src="assets/rank.js?v=379e9e82"></script>
   <script src="assets/theme.js?v=eb3ce486"></script>
-  <script src="assets/longterm.js?v=2bbfa43d"></script>
+  <script src="assets/longterm.js?v=e0f035b9"></script>
   <script src="assets/news.js?v=639cc198"></script>
   <script src="assets/home.js?v=b6ddf735"></script>
   <script src="assets/company.js?v=cceb89ae"></script>

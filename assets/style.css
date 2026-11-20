@@ -1052,3 +1052,7 @@ body { padding-bottom: 22px; }
 .lt-cos td:nth-child(8) { white-space: nowrap; }
 .lt-pdf { white-space: nowrap; }
 @media (max-width: 760px) { .lt-dhead { flex-direction: column-reverse; } .lt-dbtn { align-self: flex-end; } }
+.lt-ind.todo { opacity: .45; cursor: default; border-style: dashed; }
+.lt-frame summary { cursor: pointer; }
+.lt-steps { margin: 10px 0 4px; padding-left: 20px; font-size: 13px; line-height: 1.6; }
+.lt-steps li { margin: 3px 0; }

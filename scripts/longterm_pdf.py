@@ -17,7 +17,7 @@ item = lambda x: f"<li>{tag(x[1])} {e(x[0])}</li>"
 def big(v, cur="USD"):
     if v is None:
         return "—"
-    s = {"JPY": "¥", "GBp": "£"}.get(cur, "$"); v = v / 100 if cur == "GBp" else v
+    s = {"JPY": "¥", "GBp": "£", "EUR": "€", "KRW": "₩", "GBP": "£"}.get(cur, "$"); v = v / 100 if cur == "GBp" else v
     return f"{s}{v / 1e12:.2f}조" if v >= 1e12 else f"{s}{v / 1e8:.1f}억" if v >= 1e8 else f"{s}{v / 1e4:,.0f}만" if v >= 1e4 else f"{s}{v:,.0f}"
 
 

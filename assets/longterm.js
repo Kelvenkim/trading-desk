@@ -3,7 +3,7 @@ const LongUI = (() => {
   const { $, esc } = U;
   const has = (v) => v != null && isFinite(v);
   const pct = (v, d = 0) => (has(v) ? (v > 0 ? "+" : "") + (v * 100).toFixed(d) + "%" : "—");
-  const big = (v, cur = "USD") => { if (!has(v)) return "—"; const s = cur === "JPY" ? "¥" : cur === "GBp" ? "£" : "$";
+  const big = (v, cur = "USD") => { if (!has(v)) return "—"; const s = ({ JPY: "¥", GBp: "£", EUR: "€", KRW: "₩", GBP: "£" })[cur] || "$";
     const x = cur === "GBp" ? v / 100 : v; return x >= 1e12 ? s + (x / 1e12).toFixed(2) + "조" : x >= 1e8 ? s + (x / 1e8).toFixed(1) + "억" : x >= 1e4 ? s + Math.round(x / 1e4).toLocaleString() + "만" : s + Math.round(x).toLocaleString(); };
   const KIND = { "사실": "lt-f", "추정": "lt-e", "모름": "lt-u" };
   const tag = (k) => `<span class="lt-k ${KIND[k] || ""}">${esc(k)}</span>`;
@@ -32,7 +32,14 @@ const LongUI = (() => {
       $("#lt-dialog").addEventListener("input", (e) => { if (e.target.id === "lt-pg") evDraw(); });
     }
     try { I = await (await fetch("data/us/longterm/index.json?t=" + Date.now())).json(); } catch (_) { $("#lt-body").innerHTML = `<p class="muted">아직 리서치가 없어요.</p>`; return; }
-    $("#lt-inds").innerHTML = I.industries.map((x) => `<button class="lt-ind" data-ind="${esc(x.key)}"><b>${esc(x.name)}</b><span class="muted small">${esc(x.asof)} · 회사 ${x.n}곳 · 매크로 ${esc(x.verdict)}</span></button>`).join("");
+    let themes = [];
+    try { themes = (await (await fetch("data/us/theme.json?t=" + Date.now())).json()).rows.map((r) => ({ key: r.key, name: r.name })); } catch (_) {}
+    const done = new Map(I.industries.map((x) => [x.key, x]));
+    const all = [...I.industries, ...themes.filter((t) => !done.has(t.key))];
+    $("#lt-progress").textContent = `장기 테마 ${themes.length || all.length}개 중 ${I.industries.length}개 완료`;
+    $("#lt-inds").innerHTML = all.map((x) => done.has(x.key)
+      ? `<button class="lt-ind" data-ind="${esc(x.key)}"><b>${esc(x.name)}</b><span class="muted small">${esc(x.asof)} · 회사 ${x.n}곳 · 매크로 ${esc(x.verdict)}</span></button>`
+      : `<button class="lt-ind todo" disabled><b>${esc(x.name)}</b><span class="muted small">리서치 예정</span></button>`).join("");
     $("#lt-formulas").innerHTML = FORMULAS.map(([n, f, w, s]) => `<li><b>${esc(n)}</b> <code>${esc(f)}</code> <span class="lt-k ${s.startsWith("검증") ? "lt-f" : "lt-e"}">${esc(s)}</span><span class="muted small">${esc(w)}</span></li>`).join("");
     if (!R && I.industries[0]) load(I.industries[0].key);
   }

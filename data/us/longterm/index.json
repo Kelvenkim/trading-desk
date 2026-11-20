@@ -1,6 +1,13 @@
 {
  "industries": [
   {
+   "key": "defense",
+   "name": "방산·우주",
+   "asof": "2026-11-20",
+   "verdict": "중립",
+   "n": 10
+  },
+  {
    "key": "quantum",
    "name": "양자컴퓨팅",
    "asof": "2026-11-19",
