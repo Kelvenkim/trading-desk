@@ -568,7 +568,7 @@
     "rsi": 33.4,
     "hi52": 324.64,
     "lo52": 202.9,
-    "mom121": -0.115080303131887,
+    "mom121": -0.11508039882514776,
     "formulas": [
      {
       "k": "trend200",
@@ -1467,25 +1467,25 @@
     "https://www.eenewseurope.com/en/hamamatsu-completes-e247m-acquisition-of-nkt-photonics"
    ],
    "m": {
-    "px": 1881.5,
+    "px": 1903.0,
     "cur": "JPY",
     "day": "2026-11-20",
-    "mcap": 542247649280,
-    "adv": 6205991390,
-    "ps": 2.2281709,
+    "mcap": 548443914240,
+    "adv": 6226977368,
+    "ps": 2.253632,
     "rev": 243360006144,
     "rev_g": 0.243,
-    "ma50": 2198.44,
-    "ma200": 2218.52,
-    "rsi": 37.8,
+    "ma50": 2198.87,
+    "ma200": 2218.63,
+    "rsi": 38.6,
     "hi52": 2947.7,
     "lo52": 1475.37,
-    "mom121": 0.27851485647984675,
+    "mom121": 0.2785149502248203,
     "formulas": [
      {
       "k": "trend200",
       "ok": false,
-      "t": "200일선 아래 (-15%)",
+      "t": "200일선 아래 (-14%)",
       "why": "S&P500 2000~: 200일선 위에서만 보유하면 최대 낙폭 −57% → −26% (수익은 줄어듦)"
      },
      {
@@ -1886,5 +1886,5 @@
   "https://www.stocktitan.net/articles/stock-market-today-live-november-18-2026",
   "https://www.whitehouse.gov/fact-sheets/2026/06/fact-sheet-president-donald-j-trump-ushers-in-the-next-frontier-of-quantum-innovation/"
  ],
- "metrics_at": "2026-11-20T02:35+00:00"
+ "metrics_at": "2026-11-20T03:57+00:00"
 }
