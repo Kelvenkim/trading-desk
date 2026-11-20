@@ -24,6 +24,7 @@ VIEW = ROOT / "data/us/ai_paper.json"
 KST = timezone(timedelta(hours=9))
 FEE, SLIP = 0.001, 0.0005
 MAX_W, MAX_N, MAX_RISK = 0.20, 8, 0.02
+STOP = 0.07  # 손절은 항상 산 가격(체결가) −7% (11/20 사용자 요청 "SL은 항상 7프로"). 이후 본전·추적 손절은 위로만 올림
 TRAIL_ON, TRAIL = 0.15, 0.08       # +15% 넘으면 고점 대비 -8% 추적 손절
 HALT_DROP = -0.03                  # SPY가 전날 종가 대비 -3%면 새 매수 중단
 
@@ -170,8 +171,11 @@ def fill_buy(S, o, t, px):
         p["avg"] = (p["avg"] * p["sh"] + px * sh) / (p["sh"] + sh); p["sh"] += sh
     else:
         p = S["pos"][o["sym"]] = {"sh": sh, "avg": px, "since": t.isoformat(), "why": o["why"], "src": o.get("src") or "Claude 직접", "score": o.get("score"), "sig": o.get("sig"), "stop0": o.get("stop"), "peak": px}
-    if o.get("stop"): p["stop"] = o["stop"]
-    if o.get("target"): p["target"] = o["target"]
+    # 손절은 주문 때 적은 값과 상관없이 항상 체결 평균가의 −7% (위로 올라간 본전·추적 손절은 유지)
+    s7 = round(p["avg"] * (1 - STOP), 2)
+    p["stop0"] = s7
+    p["stop"] = max(s7, p.get("stop") or 0) if p["sh"] > sh else s7
+    p["target"] = round(p["avg"] * (1 + 2.5 * STOP), 2) if (o.get("target") or p.get("target")) else None
     log(S, "fill", f"매수 체결 ${px:,.2f} × {sh:.4f}주", sym=o["sym"], side="buy", t=t.isoformat())
     tn = t.astimezone(timezone(timedelta(hours=-5))).strftime("%H:%M")
     say(S, "executor", f"{o['sym']} 매수 체결됐어요. 뉴욕 {tn}, ${px:,.2f}에 ${usd:,.0f}어치. 손절 ${p.get('stop')}{' · 익절 $' + str(p['target']) if p.get('target') else ''} 걸어뒀어요. @Risk 감시 부탁해요.")
@@ -315,7 +319,7 @@ def view(S):
            "stats": metrics(S),
            "chat": S.get("chat", [])[-300:], "adj": {"src": S.get("src_adj", {}), "sig": S.get("sig_adj", {})}, "adj_log": S.get("adj_log", [])[-30:][::-1], "review": S.get("review"), "agents": S.get("agents", {}), "halt": S.get("halt"), "cands": S.get("cands", []),
            "bench": (S["px"]["SPY"] / S["bench0"] - 1) if S.get("bench0") and S["px"].get("SPY") else None,
-           "mode": S.get("mode"), "mode_why": S.get("mode_why"), "rules": f"한 종목 최대 {MAX_W:.0%} · 최대 {MAX_N}종목 · 모든 매수에 손절가(산 가격의 최대 -7%) · 손절 시 손실 ≤ 계좌의 {MAX_RISK:.0%} · +1R이면 손절을 본전으로, +2R이면 +1R로 · 5거래일째 -0.5R 이하면 조기 정리 · +15%부터 고점 대비 -8% 추적 손절 · S&P500 -3%면 신규 매수 중단 · 수수료 0.1% + 체결 차이 0.05%"}
+           "mode": S.get("mode"), "mode_why": S.get("mode_why"), "rules": f"한 종목 최대 {MAX_W:.0%} · 최대 {MAX_N}종목 · 모든 매수에 손절가(항상 체결가 -7%) · 손절 시 손실 ≤ 계좌의 {MAX_RISK:.0%} · +1R이면 손절을 본전으로, +2R이면 +1R로 · 5거래일째 -0.5R 이하면 조기 정리 · +15%부터 고점 대비 -8% 추적 손절 · S&P500 -3%면 신규 매수 중단 · 수수료 0.1% + 체결 차이 0.05%"}
     VIEW.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":"), default=str))
 
 
