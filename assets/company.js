@@ -34,20 +34,21 @@ const CompanyUI = (() => {
   async function show(sym) {
     const el = $("#co-info"); if (!el) return;
     const my = ++seq;
-    if (!sym || Data.isKR(sym)) { el.innerHTML = ""; el.hidden = true; return; }
+    if (!sym || Data.isKR(sym)) { el.innerHTML = ""; el.hidden = true; quick(null); return; }
     el.hidden = false;
     el.innerHTML = `<div class="co-load muted">기업 정보를 불러오는 중…</div>`;
     let p = cache[sym];
     if (!p) { try { p = cache[sym] = await get(`data/us/profile/${encodeURIComponent(sym)}.json`, true); } catch (_) { p = null; } }
     const [peers, rank, theme] = await Promise.all([once("peers", "data/us/peers.json"), once("rank", "data/us/rank.json"), once("theme", "data/us/theme.json")]);
     if (my !== seq) return;
+    quick(p, sym);
     if (!p) {
       el.innerHTML = `<div class="co-box"><p class="muted">이 종목은 아직 기업 정보가 없어요. S&P500·나스닥100 종목은 매일 조금씩 받아 와요.</p></div>`;
       return;
     }
     const row = rank && rank.rows.find((r) => r.code === sym);
     const px = (row && row.close) || p.val.price;
-    el.innerHTML = [head(p, px, peers, row, rank), about(p), valuation(p, px, peers), financials(p, peers), street(p, px), earnings(p), ours(row, rank, theme, sym), mood(p), news(p), foot(p)].filter(Boolean).join("");
+    el.innerHTML = [head(p, px, peers, row, rank), news(p), about(p), valuation(p, px, peers), financials(p, peers), street(p, px), earnings(p), ours(row, rank, theme, sym), mood(p), foot(p)].filter(Boolean).join("");
     el.querySelectorAll("[data-more]").forEach((b) => b.addEventListener("click", () => { b.parentElement.classList.toggle("open"); b.textContent = b.parentElement.classList.contains("open") ? "접기" : "더 보기"; }));
     el.querySelectorAll("[data-theme]").forEach((b) => b.addEventListener("click", () => App.showTheme(b.dataset.theme)));
   }
@@ -80,7 +81,7 @@ const CompanyUI = (() => {
     }
     const hi = v.hi52, lo = v.lo52;
     const pos = has(hi) && has(lo) && hi > lo && has(px) ? Math.max(0, Math.min(1, (px - lo) / (hi - lo))) : null;
-    return `<div class="co-box co-head">
+    return `<div class="co-box co-head" id="co-sec-head">
       <div class="co-title">
         <div><h3>${esc(p.ko || p.name)} <span class="muted">${esc(p.ko ? p.name : "")}</span></h3>
         <div class="co-tags">${[p.sector, p.industry].filter(Boolean).map((t) => `<span>${esc(t)}</span>`).join("")}${p.quote_type === "ETF" ? "<span>ETF</span>" : ""}</div></div>
@@ -96,7 +97,7 @@ const CompanyUI = (() => {
     if (!s) return "";
     const meta = [p.hq && `본사 ${esc(p.hq)}`, has(p.employees) && `직원 ${Number(p.employees).toLocaleString("ko-KR")}명`,
       p.website && `<a href="${esc(p.website)}" target="_blank" rel="noopener">${esc(p.website.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, ""))}</a>`].filter(Boolean);
-    return `<div class="co-box"><div class="co-h">무슨 회사인가요</div>
+    return `<div class="co-box" id="co-sec-about"><div class="co-h">무슨 회사인가요</div>
       <div class="co-about"><p>${esc(s)}</p><button class="link-btn" data-more>더 보기</button></div>
       <div class="co-meta">${meta.join(" · ")}${p.summary_ko ? ` <span class="faint">· 회사 소개는 자동 번역</span>` : ""}</div></div>`;
   }
@@ -111,7 +112,7 @@ const CompanyUI = (() => {
   function valuation(p, px, peers) {
     const v = p.val, pr = peerOf(p, peers);
     if (p.quote_type === "ETF") return "";
-    return `<div class="co-box"><div class="co-h">가격이 비싼가요 <span class="muted small">— 괄호는 ${pr.label || "업종"} 중간값</span></div>
+    return `<div class="co-box" id="co-sec-val"><div class="co-h">가격이 비싼가요 <span class="muted small">— 괄호는 ${pr.label || "업종"} 중간값</span></div>
       <div class="co-grid">
         ${cell("PER (지난 1년)", x(v.pe), "", "주가 ÷ 지난 1년 주당순이익. 낮을수록 이익에 비해 싸요.")}
         ${cell("예상 PER (내년)", x(v.fpe), vs(v.fpe, pr.fpe, x, true), "주가 ÷ 애널리스트가 예상한 내년 주당순이익")}
@@ -128,7 +129,7 @@ const CompanyUI = (() => {
     const f = p.fin, pr = peerOf(p, peers), o = p.own || {};
     if (p.quote_type === "ETF" || !has(f.rev)) return "";
     const netCash = has(f.cash) && has(f.debt) ? f.cash - f.debt : null;
-    return `<div class="co-box"><div class="co-h">돈을 잘 버나요</div>
+    return `<div class="co-box" id="co-sec-fin"><div class="co-h">돈을 잘 버나요</div>
       <div class="co-grid">
         ${cell("매출 (1년)", big(f.rev), has(f.rev_g) ? `<span class="${cls(f.rev_g)}">분기 성장 ${pct(f.rev_g, 0)}</span>` : "")}
         ${cell("이익 성장 (분기)", `<span class="${cls(f.eps_g)}">${pct(f.eps_g, 0)}</span>`, "작년 같은 분기 대비")}
@@ -177,7 +178,7 @@ const CompanyUI = (() => {
       return `<tr><td class="muted">${esc((c.GradeDate || "").slice(5))}</td><td>${esc(c.Firm || "")}</td>
         <td><span class="${ac}">${al}</span> ${esc(grade(c.ToGrade))}${c.FromGrade && c.FromGrade !== c.ToGrade ? ` <span class="muted">← ${esc(grade(c.FromGrade))}</span>` : ""}</td><td class="num">${t} ${pa}</td></tr>`;
     }).join("");
-    return `<div class="co-box"><div class="co-h">전문가(월가)는 어떻게 보나요 <span class="muted small">${a.n ? `애널리스트 ${a.n}명` : ""}</span></div>
+    return `<div class="co-box" id="co-sec-street"><div class="co-h">전문가(월가)는 어떻게 보나요 <span class="muted small">${a.n ? `애널리스트 ${a.n}명` : ""}</span></div>
       ${tgt ? `<div class="co-sub">12개월 목표가</div>${tgt}` : ""}
       ${dist ? `<div class="co-sub">투자 의견</div>${dist}` : ""}
       ${rows ? `<div class="co-sub">최근 의견 변경</div><div class="tbl-wrap"><table class="co-tbl"><thead><tr><th>날짜</th><th>증권사</th><th>의견</th><th class="num">목표가</th></tr></thead><tbody>${rows}</tbody></table></div>` : ""}
@@ -237,11 +238,54 @@ const CompanyUI = (() => {
     const li = (a) => a.map((n) => `<li><a href="${esc(n.u)}" target="_blank" rel="noopener">${esc(n.t)}</a><span class="muted small">${esc(n.o || "")} · ${esc((n.at || "").slice(5))}</span></li>`).join("");
     const k = p.news_ko || [], e = p.news_en || [];
     if (!k.length && !e.length) return "";
-    return `<div class="co-box"><div class="co-h">관련 뉴스 <span class="muted small">최근 2주</span></div>
+    return `<div class="co-box" id="co-sec-news"><div class="co-h">관련 뉴스 <span class="muted small">최근 2주</span></div>
       <div class="co-news">${k.length ? `<div><div class="co-sub">국내</div><ul>${li(k)}</ul></div>` : ""}${e.length ? `<div><div class="co-sub">해외</div><ul>${li(e)}</ul></div>` : ""}</div></div>`;
   }
 
   const foot = (p) => `<p class="co-foot">자료: Yahoo Finance (애널리스트 집계·재무), Google 뉴스, StockTwits · ${esc(p.made)} 기준 · 숫자는 참고용이고 투자 권유가 아니에요.</p>`;
+
+  // ---- 차트 바로 아래: 핵심 숫자 줄 + 바로가기 탭 (토스증권처럼) ----
+  let ltIdx = null;
+  async function ltFind(sym) {                         // 장기 투자 리서치에 있는 회사인지
+    try {
+      if (!ltIdx) {
+        const I = await get("data/us/longterm/index.json", true);
+        ltIdx = {};
+        await Promise.all(I.industries.map(async (x) => { try { const R = await get(`data/us/longterm/${x.key}.json`, true); R.companies.forEach((c) => (ltIdx[c.t] = { key: x.key, name: x.name, cls: c.cls })); } catch (_) {} }));
+      }
+      return ltIdx[sym] || null;
+    } catch (_) { return null; }
+  }
+  async function quick(p, sym) {
+    const K = $("#q-keys"), N = $("#q-nav"); if (!K || !N) return;
+    if (!p) { K.hidden = N.hidden = true; K.innerHTML = N.innerHTML = ""; return; }
+    const v = p.val || {}, a = p.analyst || {}, px = v.price, o = p.own || {};
+    const tgt = has(a.mean) && has(px) ? a.mean / px - 1 : null;
+    const d = p.earn && p.earn.next ? daysTo(p.earn.next) : null;
+    const k = [
+      ["시가총액", big(v.mcap)],
+      ["PER", has(v.pe) && v.pe > 0 ? x(v.pe) : has(v.fpe) && v.fpe < 0 ? "적자" : x(v.pe)],
+      ["PSR", x(v.ps)],
+      ["월가 목표가", has(a.mean) ? `${usd(a.mean)} <span class="${cls(tgt)}">${pct(tgt, 0)}</span>` : "—"],
+      ["다음 실적", d != null && d >= 0 ? `${p.earn.next.slice(5)} <span class="muted">(${d}일 뒤)</span>` : "—"],
+      ["공매도 비율", has(o.short) ? pct(o.short, 1, false) : "—"],
+      ["배당", has(v.div) && v.div > 0 ? v.div.toFixed(2) + "%" : "없음"],
+    ];
+    K.innerHTML = k.map(([n, t]) => `<div class="qk"><span>${n}</span><b>${t}</b></div>`).join("");
+    K.hidden = false;
+    const nav = [["chart", "차트"], ["co-sec-news", "뉴스"], ["co-sec-about", "회사 소개"], ["co-sec-val", "가치평가"], ["co-sec-fin", "재무"], ["co-sec-street", "애널리스트"]];
+    N.innerHTML = nav.map(([id, t]) => `<button data-go="${id}" class="${id === "chart" ? "on" : ""}">${t}</button>`).join("") + `<span id="q-lt"></span>`;
+    N.hidden = false;
+    N.onclick = (e) => {
+      const b = e.target.closest("[data-go]"); if (!b) return;
+      if (b.dataset.lt) { App.go("theme"); setTimeout(() => LongUI.openTicker(b.dataset.lt, b.dataset.go), 300); return; }
+      N.querySelectorAll("[data-go]").forEach((x) => x.classList.toggle("on", x === b));
+      const id = b.dataset.go, t = id === "chart" ? $("#quote") : document.getElementById(id);
+      if (t) window.scrollTo({ top: t.getBoundingClientRect().top + scrollY - 80, behavior: "smooth" });
+    };
+    const lt = await ltFind(sym);
+    if (lt && $("#q-lt")) $("#q-lt").innerHTML = `<button class="lt" data-go="${esc(sym)}" data-lt="${esc(lt.key)}">장기 리서치 · ${esc(lt.name)}</button>`;
+  }
 
   return { show };
 })();

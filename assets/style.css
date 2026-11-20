@@ -1076,3 +1076,22 @@ body { padding-bottom: 26px; }
 .rp-item:hover { border-color: var(--accent, #ff9f1a); }
 .rp-item .rp-dl { color: var(--accent, #ff9f1a); font-size: 11.5px; }
 @media (max-width: 640px) { .rp-list { grid-template-columns: 1fr 1fr; } .rp-item { padding: 7px 9px; } }
+
+/* 차트 위 핵심 숫자 줄 + 바로가기 탭 (토스증권처럼) */
+.q-keys { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.qk { background: var(--raised); border-radius: 12px; padding: 8px 10px; display: grid; gap: 2px; min-width: 0; }
+.qk span { color: var(--muted); font-size: 11.5px; }
+.qk b { font-size: 13.5px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qk b span { font-size: 12px; font-weight: 600; }
+.q-nav { display: flex; gap: 4px; margin-top: 12px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line-soft); }
+.q-nav button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted); font-weight: 600; padding: 8px 10px; white-space: nowrap; }
+.q-nav button:hover { color: var(--text); }
+.q-nav button.on { color: var(--text); border-bottom-color: var(--accent); }
+.q-nav button.lt { color: var(--accent); }
+.q-nav span { margin-left: auto; }
+@media (max-width: 960px) { .q-keys { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .q-keys { grid-template-columns: repeat(3, minmax(0, 1fr)); } .qk { padding: 7px 8px; } .qk b { font-size: 12.5px; } }
+.quote .q-keys, .quote .q-nav { grid-column: 1 / -1; }
+.quote .q-name { grid-column: 1 / -1; }
+.center.full .q-keys, .center.full .q-nav { display: none; }
+@media (max-width: 640px) { .q-keys .qk:nth-child(7) { display: none; } }

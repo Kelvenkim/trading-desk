@@ -128,5 +128,10 @@ const LongUI = (() => {
     document.querySelectorAll(".lt-tab").forEach((b) => b.classList.toggle("on", b.dataset.lt === k));
     document.querySelectorAll(".lt-pane").forEach((p) => (p.hidden = p.dataset.pane !== k));
   }
-  return { onShow, pane };
+  async function openTicker(key, t) {               // 차트 화면에서 '장기 리서치' 바로가기
+    pane("res");
+    if (!R || R.key !== key) await load(key);
+    openCo(t);
+  }
+  return { onShow, pane, openTicker };
 })();
