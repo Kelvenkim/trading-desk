@@ -1480,7 +1480,7 @@
     "rsi": 37.8,
     "hi52": 2947.7,
     "lo52": 1475.37,
-    "mom121": 0.27851485647984675,
+    "mom121": 0.2785149502248203,
     "formulas": [
      {
       "k": "trend200",
@@ -1604,9 +1604,9 @@
     "day": "2026-11-19",
     "mcap": 47910281216,
     "adv": 472422417,
-    "ps": 7.278985,
-    "rev": 6582000128,
-    "rev_g": 0.365,
+    "ps": 6.694185,
+    "rev": 7157000192,
+    "rev_g": 0.405,
     "ma50": 331.43,
     "ma200": 321.72,
     "rsi": 38.3,
@@ -1886,5 +1886,5 @@
   "https://www.stocktitan.net/articles/stock-market-today-live-november-18-2026",
   "https://www.whitehouse.gov/fact-sheets/2026/06/fact-sheet-president-donald-j-trump-ushers-in-the-next-frontier-of-quantum-innovation/"
  ],
- "metrics_at": "2026-11-20T09:10+00:00"
+ "metrics_at": "2026-11-20T12:09+00:00"
 }
