@@ -1,0 +1,1230 @@
+{
+ "key": "ai_infra",
+ "name": "AI 인프라·전력",
+ "asof": "2026-11-20",
+ "summary": "실적은 역대 최고예요(GE버노바 수주 +96%, 이튼 데이터센터 주문 +39%, 버티브 주문 2배, 캐터필러 잔고 $780억). 그런데 주가는 6월 이후 관련주 시가총액 약 $4.2조가 증발했어요 — ① 빅테크의 빚을 낀 AI 투자가 계속될지 의심 ② 중간선거에서 데이터센터 반대 표가 나옴 ③ 금리 인상. 그래서 이 산업의 조건은 '2027년 빅테크 투자가 실제로 늘어나는가'와 '전력·인허가 병목이 얼마나 오래 가는가' 두 가지예요.",
+ "macro": {
+  "verdict": "비우호",
+  "verdict_why": "수요(빅테크 투자)는 아직 늘고 있지만, 금리 인상 + 정치(데이터센터 반대) + 투자 회수 의심이 동시에 왔어요.",
+  "good": [
+   [
+    "빅테크 4곳 2026년 설비 투자 약 $7,300억(가이던스 중간값 합, 정의 다름) vs 2025년 $3,761억. 1~9월 실제 $4,967억",
+    "사실",
+    "https://walnutinvest.com/stats/ai-capex-statistics"
+   ],
+   [
+    "알파벳 CFO '2027년 설비 투자 크게 증가', 메타 '2026년 이후에도 공격적 투자' (10월)",
+    "사실",
+    "https://walnutinvest.com/stats/ai-capex-statistics"
+   ],
+   [
+    "PJM(미국 최대 전력망) 2027/28 용량 경매가 상한가 $333/MW-일, 공급 6.6GW 부족 — 늘어난 수요 5.25GW 중 5.1GW가 데이터센터",
+    "사실",
+    "https://www.mychesco.com/a/news/business/pjm-capacity-auction-hits-price-cap-as-data-center-demand-strains-grid/"
+   ]
+  ],
+  "bad": [
+   [
+    "6월 이후 데이터센터 공급망(기계·전력·광물) 시총 약 $4.2조 증발: 캐터필러 −44%, 코닝·컴포트시스템즈 약 −50% (고점 대비)",
+    "사실",
+    "https://stockanalysis.com/news/ai-data-center-suppliers-lose-4-trillion/"
+   ],
+   [
+    "중간선거(11/3): 블루밍턴(일리노이) 대형 데이터센터 건설 중단 통과, 알햄브라(캘리포니아) 신규 금지 약 3:1 찬성, 텍사스 새 주지사 '무규제 개발 끝내겠다'",
+    "사실",
+    "https://hpcwire.com/2026/11/05/anti-data-center-sentiment-rides-blue-wave-threatening-ai-boom"
+   ],
+   [
+    "뉴욕주 50MW 초과 신규 데이터센터 1년 금지(7월). 텍사스·펜실베이니아 공화당 일부도 일시 중단 요구",
+    "사실",
+    "https://hpcwire.com/2026/11/05/anti-data-center-sentiment-rides-blue-wave-threatening-ai-boom"
+   ],
+   [
+    "투자 대부분이 빚: 코어위브 순손실 확대(3분기 $7.1억), 2026 설비 투자 $370~390억",
+    "사실",
+    "https://pulse2.com/coreweave-record-q3-revenue-reaches-3-66-billion-as-backlog-grows-to-132-5-billion/"
+   ],
+   [
+    "기준금리 3.75~4.00%. 10월 근원물가 +0.3%(3개월 연속) — 12/8~9 회의 인상이 거의 확정, 월러 이사는 0.5%p도 검토 필요",
+    "사실",
+    "https://www.mpamag.com/us/mortgage-industry/industry-trends/fed-rate-hike-odds-hit-100-as-waller-floats-bigger-december-move/596880"
+   ],
+   [
+    "10월 회의록: 거의 모든 위원이 추가 인상이 적절할 가능성이 높다고 봄",
+    "사실",
+    "https://www.investmentnews.com/equities/the-fed-came-close-to-an-october-rate-hike-fomc-minutes-show/269079"
+   ],
+   [
+    "10년 국채 5.05%, S&P500 6일 연속 하락·200일선 −2.3%, VIX 28 (11/19)",
+    "사실",
+    "https://thewallstreetrepublic.substack.com/p/anthropic-closes-at-9717-s-and-p"
+   ],
+   [
+    "필라델피아 연은 제조업 20.9→6.3, 원가 지수 43→58: 경기는 식고 물가는 안 잡히는 조합 (11/19)",
+    "사실",
+    "https://vistapglobal.com/stock-market-today-november-19-2026-anthropic-ipo-pops-wall-street-loses-its-appetite-amd-ant-eprx-insm-jpm-ma-modd-panw-ser-sls-v-wmt/"
+   ]
+  ],
+  "liquidity": [
+   [
+    "대형 공모가 자금을 흡수: 앤트로픽 약 $813억(11/19), 스페이스X 상장 등",
+    "사실",
+    "https://thewallstreetrepublic.substack.com/p/anthropic-closes-at-9717-s-and-p"
+   ],
+   [
+    "금리 인상기 — 이익이 먼 성장주일수록 더 크게 할인되는 국면",
+    "추정",
+    ""
+   ]
+  ],
+  "geo": [
+   [
+    "AI 칩 중국 원격 접속 차단 규제(11/16) — 칩 쪽 영향이 크고, 전력·설비 쪽은 미국 내 수요라 직접 영향 작음 (추정)",
+    "추정",
+    ""
+   ],
+   [
+    "관세: 캐터필러 3분기 관세 비용 $6억, 연 약 $22억 — 수입 부품 많은 설비 업체 원가 부담",
+    "사실",
+    "https://www.manufacturingdive.com/news/caterpillar-posts-highest-sales-quarter-ever-data-centers-q3-2026/873176/"
+   ]
+  ]
+ },
+ "narrative": {
+  "mega": "AI 경쟁의 진짜 한계는 칩이 아니라 '전기'다. 앞으로 5년 수백 GW 데이터센터를 짓는 데 필요한 발전기·변압기·냉각·공사 능력이 가장 늦게 늘어나는 병목이다.",
+  "axes": [
+   [
+    "사실",
+    "강함",
+    "공급사 수주가 숫자로 확인: GE버노바 잔고 $1,970억, 지멘스에너지 €1,640억, 이튼 데이터센터 주문 +39%, 캐터필러 잔고 2배. PJM 용량 부족 6.6GW",
+    "https://www.turbomachinerymag.com/view/ge-vernova-q3-2026-gas-power-backlog-122-gw-trench-acquisition"
+   ],
+   [
+    "정책",
+    "약함",
+    "연방은 우호적이지만 지역 반대가 커짐(모라토리엄·금지 투표 통과, 뉴욕 1년 금지). 전기요금 상승이 정치 쟁점이 됨",
+    "https://hpcwire.com/2026/11/05/anti-data-center-sentiment-rides-blue-wave-threatening-ai-boom"
+   ],
+   [
+    "트렌드",
+    "보통",
+    "빅테크 투자는 2026년 약 2배, 2027년도 증가 예고. 다만 '빚을 낀 투자가 돈을 벌까' 의심으로 주가는 −40~−60%",
+    "https://walnutinvest.com/stats/ai-capex-statistics"
+   ]
+  ],
+  "priced": 50,
+  "priced_why": [
+   "한때 75% 이상(2026 상반기) → 주가가 고점 대비 −35~−67% 빠져 지금 약 50%. 수주 잔고는 사상 최대라 '실적은 남고 기대만 빠진' 상태로 추정",
+   "추정"
+  ],
+  "up": [
+   "2027년 빅테크 설비 투자 가이던스가 2026년보다 크게 늘어남(1~2월 실적 발표)",
+   "가스 터빈·변압기 납기가 2029~2030년까지 꽉 찬 상태 유지 → 가격 인상",
+   "금리 인상 사이클 종료"
+  ],
+  "down": [
+   "빅테크 중 한 곳이라도 2027 투자 축소 발표 → 공급망 전체 주문 둔화 공포",
+   "지역 모라토리엄 확산, 전기요금 정치화로 인허가 지연",
+   "네오클라우드(코어위브 등) 자금난 → 주문 취소",
+   "AI 효율 향상(같은 성능에 전기 덜 씀)으로 필요 전력 전망 하향"
+  ]
+ },
+ "chain": [
+  {
+   "layer": "L1 발전 설비(가스 터빈·엔진)",
+   "desc": "데이터센터 전기를 만드는 대형 가스 터빈, 현장 발전 엔진",
+   "neck": "매우 강함",
+   "when": "지금",
+   "dur": "2029~2030 (예약 슬롯 기준, 추정)",
+   "why": [
+    "GE버노바 가스 잔고+예약 122GW(연말 130GW+), 지멘스에너지 104GW(확정 65+예약 39). 분기 출하 5GW 수준이라 수년치 물량",
+    "사실",
+    "https://www.turbomachinerymag.com/view/ge-vernova-q3-2026-gas-power-backlog-122-gw-trench-acquisition"
+   ]
+  },
+  {
+   "layer": "L2 송배전 장비(변압기·개폐기·부싱)",
+   "desc": "전기를 데이터센터까지 보내고 나누는 장비",
+   "neck": "매우 강함",
+   "when": "지금",
+   "dur": "2028년 이후 (공장 증설 완료까지, 추정)",
+   "why": [
+    "미국 변압기 납기 최대 4년(2026-05 보도). GE버노바가 고압 부품사 트렌치를 $90억에 인수할 만큼 희소",
+    "사실",
+    "https://pv-magazine-usa.com/2026/05/11/u-s-transformer-market-faces-severe-supply-constraints-as-lead-times-extend-to-four-years/"
+   ]
+  },
+  {
+   "layer": "L3 전력망 연결·용량",
+   "desc": "전력망 접속 대기, 지역 용량 시장",
+   "neck": "강함",
+   "when": "2027/28 (PJM 부족)",
+   "dur": "새 발전소가 들어올 때까지 (2028~2030 추정)",
+   "why": [
+    "PJM 사상 처음 전체 신뢰도 기준 미달(예비율 14.8% vs 목표 20%)",
+    "사실",
+    "https://www.mychesco.com/a/news/business/pjm-capacity-auction-hits-price-cap-as-data-center-demand-strains-grid/"
+   ],
+   "note": "발전 사업자(컨스텔레이션·비스트라 등)는 '원전·우라늄'과 '석유·가스' 테마에서 다뤄요"
+  },
+  {
+   "layer": "L4 냉각(액체 냉각·열관리)",
+   "desc": "고밀도 AI 서버의 열을 빼는 장비",
+   "neck": "강함",
+   "when": "지금 (고밀도 랙 전환기)",
+   "dur": "2027~2028 (추정)",
+   "why": [
+    "버티브 주문 2배 이상, 이튼은 보이드 서멀(냉각) 인수로 진입 — 수요가 공급사를 끌어당김",
+    "사실",
+    "https://247wallst.com/cards/vertiv-q3-2026-earnings-vrt-01m60zybj74azc2wscfpvp2ym4"
+   ]
+  },
+  {
+   "layer": "L5 건설·전기·기계 공사",
+   "desc": "데이터센터를 실제로 짓는 전기·배관·공조 공사",
+   "neck": "강함",
+   "when": "지금",
+   "dur": "숙련 인력이 늘 때까지 (추정)",
+   "why": [
+    "컴포트시스템즈 잔고 $178억(+90%), 매출의 61%가 기술(데이터센터) — 인건비 상승, 인력 관리가 전환 속도 결정",
+    "사실",
+    "https://www.panabee.com/news/comfort-systems-usa-earnings-q3-2026-report"
+   ]
+  },
+  {
+   "layer": "L6 광섬유·연결",
+   "desc": "서버·건물 사이를 잇는 광섬유와 부품",
+   "neck": "보통",
+   "when": "지금",
+   "dur": "—",
+   "why": [
+    "수요는 강하지만 코닝 외 공급사도 많음 — 주가 −58%는 병목보다 기대 하락 쪽 (추정)",
+    "추정"
+   ]
+  },
+  {
+   "layer": "L7 GPU 클라우드 운영(네오클라우드)",
+   "desc": "데이터센터를 빌려 GPU를 임대하는 회사",
+   "neck": "약함",
+   "when": "—",
+   "dur": "—",
+   "why": [
+    "병목이 아니라 '수요 쪽' — 오히려 빚과 고객 집중이 위험. 코어위브 잔고 $1,325억이지만 순손실 확대",
+    "사실",
+    "https://pulse2.com/coreweave-record-q3-revenue-reaches-3-66-billion-as-backlog-grows-to-132-5-billion/"
+   ]
+  }
+ ],
+ "companies": [
+  {
+   "t": "GEV",
+   "name": "GE버노바",
+   "exch": "NYSE",
+   "layer": "L1 가스 터빈 + L2 송배전(전기화)",
+   "products": "대형 가스 터빈(HA급), 항공 개조형 터빈, 고압 송전 장비, 풍력",
+   "customers": "전력회사, 데이터센터 개발사, 산업체",
+   "growth": [
+    "3분기 수주 $290억(+96%), 매출 $126억(+27%), 잔고 $1,970억. 2026 FCF 전망 $160~170억으로 대폭 상향",
+    "사실"
+   ],
+   "v": {
+    "pos": [
+     "세계 가스 터빈 3강 중 하나 — 없으면 데이터센터 전력 계획이 몇 년 밀림",
+     "사실"
+    ],
+    "sub": [
+     "지멘스에너지·미쓰비시가 대안이지만 셋 다 몇 년치 예약이 꽉 참 — 사실상 대체 불가 (추정)",
+     "추정"
+    ],
+    "grade": "A",
+    "grade_why": "공식 수주·예약 슬롯 공시, 반복 서비스 매출",
+    "capa": [
+     "가스 잔고+예약 122GW, 분기 출하 5GW — 생산 능력이 매출 상한 (추정)",
+     "추정"
+    ],
+    "fin": [
+     "분기 FCF $54억, 매우 튼튼",
+     "사실"
+    ],
+    "dil": [
+     "낮음 — 트렌치 인수 $90억은 현금·부채 절반씩",
+     "사실"
+    ],
+    "mgmt": [
+     "CEO 스콧 스트라직 '4분기 잔고 $2,000억 초과, 마진 개선' — 가이던스 반복 상향",
+     "사실"
+    ],
+    "geo": [
+     "관세 원가, 해외 풍력 사업 변동 (추정)",
+     "추정"
+    ],
+    "val": [
+     "시총 약 $2,002억, 매출 대비 4.5배. 고점 $1,174 → $756(−36%), 200일선 −20%",
+     "사실"
+    ]
+   },
+   "sc": {
+    "best": {
+     "assume": "2030년까지 터빈 품귀 + 가격 인상",
+     "evidence": "수주 +96%, 잔고 $1,970억",
+     "weak": "이미 높은 몸값",
+     "rerate": "마진 20%대 확인",
+     "mult": 2.2
+    },
+    "base": {
+     "assume": "잔고 소화하며 꾸준히 성장",
+     "evidence": "FCF 상향",
+     "why_weak": "AI 투자 의심이 주가를 누름",
+     "mult": 1.35
+    },
+    "worst": {
+     "assume": "빅테크 투자 축소 → 예약 취소",
+     "risks": "수요·몸값",
+     "evidence": "공급망 시총 $4.2조 증발",
+     "loss": "예약 슬롯 해지 → 성장 둔화",
+     "mult": 0.6
+    }
+   },
+   "cls": "핵심 후보(병목 직접)",
+   "good_if": "예약 슬롯이 계속 확정 주문으로 바뀜, 가스 마진 상승 유지",
+   "break_if": "예약 슬롯 취소·지연 공시 또는 빅테크 2027 투자 축소",
+   "ev": {
+    "g": 2.2,
+    "l": 0.6,
+    "pg": 50
+   },
+   "src": [
+    "https://www.turbomachinerymag.com/view/ge-vernova-q3-2026-gas-power-backlog-122-gw-trench-acquisition"
+   ],
+   "m": {
+    "px": 756.28,
+    "cur": "USD",
+    "day": "2026-11-19",
+    "mcap": 200169979904,
+    "adv": 3565064212,
+    "ps": 4.5451856,
+    "rev": 44039999488,
+    "rev_g": 0.268,
+    "ma50": 898.51,
+    "ma200": 951.31,
+    "rsi": 37.5,
+    "hi52": 1174.17,
+    "lo52": 554.49,
+    "mom121": 0.6716270217538376,
+    "formulas": [
+     {
+      "k": "trend200",
+      "ok": false,
+      "t": "200일선 아래 (-21%)",
+      "why": "S&P500 2000~: 200일선 위에서만 보유하면 최대 낙폭 −57% → −26% (수익은 줄어듦)"
+     },
+     {
+      "k": "overheat",
+      "ok": true,
+      "t": "이미 많이 오른 자리 아님",
+      "why": "주식 5만 건(2015~2026): 50일선 +8%↑ & RSI 65↑ 자리는 평균 +0.07R로 최하위"
+     },
+     {
+      "k": "calm",
+      "ok": false,
+      "t": "덜 오른 자리(50일선 0~5% 위·RSI≤65·MACD↑) 아님",
+      "why": "같은 5만 건: 세 조건을 모두 갖춘 자리 +0.19R vs 나머지 +0.14R, 앞·뒤 기간 모두 같음"
+     },
+     {
+      "k": "mom",
+      "ok": true,
+      "t": "12-1 모멘텀 +67%",
+      "why": "2016~2026 순위 검증: 12-1 모멘텀 상위가 20일 뒤 평균 +1.65% (참고용)"
+     }
+    ],
+    "ev": {
+     "G": 1.2000000000000002,
+     "L": -0.4,
+     "pG": 0.5,
+     "value": 0.4000000000000001,
+     "ratio": 3.0000000000000004,
+     "be": 0.25,
+     "ideal": false
+    }
+   }
+  },
+  {
+   "t": "ENR.DE",
+   "name": "지멘스에너지",
+   "exch": "Xetra(독일)",
+   "layer": "L1 가스 터빈 + L2 송전망",
+   "products": "가스 터빈, 고압 송전망 장비(그리드 테크놀로지), 풍력(가메사)",
+   "customers": "전력회사, 송전망 회사, 데이터센터(가스 잔고의 약 €150억)",
+   "growth": [
+    "FY2026 수주 €681억(+18.8%), 매출 €442억(+15.5%), 잔고 €1,640억. 가스 수주 +45.9%, 42GW",
+    "사실"
+   ],
+   "v": {
+    "pos": [
+     "가스 터빈 3강 + 송전망 장비 — 두 병목에 동시 노출",
+     "사실"
+    ],
+    "sub": [
+     "대안 업체도 꽉 참 (추정)",
+     "추정"
+    ],
+    "grade": "A",
+    "grade_why": "공식 수주 공시, 데이터센터 잔고 약 €150억 명시",
+    "capa": [
+     "중형 터빈 연 50 → 80대로 증설, 대형 터빈 증설은 FY2027부터",
+     "사실"
+    ],
+    "fin": [
+     "순이익 €41억+, 배당 €0.70 → €2.30, 자사주 최대 €90억",
+     "사실"
+    ],
+    "dil": [
+     "낮음",
+     "추정"
+    ],
+    "mgmt": [
+     "풍력(가메사) 적자 탈출(손익분기) — 실행 개선",
+     "사실"
+    ],
+    "geo": [
+     "유럽 정책·풍력 사업 변동",
+     "추정"
+    ],
+    "val": [
+     "시총 약 €1,023억, 매출 대비 2.3배. 고점 €188 → €120(−36%)",
+     "사실"
+    ]
+   },
+   "sc": {
+    "best": {
+     "assume": "가스·송전 동시 호황 + 2030 마진 20~22%",
+     "evidence": "잔고 €1,640억",
+     "weak": "4분기 가스 수주 2GW로 둔화",
+     "rerate": "마진 목표 달성",
+     "mult": 2.0
+    },
+    "base": {
+     "assume": "FY27 가이던스대로 성장 14~16%",
+     "evidence": "가이던스",
+     "why_weak": "AI 의심",
+     "mult": 1.35
+    },
+    "worst": {
+     "assume": "수요 둔화 + 풍력 재부실",
+     "risks": "수요",
+     "evidence": "4분기 둔화",
+     "loss": "성장률 하향",
+     "mult": 0.65
+    }
+   },
+   "cls": "핵심 후보(병목 직접)",
+   "good_if": "FY2027 예약 39GW가 확정 주문으로 전환",
+   "break_if": "가스 수주 둔화가 2분기 이상 지속",
+   "ev": {
+    "g": 2.0,
+    "l": 0.65,
+    "pg": 50
+   },
+   "src": [
+    "https://www.turbomachinerymag.com/view/siemens-energy-fy2026-record-backlog-164-billion-gas-services-orders"
+   ],
+   "m": {
+    "px": 120.0,
+    "cur": "EUR",
+    "day": "2026-11-20",
+    "mcap": 102101827584,
+    "adv": 372342369,
+    "ps": 2.307751,
+    "rev": 44243001344,
+    "rev_g": 0.23,
+    "ma50": 134.05,
+    "ma200": 152.81,
+    "rsi": 41.6,
+    "hi52": 187.62,
+    "lo52": 106.0,
+    "mom121": 0.21747123508166188,
+    "formulas": [
+     {
+      "k": "trend200",
+      "ok": false,
+      "t": "200일선 아래 (-21%)",
+      "why": "S&P500 2000~: 200일선 위에서만 보유하면 최대 낙폭 −57% → −26% (수익은 줄어듦)"
+     },
+     {
+      "k": "overheat",
+      "ok": true,
+      "t": "이미 많이 오른 자리 아님",
+      "why": "주식 5만 건(2015~2026): 50일선 +8%↑ & RSI 65↑ 자리는 평균 +0.07R로 최하위"
+     },
+     {
+      "k": "calm",
+      "ok": false,
+      "t": "덜 오른 자리(50일선 0~5% 위·RSI≤65·MACD↑) 아님",
+      "why": "같은 5만 건: 세 조건을 모두 갖춘 자리 +0.19R vs 나머지 +0.14R, 앞·뒤 기간 모두 같음"
+     },
+     {
+      "k": "mom",
+      "ok": true,
+      "t": "12-1 모멘텀 +22%",
+      "why": "2016~2026 순위 검증: 12-1 모멘텀 상위가 20일 뒤 평균 +1.65% (참고용)"
+     }
+    ],
+    "ev": {
+     "G": 1.0,
+     "L": -0.35,
+     "pG": 0.5,
+     "value": 0.325,
+     "ratio": 2.857142857142857,
+     "be": 0.25925925925925924,
+     "ideal": false
+    }
+   }
+  },
+  {
+   "t": "ETN",
+   "name": "이튼",
+   "exch": "NYSE",
+   "layer": "L2 배전 장비 + L4 냉각",
+   "products": "개폐기·배전반·UPS·변압기, 냉각(보이드 서멀), 항공",
+   "customers": "데이터센터·전력회사·산업체",
+   "growth": [
+    "3분기 매출 $89억(+28%, 유기 +19%), 미주 전기 주문 +39%·잔고 +33%, 글로벌 주문 +51%·잔고 +121%",
+    "사실"
+   ],
+   "v": {
+    "pos": [
+     "데이터센터 배전의 핵심 공급사 — 대안은 슈나이더·ABB·지멘스 (추정)",
+     "추정"
+    ],
+    "sub": [
+     "대안 있지만 모두 납기 김",
+     "추정"
+    ],
+    "grade": "B",
+    "grade_why": "주문·잔고 공시, 개별 고객 이름은 비공개",
+    "capa": [
+     "인수로 능력 확장(보이드 서멀, COL 그룹)",
+     "사실"
+    ],
+    "fin": [
+     "분기 FCF $10.3억. 장기 부채 $88억 → $178억(인수), 이자 비용 3배",
+     "사실"
+    ],
+    "dil": [
+     "낮음 — 대신 부채 증가",
+     "사실"
+    ],
+    "mgmt": [
+     "CEO 파울로 루이즈 '가이던스 상단 초과' — 실행 양호",
+     "사실"
+    ],
+    "geo": [
+     "관세 원가 (추정)",
+     "추정"
+    ],
+    "val": [
+     "시총 약 $1,284억, 매출 대비 4.0배. 고점 $459 → $331(−28%)",
+     "사실"
+    ]
+   },
+   "sc": {
+    "best": {
+     "assume": "배전·냉각 수요 장기화",
+     "evidence": "주문 +39~51%",
+     "weak": "부채 2배",
+     "rerate": "—",
+     "mult": 1.9
+    },
+    "base": {
+     "assume": "13~15% 성장 지속",
+     "evidence": "가이던스 상향",
+     "why_weak": "몸값",
+     "mult": 1.3
+    },
+    "worst": {
+     "assume": "주문 둔화 + 부채 부담",
+     "risks": "수요·부채",
+     "evidence": "이자 3배",
+     "loss": "성장 둔화",
+     "mult": 0.65
+    }
+   },
+   "cls": "핵심 후보(병목 직접)",
+   "good_if": "데이터센터 주문 성장 30%+ 유지",
+   "break_if": "주문 성장 10% 미만 또는 인수 통합 문제",
+   "ev": {
+    "g": 1.9,
+    "l": 0.65,
+    "pg": 50
+   },
+   "src": [
+    "https://finviz.com/news/414001/eaton-reports-record-third-quarter-2026-results-with-strong-organic-growth-accelerating-record-orders-and-backlog-raises-organic-growth-guidance"
+   ],
+   "m": {
+    "px": 330.57,
+    "cur": "USD",
+    "day": "2026-11-19",
+    "mcap": 128426450944,
+    "adv": 1141481566,
+    "ps": 4.015334,
+    "rev": 31984001024,
+    "rev_g": 0.28,
+    "ma50": 394.0,
+    "ma200": 395.08,
+    "rsi": 36.2,
+    "hi52": 458.55,
+    "lo52": 312.24,
+    "mom121": 0.17424518026463143,
+    "formulas": [
+     {
+      "k": "trend200",
+      "ok": false,
+      "t": "200일선 아래 (-16%)",
+      "why": "S&P500 2000~: 200일선 위에서만 보유하면 최대 낙폭 −57% → −26% (수익은 줄어듦)"
+     },
+     {
+      "k": "overheat",
+      "ok": true,
+      "t": "이미 많이 오른 자리 아님",
+      "why": "주식 5만 건(2015~2026): 50일선 +8%↑ & RSI 65↑ 자리는 평균 +0.07R로 최하위"
+     },
+     {
+      "k": "calm",
+      "ok": false,
+      "t": "덜 오른 자리(50일선 0~5% 위·RSI≤65·MACD↑) 아님",
+      "why": "같은 5만 건: 세 조건을 모두 갖춘 자리 +0.19R vs 나머지 +0.14R, 앞·뒤 기간 모두 같음"
+     },
+     {
+      "k": "mom",
+      "ok": true,
+      "t": "12-1 모멘텀 +17%",
+      "why": "2016~2026 순위 검증: 12-1 모멘텀 상위가 20일 뒤 평균 +1.65% (참고용)"
+     }
+    ],
+    "ev": {
+     "G": 0.8999999999999999,
+     "L": -0.35,
+     "pG": 0.5,
+     "value": 0.27499999999999997,
+     "ratio": 2.571428571428571,
+     "be": 0.27999999999999997,
+     "ideal": false
+    }
+   }
+  },
+  {
+   "t": "VRT",
+   "name": "버티브",
+   "exch": "NYSE",
+   "layer": "L4 냉각 + L2 데이터센터 전력",
+   "products": "액체 냉각, 열관리, UPS·배전",
+   "customers": "빅테크·코로케이션 데이터센터",
+   "growth": [
+    "3분기 매출 $43.1억(예상 $37.6억 크게 상회), 유기 주문 2배 이상. 연 매출 전망 $144.5~148.5억으로 상향, 조정 영업이익률 25.2%",
+    "사실"
+   ],
+   "v": {
+    "pos": [
+     "AI 데이터센터 냉각 1위권 (추정)",
+     "추정"
+    ],
+    "sub": [
+     "슈나이더·이튼 등 대안 있음",
+     "추정"
+    ],
+    "grade": "B",
+    "grade_why": "주문·가이던스 공시, 고객 이름 비공개",
+    "capa": [
+     "모름 — 증설 계획 확인 못 함",
+     "모름"
+    ],
+    "fin": [
+     "모름 — 이번에 확인 못 함",
+     "모름"
+    ],
+    "dil": [
+     "낮음 (추정)",
+     "추정"
+    ],
+    "mgmt": [
+     "5분기 연속 예상 상회",
+     "사실"
+    ],
+    "geo": [
+     "모름",
+     "모름"
+    ],
+    "val": [
+     "시총 약 $712억, 매출 대비 5.4배. 고점 $376 → $185(−51%)",
+     "사실"
+    ]
+   },
+   "sc": {
+    "best": {
+     "assume": "액체 냉각 표준화 + 점유율 유지",
+     "evidence": "주문 2배",
+     "weak": "경쟁 진입(이튼)",
+     "rerate": "—",
+     "mult": 2.5
+    },
+    "base": {
+     "assume": "성장 지속, 몸값 정상화",
+     "evidence": "가이던스 상향",
+     "why_weak": "AI 의심",
+     "mult": 1.3
+    },
+    "worst": {
+     "assume": "빅테크 투자 축소",
+     "risks": "수요 집중",
+     "evidence": "—",
+     "loss": "주문 급감",
+     "mult": 0.5
+    }
+   },
+   "cls": "관찰 — 조건 확인 후 분할",
+   "good_if": "다음 분기에도 주문 증가 + 마진 25% 유지",
+   "break_if": "주문 증가율 급락 또는 대형 고객 이탈",
+   "ev": {
+    "g": 2.5,
+    "l": 0.5,
+    "pg": 45
+   },
+   "src": [
+    "https://247wallst.com/cards/vertiv-q3-2026-earnings-vrt-01m60zybj74azc2wscfpvp2ym4"
+   ],
+   "m": {
+    "px": 184.99,
+    "cur": "USD",
+    "day": "2026-11-19",
+    "mcap": 71232331776,
+    "adv": 1745143003,
+    "ps": 5.430701,
+    "rev": 13116600320,
+    "rev_g": 0.612,
+    "ma50": 224.83,
+    "ma200": 271.54,
+    "rsi": 40.4,
+    "hi52": 376.06,
+    "lo52": 149.73,
+    "mom121": 0.28821962622580877,
+    "formulas": [
+     {
+      "k": "trend200",
+      "ok": false,
+      "t": "200일선 아래 (-32%)",
+      "why": "S&P500 2000~: 200일선 위에서만 보유하면 최대 낙폭 −57% → −26% (수익은 줄어듦)"
+     },
+     {
+      "k": "overheat",
+      "ok": true,
+      "t": "이미 많이 오른 자리 아님",
+      "why": "주식 5만 건(2015~2026): 50일선 +8%↑ & RSI 65↑ 자리는 평균 +0.07R로 최하위"
+     },
+     {
+      "k": "calm",
+      "ok": false,
+      "t": "덜 오른 자리(50일선 0~5% 위·RSI≤65·MACD↑) 아님",
+      "why": "같은 5만 건: 세 조건을 모두 갖춘 자리 +0.19R vs 나머지 +0.14R, 앞·뒤 기간 모두 같음"
+     },
+     {
+      "k": "mom",
+      "ok": true,
+      "t": "12-1 모멘텀 +29%",
+      "why": "2016~2026 순위 검증: 12-1 모멘텀 상위가 20일 뒤 평균 +1.65% (참고용)"
+     }
+    ],
+    "ev": {
+     "G": 1.5,
+     "L": -0.5,
+     "pG": 0.45,
+     "value": 0.4,
+     "ratio": 3.0,
+     "be": 0.25,
+     "ideal": false
+    }
+   }
+  },
+  {
+   "t": "FIX",
+   "name": "컴포트시스템즈USA",
+   "exch": "NYSE",
+   "layer": "L5 기계·전기 공사",
+   "products": "데이터센터·공장 공조·배관·전기 공사",
+   "customers": "빅테크 데이터센터, 반도체 공장, 병원",
+   "growth": [
+    "3분기 매출 $38억(+54%), 잔고 $178억(+90%), 영업이익률 16.6%",
+    "사실"
+   ],
+   "v": {
+    "pos": [
+     "숙련 인력·공사 능력이 병목 — 대형 공사업체 수가 적음 (추정)",
+     "추정"
+    ],
+    "sub": [
+     "다른 공사업체로 바꿀 수 있지만 인력이 부족 (추정)",
+     "추정"
+    ],
+    "grade": "B",
+    "grade_why": "잔고 공시, 기술 고객 비중 61%",
+    "capa": [
+     "인력이 제약 — '공격적인 인력 관리 필요'",
+     "사실"
+    ],
+    "fin": [
+     "현금 $21.6억, 부채 거의 없음, 9개월 FCF $20.5억",
+     "사실"
+    ],
+    "dil": [
+     "낮음",
+     "추정"
+    ],
+    "mgmt": [
+     "실행 양호 (추정)",
+     "추정"
+    ],
+    "geo": [
+     "미국 내 — 규제 위험 작음",
+     "추정"
+    ],
+    "val": [
+     "시총 약 $390억, 매출 대비 3.1배. 고점 $2,064 → $1,114(−46%)",
+     "사실"
+    ]
+   },
+   "sc": {
+    "best": {
+     "assume": "잔고 소화 + 마진 상승",
+     "evidence": "잔고 +90%",
+     "weak": "고객 집중 61%",
+     "rerate": "—",
+     "mult": 2.0
+    },
+    "base": {
+     "assume": "잔고대로 성장",
+     "evidence": "공사 기간 6~9개월로 빠른 전환",
+     "why_weak": "AI 의심",
+     "mult": 1.3
+    },
+    "worst": {
+     "assume": "데이터센터 공사 취소·연기",
+     "risks": "고객 집중",
+     "evidence": "모라토리엄",
+     "loss": "잔고 감소",
+     "mult": 0.5
+    }
+   },
+   "cls": "관찰 — 조건 확인 후 분할",
+   "good_if": "잔고 증가 지속 + 마진 유지",
+   "break_if": "기술 고객 잔고 감소 전환",
+   "ev": {
+    "g": 2.0,
+    "l": 0.5,
+    "pg": 45
+   },
+   "src": [
+    "https://www.panabee.com/news/comfort-systems-usa-earnings-q3-2026-report"
+   ],
+   "m": {
+    "px": 1114.02,
+    "cur": "USD",
+    "day": "2026-11-19",
+    "mcap": 38974996480,
+    "adv": 919520979,
+    "ps": 3.107222,
+    "rev": 12543356928,
+    "rev_g": 0.537,
+    "ma50": 1426.74,
+    "ma200": 1601.22,
+    "rsi": 41.4,
+    "hi52": 2063.66,
+    "lo52": 874.19,
+    "mom121": 0.523658015665512,
+    "formulas": [
+     {
+      "k": "trend200",
+      "ok": false,
+      "t": "200일선 아래 (-30%)",
+      "why": "S&P500 2000~: 200일선 위에서만 보유하면 최대 낙폭 −57% → −26% (수익은 줄어듦)"
+     },
+     {
+      "k": "overheat",
+      "ok": true,
+      "t": "이미 많이 오른 자리 아님",
+      "why": "주식 5만 건(2015~2026): 50일선 +8%↑ & RSI 65↑ 자리는 평균 +0.07R로 최하위"
+     },
+     {
+      "k": "calm",
+      "ok": false,
+      "t": "덜 오른 자리(50일선 0~5% 위·RSI≤65·MACD↑) 아님",
+      "why": "같은 5만 건: 세 조건을 모두 갖춘 자리 +0.19R vs 나머지 +0.14R, 앞·뒤 기간 모두 같음"
+     },
+     {
+      "k": "mom",
+      "ok": true,
+      "t": "12-1 모멘텀 +52%",
+      "why": "2016~2026 순위 검증: 12-1 모멘텀 상위가 20일 뒤 평균 +1.65% (참고용)"
+     }
+    ],
+    "ev": {
+     "G": 1.0,
+     "L": -0.5,
+     "pG": 0.45,
+     "value": 0.175,
+     "ratio": 2.0,
+     "be": 0.3333333333333333,
+     "ideal": false
+    }
+   }
+  },
+  {
+   "t": "CAT",
+   "name": "캐터필러",
+   "exch": "NYSE",
+   "layer": "L1 현장 발전(엔진·터빈) + 건설 장비",
+   "products": "대형 왕복 엔진·터빈(데이터센터 비상·주 전원), 건설·광산 장비",
+   "customers": "데이터센터, 건설·광산 업체",
+   "growth": [
+    "3분기 매출 $207억(+17%, 사상 최대), 잔고 $780억(약 2배), 발전 매출 +30%",
+    "사실"
+   ],
+   "v": {
+    "pos": [
+     "현장 발전기 대형 공급사 — 전력망 연결을 기다리기 싫은 데이터센터의 대안 (추정)",
+     "추정"
+    ],
+    "sub": [
+     "커민스 등 대안 있음",
+     "추정"
+    ],
+    "grade": "B",
+    "grade_why": "잔고 공시, 데이터센터 고객 이름 비공개",
+    "capa": [
+     "대형 엔진·터빈 증설 중",
+     "사실"
+    ],
+    "fin": [
+     "이익 $33억(+43%)",
+     "사실"
+    ],
+    "dil": [
+     "낮음",
+     "추정"
+    ],
+    "mgmt": [
+     "광산 부문 출하 지연",
+     "사실"
+    ],
+    "geo": [
+     "관세 비용 연 약 $22억",
+     "사실"
+    ],
+    "val": [
+     "시총 약 $2,459억, 매출 대비 3.2배. 고점 $1,060 → $537(−49%), 52주 최저",
+     "사실"
+    ]
+   },
+   "sc": {
+    "best": {
+     "assume": "데이터센터 현장 발전 표준화",
+     "evidence": "잔고 2배",
+     "weak": "본업(건설·광산) 경기",
+     "rerate": "—",
+     "mult": 1.8
+    },
+    "base": {
+     "assume": "꾸준한 성장",
+     "evidence": "—",
+     "why_weak": "경기 민감",
+     "mult": 1.25
+    },
+    "worst": {
+     "assume": "경기 침체 + AI 둔화",
+     "risks": "경기",
+     "evidence": "—",
+     "loss": "이익 감소",
+     "mult": 0.6
+    }
+   },
+   "cls": "병목 노출 있음 — 본업 비중 큼",
+   "good_if": "발전 부문 성장 25%+ 유지",
+   "break_if": "건설·광산 경기 침체",
+   "ev": {
+    "g": 1.8,
+    "l": 0.6,
+    "pg": 50
+   },
+   "src": [
+    "https://www.manufacturingdive.com/news/caterpillar-posts-highest-sales-quarter-ever-data-centers-q3-2026/873176/",
+    "https://stockanalysis.com/news/ai-data-center-suppliers-lose-4-trillion/"
+   ],
+   "m": {
+    "px": 537.37,
+    "cur": "USD",
+    "day": "2026-11-19",
+    "mcap": 245897379840,
+    "adv": 2426486783,
+    "ps": 3.1617322,
+    "rev": 77772996608,
+    "rev_g": 0.173,
+    "ma50": 719.22,
+    "ma200": 801.92,
+    "rsi": 27.2,
+    "hi52": 1060.41,
+    "lo52": 537.37,
+    "mom121": 0.3617858232230631,
+    "formulas": [
+     {
+      "k": "trend200",
+      "ok": false,
+      "t": "200일선 아래 (-33%)",
+      "why": "S&P500 2000~: 200일선 위에서만 보유하면 최대 낙폭 −57% → −26% (수익은 줄어듦)"
+     },
+     {
+      "k": "overheat",
+      "ok": true,
+      "t": "이미 많이 오른 자리 아님",
+      "why": "주식 5만 건(2015~2026): 50일선 +8%↑ & RSI 65↑ 자리는 평균 +0.07R로 최하위"
+     },
+     {
+      "k": "calm",
+      "ok": false,
+      "t": "덜 오른 자리(50일선 0~5% 위·RSI≤65·MACD↑) 아님",
+      "why": "같은 5만 건: 세 조건을 모두 갖춘 자리 +0.19R vs 나머지 +0.14R, 앞·뒤 기간 모두 같음"
+     },
+     {
+      "k": "mom",
+      "ok": true,
+      "t": "12-1 모멘텀 +36%",
+      "why": "2016~2026 순위 검증: 12-1 모멘텀 상위가 20일 뒤 평균 +1.65% (참고용)"
+     }
+    ],
+    "ev": {
+     "G": 0.8,
+     "L": -0.4,
+     "pG": 0.5,
+     "value": 0.2,
+     "ratio": 2.0,
+     "be": 0.3333333333333333,
+     "ideal": false
+    }
+   }
+  },
+  {
+   "t": "CRWV",
+   "name": "코어위브",
+   "exch": "Nasdaq",
+   "layer": "L7 GPU 클라우드(네오클라우드)",
+   "products": "GPU 클라우드 임대",
+   "customers": "대형 AI 회사 (집중도 이번에 확인 못 함)",
+   "growth": [
+    "3분기 매출 $36.6억(+168%), 잔고 $1,325억. 2026 매출 $130~133억 전망",
+    "사실"
+   ],
+   "v": {
+    "pos": [
+     "병목 기업이 아니라 수요 쪽 — 빅테크가 직접 지으면 대체됨 (추정)",
+     "추정"
+    ],
+    "sub": [
+     "대체 쉬움 (추정)",
+     "추정"
+    ],
+    "grade": "B",
+    "grade_why": "잔고 공시, 고객 집중도는 이번에 확인 못 함",
+    "capa": [
+     "2026 설비 투자 $370~390억 — 전력 확보가 제약 (추정)",
+     "추정"
+    ],
+    "fin": [
+     "순손실 $7.09억(작년 $1.1억), 현금 $41.2억",
+     "사실"
+    ],
+    "dil": [
+     "높음 — 투자 대부분이 빚, 추가 조달 가능성 (추정)",
+     "추정"
+    ],
+    "mgmt": [
+     "CEO '돌파 분기' — 성장 실행은 양호",
+     "사실"
+    ],
+    "geo": [
+     "AI 칩 규제 영향 (추정)",
+     "추정"
+    ],
+    "val": [
+     "시총 약 $250억, 매출 대비 2.5배. 고점 $138 → $45(−67%)",
+     "사실"
+    ]
+   },
+   "sc": {
+    "best": {
+     "assume": "잔고 $1,325억이 이익으로 전환",
+     "evidence": "매출 +168%",
+     "weak": "빚",
+     "rerate": "순이익 흑자",
+     "mult": 3.0
+    },
+    "base": {
+     "assume": "성장하지만 이자 부담",
+     "evidence": "—",
+     "why_weak": "적자 확대",
+     "mult": 1.0
+    },
+    "worst": {
+     "assume": "AI 투자 둔화 + 차환 위험",
+     "risks": "부채·고객 집중",
+     "evidence": "적자 확대",
+     "loss": "자금난 → 희석",
+     "mult": 0.25
+    }
+   },
+   "cls": "투기 — 조건 부족",
+   "good_if": "순손실 축소 + 차환 순조",
+   "break_if": "대형 고객 계약 축소 또는 자금 조달 실패",
+   "ev": {
+    "g": 3.0,
+    "l": 0.25,
+    "pg": 30
+   },
+   "src": [
+    "https://pulse2.com/coreweave-record-q3-revenue-reaches-3-66-billion-as-backlog-grows-to-132-5-billion/"
+   ],
+   "m": {
+    "px": 44.91,
+    "cur": "USD",
+    "day": "2026-11-19",
+    "mcap": 24975605760,
+    "adv": 3619932683,
+    "ps": 2.526361,
+    "rev": 9886000128,
+    "rev_g": 1.682,
+    "ma50": 68.98,
+    "ma200": 88.18,
+    "rsi": 36.5,
+    "hi52": 137.98,
+    "lo52": 43.66,
+    "mom121": -0.17463286468072203,
+    "formulas": [
+     {
+      "k": "trend200",
+      "ok": false,
+      "t": "200일선 아래 (-49%)",
+      "why": "S&P500 2000~: 200일선 위에서만 보유하면 최대 낙폭 −57% → −26% (수익은 줄어듦)"
+     },
+     {
+      "k": "overheat",
+      "ok": true,
+      "t": "이미 많이 오른 자리 아님",
+      "why": "주식 5만 건(2015~2026): 50일선 +8%↑ & RSI 65↑ 자리는 평균 +0.07R로 최하위"
+     },
+     {
+      "k": "calm",
+      "ok": false,
+      "t": "덜 오른 자리(50일선 0~5% 위·RSI≤65·MACD↑) 아님",
+      "why": "같은 5만 건: 세 조건을 모두 갖춘 자리 +0.19R vs 나머지 +0.14R, 앞·뒤 기간 모두 같음"
+     },
+     {
+      "k": "mom",
+      "ok": false,
+      "t": "12-1 모멘텀 -17%",
+      "why": "2016~2026 순위 검증: 12-1 모멘텀 상위가 20일 뒤 평균 +1.65% (참고용)"
+     }
+    ],
+    "ev": {
+     "G": 2.0,
+     "L": -0.75,
+     "pG": 0.3,
+     "value": 0.07500000000000007,
+     "ratio": 2.6666666666666665,
+     "be": 0.2727272727272727,
+     "ideal": false
+    }
+   }
+  }
+ ],
+ "excluded": [
+  [
+   "컨스텔레이션(CEG)·비스트라(VST)",
+   "데이터센터 전력 판매(아마존 690MW·구글 890MW 계약)로 L3에 노출 — '원전·우라늄'·'석유·가스' 테마 리서치에서 다룸",
+   "사실",
+   "https://pulse2.com/constellation-energy-1-8-billion-q3-net-income-raised-2026-guidance-and-5-billion-nuclear-financing-commitment/"
+  ],
+  [
+   "오클로(OKLO)",
+   "소형 원자로 — 매출 전 단계, '원전·우라늄' 테마에서 다룸 (고점 대비 −49%)",
+   "사실",
+   "https://stockanalysis.com/news/ai-data-center-suppliers-lose-4-trillion/"
+  ],
+  [
+   "퀀타서비스(PWR)·허벨(HUBB)·슈나이더·ABB·히타치·미쓰비시중공업",
+   "송배전·공사 병목 공급사지만 이번에 최신 실적을 확인하지 못해 제외 — 다음 갱신 때 검증",
+   "모름",
+   ""
+  ],
+  [
+   "코닝(GLW)",
+   "광섬유(L6) 대표 공급사(고점 대비 약 −58%)지만 이번에 최신 실적·고객을 확인하지 못해 규칙대로 제외 — 다음 갱신 때 검증",
+   "모름",
+   "https://stockanalysis.com/news/ai-data-center-suppliers-lose-4-trillion/"
+  ],
+  [
+   "엔비디아·브로드컴 등 칩",
+   "'AI 반도체' 테마 리서치에서 다룸",
+   "추정",
+   ""
+  ]
+ ],
+ "final": [
+  [
+   "핵심 후보(병목 직접)",
+   [
+    "GEV",
+    "ENR.DE",
+    "ETN"
+   ],
+   "발전·송배전 병목을 쥔 회사. 수주 잔고가 몇 년치라 'AI 의심'이 실적으로 바로 안 옴. 조건: 예약 → 확정 전환 지속"
+  ],
+  [
+   "관찰 — 조건 확인 후 분할",
+   [
+    "VRT",
+    "FIX"
+   ],
+   "수요 직접 수혜지만 대안 공급사가 있거나(냉각) 고객 집중(공사). 다음 분기 주문 확인"
+  ],
+  [
+   "병목 노출 있음 — 본업 비중 큼",
+   [
+    "CAT"
+   ],
+   "현장 발전 수요는 강하지만 주가는 건설·광산 경기도 같이 탐"
+  ],
+  [
+   "투기 — 조건 부족",
+   [
+    "CRWV"
+   ],
+   "매출은 폭증하지만 빚과 적자 확대 — 병목이 아니라 수요 쪽 위험을 짐"
+  ]
+ ],
+ "sources": [
+  "https://247wallst.com/cards/vertiv-q3-2026-earnings-vrt-01m60zybj74azc2wscfpvp2ym4",
+  "https://finviz.com/news/414001/eaton-reports-record-third-quarter-2026-results-with-strong-organic-growth-accelerating-record-orders-and-backlog-raises-organic-growth-guidance",
+  "https://hpcwire.com/2026/11/05/anti-data-center-sentiment-rides-blue-wave-threatening-ai-boom",
+  "https://pulse2.com/constellation-energy-1-8-billion-q3-net-income-raised-2026-guidance-and-5-billion-nuclear-financing-commitment/",
+  "https://pulse2.com/coreweave-record-q3-revenue-reaches-3-66-billion-as-backlog-grows-to-132-5-billion/",
+  "https://pv-magazine-usa.com/2026/05/11/u-s-transformer-market-faces-severe-supply-constraints-as-lead-times-extend-to-four-years/",
+  "https://stockanalysis.com/news/ai-data-center-suppliers-lose-4-trillion/",
+  "https://thewallstreetrepublic.substack.com/p/anthropic-closes-at-9717-s-and-p",
+  "https://vistapglobal.com/stock-market-today-november-19-2026-anthropic-ipo-pops-wall-street-loses-its-appetite-amd-ant-eprx-insm-jpm-ma-modd-panw-ser-sls-v-wmt/",
+  "https://walnutinvest.com/stats/ai-capex-statistics",
+  "https://www.investmentnews.com/equities/the-fed-came-close-to-an-october-rate-hike-fomc-minutes-show/269079",
+  "https://www.manufacturingdive.com/news/caterpillar-posts-highest-sales-quarter-ever-data-centers-q3-2026/873176/",
+  "https://www.mpamag.com/us/mortgage-industry/industry-trends/fed-rate-hike-odds-hit-100-as-waller-floats-bigger-december-move/596880",
+  "https://www.mychesco.com/a/news/business/pjm-capacity-auction-hits-price-cap-as-data-center-demand-strains-grid/",
+  "https://www.panabee.com/news/comfort-systems-usa-earnings-q3-2026-report",
+  "https://www.turbomachinerymag.com/view/ge-vernova-q3-2026-gas-power-backlog-122-gw-trench-acquisition",
+  "https://www.turbomachinerymag.com/view/siemens-energy-fy2026-record-backlog-164-billion-gas-services-orders"
+ ],
+ "metrics_at": "2026-11-20T09:33+00:00"
+}
