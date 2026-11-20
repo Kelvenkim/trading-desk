@@ -60,19 +60,56 @@ def translate(text, cache):
     return cache[key]
 
 
-def gnews(q, lang="ko", n=6):
+# 회사와 상관없는 뉴스 걸러내기 — 시세 페이지, 기관 지분 변동 자동 기사, "주식 N개 추천" 목록 기사, 가정 수익 계산 기사 등
+JUNK = re.compile(r"stock price,? news,? quote|quote (&|and) history|historical prices|stock (price )?(today|chart)|\$[A-Z.]+ shares? (sold|bought|acquired)|"
+                  r"(acquires|buys|sells|trims|raises|lowers) .{0,40}(shares|stake|position) (of|in)|position in .{0,60}(inc|corp|co)\b|"
+                  r"if you invested|would have this much|\b\d+ (top |best )?(quantum|ai|growth|dividend|tech|defense|space)?\s*stocks?\b|stocks? to (buy|watch)|"
+                  r"price prediction|shares (gap|up|down) \d|(short|long) interest (up|down)|options? (activity|volume)|unusual options|"
+                  r"관련주|테마주|종목 추천|주가 전망 총정리|프리미엄콘텐츠", re.I)
+JUNK_SRC = re.compile(r"marketbeat|defense world|ticker report|etf daily news|zolmax|kalkine|네이버 프리미엄|insider monkey|stocktitan", re.I)
+
+
+def relevant(t, src, names):
+    if JUNK.search(t) or JUNK_SRC.search(src or ""):
+        return False
+    tl = re.sub(r"\s+", "", t.lower())
+    return any(n and (re.sub(r"\s+", "", n.lower()) in tl) for n in names)
+
+
+def gnews(q, lang="ko", n=6, names=()):
     import news_build as NB
     p = {"q": q + " when:14d", "hl": lang, "gl": "KR" if lang == "ko" else "US", "ceid": "KR:ko" if lang == "ko" else "US:en"}
     items = NB.rss_items(NB.get("https://news.google.com/rss/search?" + urllib.parse.urlencode(p), raw=True))
     seen, out = set(), []
     for it in sorted(items, key=lambda x: x["at"], reverse=True):
         t = re.sub(r"\s+[-–|]\s+[^-–|]{1,40}$", "", it["t"]).strip()
-        if t in seen:
+        src = it.get("src") or (it["t"].rsplit(" - ", 1)[-1][:30] if " - " in it["t"] else "")
+        key = re.sub(r"\W+", "", t.lower())[:60]
+        if key in seen or (names and not relevant(t, src, names)):
             continue
-        seen.add(t); out.append({"t": t, "u": it["u"], "at": it["at"], "o": it.get("src") or (it["t"].rsplit(" - ", 1)[-1][:30] if " - " in it["t"] else "")})
+        seen.add(key); out.append({"t": t, "u": it["u"], "at": it["at"], "o": src})
         if len(out) >= n:
             break
     return out
+
+
+def news_names(t, name, ko_name):
+    """제목에 이 중 하나는 들어가야 '이 회사 뉴스'로 인정"""
+    short = re.sub(r"[,.]?\s+(inc|corp|corporation|co|company|plc|ltd|holdings|group|technologies|n\.v|s\.a|class [a-c])\.?$", "", (name or t), flags=re.I)
+    short = re.sub(r"[,.]?\s+(inc|corp|corporation|co|ltd|holdings)\.?$", "", short, flags=re.I).strip()
+    out = [short, t if len(t) >= 3 else f"({t})", f"${t}", ko_name]
+    first = short.split()[0] if short else ""
+    if len(first) >= 5:
+        out.append(first)                     # Redwire, Lockheed, Nvidia 처럼 첫 단어로도
+    return [x for x in out if x]
+
+
+def news_for(t, name, ko_name):
+    names = news_names(t, name, ko_name)
+    short = names[0]
+    k = gnews(f'"{ko_name}"' if ko_name else f'"{short}" 주가', "ko", 6, names)
+    e = gnews(f'"{short}" OR "{t} stock"', "en-US", 6, names)
+    return k, e
 
 
 def df_records(df, cols=None, n=None):
@@ -151,8 +188,7 @@ def build(t, ko, cache, with_social=False):
     except Exception:
         pass
     p["earn"] = e
-    p["news_ko"] = gnews(f'"{ko.get(t)}"' if ko.get(t) else f'"{(p["name"] or t).split(",")[0]}" 주가')
-    p["news_en"] = gnews(f'{t} stock', "en-US")
+    p["news_ko"], p["news_en"] = news_for(t, p["name"], ko.get(t))
     if with_social:
         try:
             p["social"] = SE.stocktwits(t)
@@ -232,6 +268,26 @@ def main(all_=False, max_n=220, force=False):
     print(f"기업 정보 {ok}/{len(todo)} 갱신 · 전체 {len(allp)}개 · {time.time() - t0:.0f}s")
 
 
+def news_only():
+    """뉴스만 다시 받기 (전 종목, 몇 분)"""
+    U = json.loads((ROOT / "data/us/universe.json").read_text())
+    from us_narr_def import EXTRA_KO
+    ko = {**U.get("ko", {}), **EXTRA_KO}
+    files = sorted(OUT.glob("[A-Z]*.json")); ok = 0
+    def one(f):
+        try:
+            p = json.loads(f.read_text())
+            p["news_ko"], p["news_en"] = news_for(p["t"], p.get("name"), ko.get(p["t"]) or p.get("ko"))
+            f.write_text(json.dumps(p, ensure_ascii=False, separators=(",", ":"), default=str)); return 1
+        except Exception as e:
+            print("뉴스 실패", f.stem, e); return 0
+    with ThreadPoolExecutor(4) as ex:
+        ok = sum(ex.map(one, files))
+    print(f"뉴스만 갱신 {ok}/{len(files)}")
+
+
 if __name__ == "__main__":
     a = sys.argv
+    if "--news-only" in a:
+        news_only(); sys.exit()
     main(all_="--all" in a, max_n=int(a[a.index("--max") + 1]) if "--max" in a else 90, force="--force" in a)
