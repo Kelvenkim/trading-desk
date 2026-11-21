@@ -8,7 +8,7 @@ H = Path(__file__).parent
 
 
 def load(t):
-    d = pd.read_parquet(H / f"{t}_5m.parquet")
+    d = pd.read_parquet(H / "data" / f"{t}_5m.parquet")
     d.columns = [c.lower() for c in d.columns]
     return d
 
