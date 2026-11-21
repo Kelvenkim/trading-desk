@@ -1141,7 +1141,7 @@
      "inst": 0.57631,
      "next_rev": 11151569000,
      "next_eps": 1.37838,
-     "earn": "2027-02-12"
+     "earn": "2027-02-11"
     },
     "ev": {
      "G": 1.0,
@@ -2198,7 +2198,7 @@
     "rsi": 37.6,
     "hi52": 2063.66,
     "lo52": 874.19,
-    "mom121": 0.3768935516518328,
+    "mom121": 0.3768936421747777,
     "wk": [
      [
       "2025-11-16",
@@ -2557,7 +2557,7 @@
      "inst": 0.95945,
      "next_rev": 3819419040,
      "next_eps": 14.01917,
-     "earn": "2026-10-23"
+     "earn": "2026-10-22"
     },
     "ev": {
      "G": 1.0,
@@ -3496,13 +3496,13 @@
      "n": 38,
      "rec": "buy",
      "short": 0.233,
-     "ev": 83937722368,
+     "ev": 83965526016,
      "emp": 2189,
      "insider": 0.18354,
      "inst": 0.74921995,
      "next_rev": 4845077070,
      "next_eps": -0.60024,
-     "earn": "2026-11-11"
+     "earn": "2026-11-10"
     },
     "ev": {
      "G": 2.0,
@@ -3606,7 +3606,7 @@
   "https://www.turbomachinerymag.com/view/ge-vernova-q3-2026-gas-power-backlog-122-gw-trench-acquisition",
   "https://www.turbomachinerymag.com/view/siemens-energy-fy2026-record-backlog-164-billion-gas-services-orders"
  ],
- "metrics_at": "2026-11-21T02:56+00:00",
+ "metrics_at": "2026-11-21T03:54+00:00",
  "gloss": {
   "매출총이익률": "매출에서 매출원가를 뺀 비율(총마진). 제품 자체가 얼마나 남는 장사인지",
   "총마진": "매출총이익률과 같은 말. 매출 − 매출원가를 매출로 나눈 값",
