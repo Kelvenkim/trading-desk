@@ -17,17 +17,14 @@ const DeskUI = (() => {
   let A = null, loaded = false;
 
   // ---------- 한눈에 보기: 계좌 성적 · 지금 보유 · 사고 판 기록 ----------
-  const ACC = {
+  const ACC = {                                        // 이름, 색, 설명, 펼칠 상세, 종류 — 탭 순서도 이 순서 (11/21 사용자 지정)
     ai: ["AI 데스크", "#2fa36b", "주식 · 며칠~몇 주 보유", "more-ai", "stock"],
-    day: ["데이트레이딩", "#e5484d", "주식 · 그날 사서 그날 팔기", "more-day", "stock"],
     coin: ["코인", "#9b6bd8", "BTC·ETH · 50일선 위 롱·아래 숏", "more-coin", "coin"],
-    lev: ["코인 5배", "#d86bb4", "BTC 5배 레버리지 실험", "more-coin", "coin"],
-    scalp: ["코인 5분 단타", "#e0a040", "BTC·ETH 5분봉 평균 회귀 실험", "more-coin", "coin"],
-    scalp5: ["5분 단타 5배", "#e07040", "같은 신호 · 5배 레버리지 실험", "more-coin", "coin"],
-    basket: ["추천 바구니", "#3b6fd8", "순위 상위 · 5일마다 재분배", "", "stock"],
-    spy: ["S&P500", "#8a8f98", "비교 기준 · 그냥 보유", "", "stock"],
+    lev: ["코인 10배", "#d86bb4", "BTC 10배 레버리지 · 50일선 · 추적 손절 8%", "more-coin", "coin"],
+    day: ["데이트레이딩", "#e5484d", "주식 · 그날 사서 그날 팔기", "more-day", "stock"],
+    scalp10: ["코인 10배 단타", "#e07040", "BTC·ETH 5분봉 평균 회귀 · 10배", "", "coin"],
   };
-  let SM = { log: [], f: "all" };
+  let SM = { log: [], acct: (() => { try { return localStorage.getItem("tradingdesk.acct") || "ai"; } catch (_) { return "ai"; } })() };
   const getj = async (u) => { try { const r = await fetch(u + "?t=" + Date.now()); return r.ok ? await r.json() : null; } catch (_) { return null; } };
   const nameOf = (t) => { try { const n = Data.info(t).name; return n && n !== t ? n : ""; } catch (_) { return ""; } };
   const md = (d) => (d || "").slice(5, 10).replace("-", "/");
@@ -44,65 +41,72 @@ const DeskUI = (() => {
   }
   async function renderSummary() {
     renderReports();
-    const [A, D, C, L, P, Q0, Q50] = await Promise.all(["data/us/ai_paper.json", "data/us/day_desk.json", "data/us/crypto_paper.json", "data/us/crypto_lev.json", "data/us/paper.json", "data/us/crypto_scalp.json", "data/us/crypto_scalp5.json"].map(getj));
-    let Q = Q0, Q5 = Q50;                               // 5분 단타: 중계 서버에서 실시간, 없으면 저장본
-    try { const px = Data.getProxy && Data.getProxy(); if (px) { const base = px.replace(/\/$/, "");
-      const [a, b] = await Promise.all(["/scalp", "/scalp5"].map((u) => fetch(base + u, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
-      if (a && a.eq) Q = a; if (b && b.eq) Q5 = b; } } catch (_) {}
-    // 1) 계좌 카드
-    const cards = [];
-    const card = (k, eq, base, start, extra) => cards.push({ k, eq, r: eq == null ? null : eq / base - 1, start, extra });
-    if (A) card("ai", A.eq_now, A.cash0, A.start, `보유 ${A.pos.length}종목 · S&P 대비 ${A.bench == null ? "—" : pct(A.eq_now / A.cash0 - 1 - A.bench, 1)}`);
-    if (D && D.eq && D.eq.length) card("day", D.eq[D.eq.length - 1][1], 10000, D.start, `매매 ${(D.trades || []).length}번`); else cards.push({ k: "day", off: "시작 전", extra: "Cloudflare 설정 뒤 시작" });
-    if (C) card("coin", C.eq_now, 10000, C.start, `같은 기간 BTC ${pct(C.btc_ret, 1)}`);
-    if (L) card("lev", L.eq_now, 10000, L.start, `강제 청산 ${L.liq_n}번`);
-    if (Q && Q.eq) card("scalp", Q.eq_now, 10000, Q.start, `매매 ${(Q.trades || []).length}번 · 수수료 포함`); else cards.push({ k: "scalp", off: "시작 전", extra: "Worker 새 코드·매일 실행 뒤 시작" });
-    if (Q5 && Q5.eq) card("scalp5", Q5.eq_now, 10000, Q5.start, `매매 ${(Q5.trades || []).length}번 · 수수료 포함`); else cards.push({ k: "scalp5", off: "시작 전", extra: "Worker 새 코드·매일 실행 뒤 시작" });
-    if (P) for (const k of ["basket", "spy"]) { const e = P.acct[k].eq; card(k, e[e.length - 1][1], P.cash0, P.start, `보유 ${P.acct[k].pos.length}종목`); }
-    $("#sm-accts").innerHTML = cards.map((c) => { const [nm, col, how, tgt] = ACC[c.k];
-      return `<button class="sm-acct ${c.k === "spy" ? "bench" : ""} ${c.off ? "off" : ""}" data-open="${tgt}" style="border-top:3px solid ${col}">
-        <span class="nm">${nm}</span><span class="how">${how}</span>
-        <span class="ret ${c.off ? "" : cls(c.r)}">${c.off ? c.off : pct(c.r, 2)}</span>
-        <span class="eq">${c.off ? "" : usd(c.eq, 0) + " · " + md(c.start) + "부터"}</span><span class="eq">${c.extra || ""}</span></button>`; }).join("");
+    const [A, D, C, L, Q0] = await Promise.all(["data/us/ai_paper.json", "data/us/day_desk.json", "data/us/crypto_paper.json", "data/us/crypto_lev.json", "data/us/crypto_scalp10.json"].map(getj));
+    let Q = Q0;                                         // 10배 단타: 중계 서버에서 실시간, 없으면 저장본
+    try { const px = Data.getProxy && Data.getProxy(); if (px) { const r = await fetch(px.replace(/\/$/, "") + "/scalp10", { cache: "no-store" }); if (r.ok) { const j = await r.json(); if (j.eq) Q = j; } } } catch (_) {}
+    // 1) 계좌 탭 (토스증권처럼 위에 계좌, 고르면 아래가 그 계좌로 바뀜)
+    const cards = {};
+    const card = (k, eq, base, start, extra) => (cards[k] = { k, eq, r: eq == null ? null : eq / base - 1, start, extra });
+    if (A) card("ai", A.eq_now, A.cash0, A.start, `보유 ${A.pos.length}종목 · 같은 기간 S&P500 ${pct(A.bench, 2)} (${A.bench == null ? "—" : pct(A.eq_now / A.cash0 - 1 - A.bench, 1) + "p"})`);
+    if (C) card("coin", C.eq_now, 10000, C.start, `같은 기간 비트코인 ${pct(C.btc_ret, 1)}`);
+    if (L) card("lev", L.eq_now, 10000, L.start, `강제 청산 ${L.liq_n}번 · 11/21 5배→10배`);
+    if (D && D.eq && D.eq.length) card("day", D.eq[D.eq.length - 1][1], 10000, D.start, `매매 ${(D.trades || []).length}번`); else cards.day = { k: "day", off: "시작 전", extra: "월요일(11/23) 미국장부터 시작" };
+    if (Q && Q.eq) card("scalp10", Q.eq_now, 10000, Q.start, `매매 ${(Q.trades || []).length}번 · 수수료 포함 · 하루 −10%면 멈춤`); else cards.scalp10 = { k: "scalp10", off: "시작 전", extra: "Worker 새 코드·매일 실행 뒤 시작" };
+    if (!ACC[SM.acct]) SM.acct = "ai";
+    $("#sm-accts").innerHTML = Object.keys(ACC).map((k) => { const c = cards[k] || { off: "—" };
+      return `<button class="acct-tab ${k === SM.acct ? "on" : ""}" data-acct="${k}" style="--c:${ACC[k][1]}"><span class="nm">${ACC[k][0]}</span><span class="ret ${c.off ? "muted" : cls(c.r)}">${c.off ? c.off : pct(c.r, 2)}</span></button>`; }).join("");
+    { const c = cards[SM.acct] || { off: "—" }, [nm, col, how, more] = ACC[SM.acct];
+      const chatSrc = SM.acct === "scalp10" && Q ? Q.chat : null;
+      $("#sm-hero").innerHTML = `<div class="hero-top" style="--c:${col}"><div><span class="nm">${nm}</span><span class="how">${how}</span></div>
+        <span class="ret ${c.off ? "" : cls(c.r)}">${c.off ? c.off : pct(c.r, 2)}</span></div>
+        <div class="hero-sub">${c.off ? "" : `<b>${usd(c.eq, 0)}</b> · 가상 $10,000 · ${md(c.start)}부터`}${c.extra ? ` · ${c.extra}` : ""}</div>
+        ${more ? `<button class="link-btn hero-more" data-open="${more}">대화방·규칙 자세히 ↓</button>` : ""}
+        ${chatSrc && chatSrc.length ? `<ul class="hero-chat">${chatSrc.slice(-6).reverse().map((m) => `<li><span class="muted small">${new Date(m.at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}</span> ${esc(m.text)}</li>`).join("")}</ul>` : ""}`;
+      document.querySelectorAll("#tab-desk .dk-more").forEach((d) => { d.hidden = d.id !== more; });
+    }
     // 2) 지금 들고 있는 것
-    const rows = [];
+    let rows = [];
     if (A) for (const p of A.pos) rows.push({ k: "ai", sym: p.sym, side: 1, since: p.since, entry: p.avg, now: p.px, pl: p.pl, stop: p.stop, target: p.target, why: p.why });
     if (D && D.pos) for (const [sym, p] of Object.entries(D.pos)) rows.push({ k: "day", sym, side: 1, since: D.today && D.today.day, entry: p.entry, now: null, pl: null, stop: p.stop, target: p.target, why: (p.sig || []).join(" · ") });
     if (C) for (const p of C.pos) rows.push({ k: "coin", sym: p.sym, nm: p.name, side: p.side, since: p.since, entry: p.entry, now: p.now, pl: p.pl, stop: null, target: null, why: "50일선 " + (p.side < 0 ? "아래 → 숏" : "위 → 롱") + " (종가 기준, 50일선 반대로 넘으면 정리)" });
     if (L && L.pos) { const p = L.pos; rows.push({ k: "lev", sym: "BTC-USD", nm: "비트코인", side: p.side, since: p.since, entry: p.entry, now: L.now, pl: p.pl, stop: p.stop, stopLbl: `추적 손절 · 청산 ${px$(p.liq)}`, target: null, why: `계좌의 ${(p.expo || 0).toFixed(2)}배 노출 (증거금 × ${L.lev}배, 변동성 맞춤) · 수익률은 계좌 대비` }); }
-    for (const [k, QQ] of [["scalp", Q], ["scalp5", Q5]]) if (QQ && QQ.pos) for (const [sym, p] of Object.entries(QQ.pos)) { const now = (QQ.px || {})[sym]; rows.push({ k, sym, nm: sym.startsWith("BTC") ? "비트코인" : "이더리움", side: p.side, since: (p.at || "").slice(0, 16).replace("T", " "), entry: p.entry, now, pl: now ? p.side * (now / p.entry - 1) * (p.w > 1 ? p.w : 1) : null, stop: p.stop, target: null, why: `5분봉이 평균에서 ${p.z}σ 벗어남 → 평균 회귀 (최대 1시간)${p.w > 1 ? ` · 계좌의 ${p.w}배 노출, 수익률은 계좌 대비` : ""}` }); }
-    const order = Object.keys(ACC);
-    rows.sort((a, b) => order.indexOf(a.k) - order.indexOf(b.k) || (b.pl ?? -9) - (a.pl ?? -9));
+    for (const [k, QQ] of [["scalp10", Q]]) if (QQ && QQ.pos) for (const [sym, p] of Object.entries(QQ.pos)) { const now = (QQ.px || {})[sym]; rows.push({ k, sym, nm: sym.startsWith("BTC") ? "비트코인" : "이더리움", side: p.side, since: (p.at || "").slice(0, 16).replace("T", " "), entry: p.entry, now, pl: now ? p.side * (now / p.entry - 1) * (p.w > 1 ? p.w : 1) : null, stop: p.stop, target: null, why: `5분봉이 평균에서 ${p.z}σ 벗어남 → 평균 회귀 (최대 1시간)${p.w > 1 ? ` · 계좌의 ${p.w}배 노출, 수익률은 계좌 대비` : ""}` }); }
+    SM.rows = rows;
+    const allRows = rows;
+    rows = allRows.filter((r) => r.k === SM.acct);
+    rows.sort((a, b) => (b.pl ?? -9) - (a.pl ?? -9));
     $("#sm-pos-sub").textContent = rows.length ? `${rows.length}개 · 수익률은 산 가격 대비 (수수료 전)` : "";
-    $("#sm-pos").innerHTML = rows.map((r) => `<tr class="open"><td>${tag(r.k)}</td>
+    $("#sm-pos").innerHTML = rows.map((r) => `<tr class="open">
       <td><button class="tt-sym" data-sym="${esc(r.sym)}"><b>${esc(r.nm || r.sym)}${sideTxt(r.side)}</b><span class="muted">${esc(r.nm ? r.sym : nameOf(r.sym))} · ${md(r.since)} 매수</span></button></td>
       <td class="num">${px$(r.entry)} → <b>${px$(r.now)}</b></td>
       <td class="num pl ${cls(r.pl)}">${pct(r.pl, 1)}</td>
       <td class="num hide-sm">${r.stop ? px$(r.stop) : "—"}<span class="s">${r.stopLbl ? r.stopLbl : r.target ? "목표 " + px$(r.target) : ""}</span></td>
       <td class="hide-sm"><span class="why" title="${esc(r.why || "")}">${esc(r.why || "")}</span></td></tr>`).join("")
-      || `<tr class="empty-row"><td colspan="6">지금 들고 있는 것 없음</td></tr>`;
-    $("#sm-orders").innerHTML = A && A.orders.length ? `<div class="sm-orders">대기 주문: ${A.orders.map((o) => `<b>${esc(o.desc)}</b>`).join(" · ")}</div>` : "";
+      || `<tr class="empty-row"><td colspan="5">지금 들고 있는 것 없음</td></tr>`;
+    $("#sm-orders").innerHTML = SM.acct === "ai" && A && A.orders.length ? `<div class="sm-orders">대기 주문: ${A.orders.map((o) => `<b>${esc(o.desc)}</b>`).join(" · ")}</div>` : "";
     // 3) 사고 판 기록 (끝난 것 + 들고 있는 것의 매수)
     const log = [];
     if (A) for (const t of A.trades) log.push({ k: "ai", d: t.out, sym: t.sym, side: 1, a: t.avg, b: t.px, din: t.in, pl: t.pl, why: `팜: ${t.why} · 산 이유: ${t.entry_why || ""}` });
     if (D) for (const t of D.trades || []) log.push({ k: "day", d: t.day, sym: t.sym, side: 1, a: t.entry, b: t.exit, din: t.day, pl: t.pl, why: t.why });
     if (C) for (const t of C.trades || []) log.push({ k: "coin", d: t.out, sym: t.sym, nm: t.sym.startsWith("BTC") ? "비트코인" : "이더리움", side: t.side, a: t.entry, b: t.exit, din: t.in, pl: t.pl, why: "50일선 반대로 넘어가서 정리" });
-    if (L) for (const t of L.trades || []) log.push({ k: "lev", d: t.out, sym: "BTC-USD", nm: "비트코인", side: t.side, a: t.entry, b: t.exit, din: t.in, pl: t.pl, why: t.liq ? "💥 강제 청산 (증거금 전부 손실)" : "50일선 반대로 넘어가서 정리" });
-    for (const [k, QQ] of [["scalp", Q], ["scalp5", Q5]]) if (QQ) for (const t of (QQ.trades || []).slice(-300)) log.push({ k, d: t.out, sym: t.sym, nm: t.sym.startsWith("BTC") ? "비트코인" : "이더리움", side: t.side, a: t.entry, b: t.exit, din: t.in, pl: k === "scalp5" && t.acct != null ? t.acct : t.pl, why: t.why + (k === "scalp5" ? " · 수익률은 계좌 대비" : "") });
-    for (const r of rows) log.push({ k: r.k, d: r.since, sym: r.sym, nm: r.nm, side: r.side, a: r.entry, b: null, din: r.since, pl: r.pl, open: true, why: r.why });
+    if (L) for (const t of L.trades || []) log.push({ k: "lev", d: t.out, sym: "BTC-USD", nm: "비트코인", side: t.side, a: t.entry, b: t.exit, din: t.in, pl: t.pl, why: t.liq ? "💥 강제 청산 (증거금 전부 손실)" : t.why || "50일선 반대로 넘어가서 정리" });
+    for (const [k, QQ] of [["scalp10", Q]]) if (QQ) for (const t of (QQ.trades || []).slice(-300)) log.push({ k, d: t.out, sym: t.sym, nm: t.sym.startsWith("BTC") ? "비트코인" : "이더리움", side: t.side, a: t.entry, b: t.exit, din: t.in, pl: t.acct != null ? t.acct : t.pl, why: t.why + " · 수익률은 계좌 대비" });
+    for (const r of allRows) log.push({ k: r.k, d: r.since, sym: r.sym, nm: r.nm, side: r.side, a: r.entry, b: null, din: r.since, pl: r.pl, open: true, why: r.why });
     log.sort((x, y) => (y.d || "").localeCompare(x.d || "") || (y.open ? 1 : 0) - (x.open ? 1 : 0));
     SM.log = log; renderLog();
     const tm = (x) => x ? new Date(x).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }) : "";
     $("#sm-made").textContent = `주식 ${A && A.eq.length ? md(A.eq[A.eq.length - 1][0]) + " 마감" : "—"} · 코인 ${C ? tm(C.made) : "—"} 기준`;
   }
   function renderLog() {
-    const L = SM.log.filter((r) => SM.f === "all" || ACC[r.k][4] === SM.f).slice(0, 60);
-    $("#sm-log").innerHTML = L.map((r) => `<tr class="${r.open ? "open" : ""}"><td class="small hide-sm">${md(r.d)}</td><td>${tag(r.k)}</td>
+    const all = SM.log.filter((r) => r.k === SM.acct), L = all.slice(0, 60);
+    const done = all.filter((r) => !r.open);
+    $("#sm-log-sub").textContent = done.length ? `끝난 매매 ${done.length}번 · 이긴 것 ${done.filter((r) => r.pl > 0).length}번` : "끝난 매매 아직 없음";
+    $("#sm-log").innerHTML = L.map((r) => `<tr class="${r.open ? "open" : ""}"><td class="small hide-sm">${md(r.d)}</td>
       <td><button class="tt-sym" data-sym="${esc(r.sym)}"><b>${esc(r.nm || r.sym)}${sideTxt(r.side)}</b><span class="muted">${esc(r.nm ? r.sym : nameOf(r.sym))}</span></button></td>
       <td class="num">${r.open ? `${px$(r.a)} → <span class="muted">보유 중</span>` : `${px$(r.a)} → ${px$(r.b)}`}<span class="s">${r.open ? md(r.din) + " 매수" : md(r.din) + " 매수 · " + md(r.d) + " 매도"}</span></td>
       <td class="num pl ${cls(r.pl)}">${pct(r.pl, 1)}${r.open ? `<span class="s">평가</span>` : ""}</td>
       <td class="hide-sm"><span class="why" title="${esc(r.why || "")}">${esc(r.why || "")}</span></td></tr>`).join("")
-      || `<tr class="empty-row"><td colspan="6">기록 없음</td></tr>`;
+      || `<tr class="empty-row"><td colspan="5">기록 없음</td></tr>`;
   }
 
   async function onShow() {
@@ -114,8 +118,8 @@ const DeskUI = (() => {
       $("#tab-desk").addEventListener("click", (e) => {
         const o = e.target.closest("[data-open]");
         if (o) { if (o.dataset.open) { const d = $("#" + o.dataset.open); d.open = true; d.scrollIntoView({ behavior: "smooth", block: "start" }); } else App.go && App.go("portfolio"); return; }
-        const f = e.target.closest("#sm-filter [data-f]");
-        if (f) { SM.f = f.dataset.f; document.querySelectorAll("#sm-filter button").forEach((b) => b.classList.toggle("on", b === f)); renderLog(); return; }
+        const ac = e.target.closest("[data-acct]");
+        if (ac) { SM.acct = ac.dataset.acct; try { localStorage.setItem("tradingdesk.acct", SM.acct); } catch (_) {} renderSummary(); return; }
         const b = e.target.closest("[data-sym]"); if (b) App.openChart(b.dataset.sym);
       });
     }

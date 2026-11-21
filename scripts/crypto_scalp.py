@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def main():
     proxy = json.loads((ROOT / "data/config.json").read_text())["proxy"].rstrip("/")
-    for route, out in (("scalp", "crypto_scalp.json"), ("scalp5", "crypto_scalp5.json")):   # 1배 · 5배 레버리지
+    for route, out in (("scalp10", "crypto_scalp10.json"),):   # 10배 레버리지 (11/21 사용자 요청, 1배·5배는 지움)
         req = urllib.request.Request(f"{proxy}/{route}", headers={"Origin": "https://kelvenkim.github.io", "User-Agent": "trading-desk"})
         try:
             S = json.loads(urllib.request.urlopen(req, timeout=20).read() or b"{}")

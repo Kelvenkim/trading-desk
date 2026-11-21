@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="assets/style.css?v=7220e097" />
+  <link rel="stylesheet" href="assets/style.css?v=f5cef5e0" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -236,20 +236,19 @@
     <!-- ================= AI 트레이딩 데스크 ================= -->
     <section id="tab-desk" class="panel">
       <div class="rk-head"><h2>AI 트레이딩 <span class="muted small" id="sm-made"></span></h2></div>
-      <p class="muted small dk-intro">AI가 가상 돈으로 혼자 사고팔아요. 위에서 계좌별 성적 → 지금 들고 있는 것 → 사고 판 기록 순서로 보면 돼요. 자세한 대화·점수는 맨 아래 펼치기.</p>
-      <div class="sm-accts" id="sm-accts"></div>
-      <div class="box rp-box"><div class="box-head"><h2>매일 보고서 PDF <span class="muted small">화~토 아침 · 누르면 열리고, 다운로드·인쇄 가능</span></h2></div><div class="rp-list" id="rp-list"><p class="muted">불러오는 중…</p></div></div>
+      <p class="muted small dk-intro">AI가 가상 돈으로 혼자 사고팔아요. 위에서 계좌를 고르면 그 계좌의 성적 → 들고 있는 것 → 사고 판 기록이 나와요.</p>
+      <nav class="acct-tabs" id="sm-accts"></nav>
+      <div class="acct-hero" id="sm-hero"></div>
 
       <div class="box">
         <div class="tt-head"><h3>지금 들고 있는 것</h3><span class="muted small" id="sm-pos-sub"></span></div>
-        <div class="tbl-wrap"><table class="tt-tbl sm-tbl"><thead><tr><th>계좌</th><th>종목</th><th class="num">산 가격 → 지금</th><th class="num">수익률</th><th class="num hide-sm">손절 / 목표</th><th class="hide-sm">산 이유</th></tr></thead><tbody id="sm-pos"></tbody></table></div>
+        <div class="tbl-wrap"><table class="tt-tbl sm-tbl"><thead><tr><th>종목</th><th class="num">산 가격 → 지금</th><th class="num">수익률</th><th class="num hide-sm">손절 / 목표</th><th class="hide-sm">산 이유</th></tr></thead><tbody id="sm-pos"></tbody></table></div>
         <div id="sm-orders"></div>
       </div>
 
       <div class="box">
-        <div class="tt-head"><h3>사고 판 기록</h3>
-          <div class="seg small" id="sm-filter"><button class="on" data-f="all">전체</button><button data-f="stock">주식</button><button data-f="coin">코인</button></div></div>
-        <div class="tbl-wrap"><table class="tt-tbl sm-tbl"><thead><tr><th class="hide-sm">날짜</th><th>계좌</th><th>종목</th><th class="num">매수 → 매도</th><th class="num">결과</th><th class="hide-sm">이유</th></tr></thead><tbody id="sm-log"></tbody></table></div>
+        <div class="tt-head"><h3>사고 판 기록</h3><span class="muted small" id="sm-log-sub"></span></div>
+        <div class="tbl-wrap"><table class="tt-tbl sm-tbl"><thead><tr><th class="hide-sm">날짜</th><th>종목</th><th class="num">매수 → 매도</th><th class="num">결과</th><th class="hide-sm">이유</th></tr></thead><tbody id="sm-log"></tbody></table></div>
       </div>
 
       <h3 class="sm-more-h">자세히 보기</h3>
@@ -286,7 +285,7 @@
         </div>
       </div>
       </details>
-      <details class="dk-more" id="more-coin"><summary><b>코인 · 5배 실험</b> <span class="muted small">대화방 · 50일선 상태 · 규칙 비교</span></summary>
+      <details class="dk-more" id="more-coin"><summary><b>코인 · 10배 실험</b> <span class="muted small">대화방 · 50일선 상태 · 규칙 비교</span></summary>
       <div class="box dd-box">
         <div class="tt-head"><h3>코인 계좌 <span class="muted small">가상 $10,000 · 비트코인·이더리움 · 주말에도 24시간</span></h3><span class="muted small" id="cx-sub"></span></div>
         <div class="dk-stats" id="cx-stats"></div>
@@ -296,11 +295,12 @@
             <div><h3 class="dk-h">코인 상태 <span class="muted small">지금 규칙대로 롱·숏·현금</span></h3><div class="tbl-wrap"><table class="tt-tbl"><thead><tr><th>코인</th><th class="num">지금</th><th class="num">50일선 / 200일선</th><th>상태</th></tr></thead><tbody id="cx-watch"></tbody></table></div></div>
             <div><h3 class="dk-h">규칙 비교 <span class="muted small">같은 기간 그림자 계좌 · 일요일 점검, 이기는 규칙(숏 포함)으로 자동 교체</span></h3><div class="tbl-wrap"><table class="tt-tbl"><thead><tr><th>규칙</th><th class="num">수익</th><th class="num">낙폭</th></tr></thead><tbody id="cx-shadow"></tbody></table></div></div>
             <div><h3 class="dk-h">끝난 매매</h3><div class="tbl-wrap"><table class="tt-tbl"><thead><tr><th>코인·기간</th><th class="num">손익</th></tr></thead><tbody id="cx-trades"></tbody></table></div></div>
-            <div><h3 class="dk-h">🧪 5배 레버리지 실험 <span class="muted small">비트코인 · 50일선 위 롱·아래 숏 · 변동성 맞춤 크기(최대 2.5배) · 추적 손절 8%</span></h3><div id="cx-lev"></div></div>
+            <div><h3 class="dk-h">🧪 10배 레버리지 실험 <span class="muted small">비트코인 · 50일선 위 롱·아래 숏 · 변동성 맞춤 크기(최대 5배) · 추적 손절 8% · 청산선 ±9.5%</span></h3><div id="cx-lev"></div></div>
           </div>
         </div>
       </div>
       </details>
+      <div class="box rp-box"><div class="box-head"><h2>매일 보고서 PDF <span class="muted small">화~토 아침 · 누르면 열리고, 다운로드·인쇄 가능</span></h2></div><div class="rp-list" id="rp-list"><p class="muted">불러오는 중…</p></div></div>
     </section>
 
     <!-- ================= 뉴스 ================= -->
@@ -711,7 +711,7 @@
   <script src="assets/home.js?v=b6ddf735"></script>
   <script src="assets/company.js?v=75dbfcb5"></script>
   <script src="assets/invest.js?v=d55ba1ff"></script>
-  <script src="assets/desk.js?v=c0f9b2c5"></script>
+  <script src="assets/desk.js?v=cda36978"></script>
   <script src="assets/app.js?v=5349e7ca"></script>
 </body>
 </html>

@@ -1125,3 +1125,21 @@ body { padding-bottom: 26px; }
 
 /* 다른 펼치기(▸) 제목도 같은 표시 */
 .dk-more > summary, .ev-box > summary, .lt-step > summary, .lt-frame > summary { cursor: pointer; }
+
+/* AI 데스크: 계좌 탭 (토스증권처럼) */
+.acct-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 12px 0 14px; padding-bottom: 2px; }
+.acct-tab { flex: 1 0 auto; min-width: 128px; display: grid; gap: 2px; text-align: left; background: var(--panel); border: 1px solid var(--line-soft); border-radius: 16px; padding: 12px 14px; color: var(--muted); position: relative; }
+.acct-tab .nm { font-weight: 700; font-size: 13.5px; }
+.acct-tab .ret { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.acct-tab:hover { background: var(--hover); }
+.acct-tab.on { border-color: var(--c); background: var(--raised); color: var(--text); box-shadow: inset 0 -3px 0 var(--c); }
+.acct-hero { background: var(--panel); border: 1px solid var(--line-soft); border-radius: 20px; padding: 20px 22px; margin-bottom: 14px; }
+.hero-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.hero-top .nm { display: block; font-size: 20px; font-weight: 800; color: var(--text); }
+.hero-top .how { color: var(--muted); font-size: 13px; }
+.hero-top .ret { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.hero-sub { color: var(--muted); margin-top: 6px; font-size: 13.5px; } .hero-sub b { color: var(--text); }
+.hero-more { margin-top: 10px; }
+.hero-chat { list-style: none; margin: 12px 0 0; padding: 10px 14px; background: #08090b; border-radius: 12px; border-left: 3px solid var(--accent); font-size: 12.5px; }
+.hero-chat li { margin: 4px 0; }
+@media (max-width: 640px) { .acct-tab { min-width: 112px; padding: 10px 12px; } .acct-tab .ret { font-size: 15px; } .hero-top .ret { font-size: 28px; } .acct-hero { padding: 16px; } }

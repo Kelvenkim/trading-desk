@@ -16,10 +16,10 @@
  *          Settings → Trigger events → Cron Triggers 추가 — 5분마다 매일 (식: 별표/5 * * * *)
  *          (주식은 코드가 미국장 시간인지 스스로 확인해요. 코인은 주말에도 돌아요)
  *
- * 4) 코인 5분봉 단기 실험:  GET /scalp (상태 보기) — 같은 Cron에서 5분마다, 주말 포함
+ * 4) 코인 5분봉 단기 실험(10배):  GET /scalp10 (상태 보기) — 같은 Cron에서 5분마다, 주말 포함
  *    BTC·ETH 5분봉 볼린저 밴드(20봉, 2.5표준편차) 바깥 → 평균 회귀. 손절 ATR×3, 평균 닿으면 정리, 최대 1시간.
  *    ⚠ 과거 60일 시험(research/crypto5m)에서 수수료 0.05% 기준으로는 비용을 이기는 우위가 없었어요. 기록용 실험이에요.
- *    GET /scalp5 — 같은 신호를 5배 레버리지로 (사용자 요청 11/21)
+ *    11/21 사용자 요청으로 10배만 운영 (코인마다 계좌의 5배어치, 손절 ATR×3, 하루 −10%면 멈춤)
  */
 const ALLOWED_HOSTS = [
   "fchart.stock.naver.com",
@@ -100,7 +100,7 @@ export default {
     }
 
     // ---------------- 코인 5분봉 실험 상태 ----------------
-    if (reqUrl.pathname === "/scalp" || reqUrl.pathname === "/scalp5") {
+    if (["/scalp", "/scalp5", "/scalp10"].includes(reqUrl.pathname)) {
       if (!env.DAY) return json({ error: "KV 'DAY' 바인딩이 없어요" }, 501);
       const st = await env.DAY.get(reqUrl.pathname.slice(1));
       return new Response(st || "{}", { headers: { ...cors, "content-type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
@@ -308,9 +308,9 @@ async function runDay(env) {
 //  한쪽 0.02%(지정가)일 때만 이 방식(볼린저 20·2.5·손절 ATR×3·최대 12봉)이 BTC +0.005%·ETH +0.019%로 겨우 플러스.
 //  → '돈을 벌 거라 믿는 전략'이 아니라 '5분봉 단타가 비용을 이길 수 있는지' 실제로 기록해 보는 실험이에요.
 const SC = { syms: ["BTC-USD", "ETH-USD"], n: 20, k: 2.5, atrN: 14, stopAtr: 3, maxBars: 12, risk: 0.005, capW: 0.5, fee: 0.0005, dayHalt: -0.02 };
-// 레버리지 실험(11/21 사용자 요청): 같은 신호, 코인마다 계좌의 2.5배어치(둘 다 잡으면 5배). 손절·수수료 같음.
-// 과거 60일: 수수료 없으면 +152%, 왕복 0.10%면 −61%(낙폭 −68%) — 레버리지는 수수료 손실도 같이 키워요.
-const SC5 = { ...SC, key: "scalp5", lev: 5, notionalW: 2.5, dayHalt: -0.10 };
+// 레버리지(11/21 사용자 요청 → 10배로, 1배 단타는 지움): 같은 신호, 코인마다 계좌의 5배어치(둘 다 잡으면 10배). 손절·수수료 같음.
+// 과거 60일: 수수료 없으면 +478%, 왕복 0.10%면 −86%(낙폭 −90%) — 레버리지는 수수료 손실도 같이 키워요.
+const SC10 = { ...SC, key: "scalp10", lev: 10, notionalW: 5, dayHalt: -0.10 };
 SC.key = "scalp";
 
 async function cbars(sym) {
@@ -408,6 +408,5 @@ async function runScalp(env, C = SC, pre = null) {
 }
 
 async function runScalpAll(env) {
-  const r = await runScalp(env, SC);
-  return runScalp(env, SC5, r && r.B);
+  return runScalp(env, SC10);
 }

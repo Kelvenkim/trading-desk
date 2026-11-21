@@ -1,5 +1,7 @@
 """
-코인 5배 레버리지 실험 계좌 — 가상 $10,000, 비트코인만 (11/15 사용자 요청: 10배→5배, 50일선 아래 숏)
+코인 10배 레버리지 실험 계좌 — 가상 $10,000, 비트코인만
+  (11/15 사용자 요청 10배→5배 · 11/21 사용자 요청 다시 10배: 증거금 10배 + 노출 목표 2배(최대 5배, 연 120% ÷ 변동성))
+  10배 격리 증거금 → 강제 청산선 진입가 ±9.5%. 추적 손절 8%가 그보다 먼저 걸리도록 유지
   방향: 일봉 종가가 50일선 위면 롱, 아래면 숏 (하루 한 번, 일봉 마감 뒤)
   위험 줄이기 (11/16 추가, 2018~ 시험으로 고름):
     ① 크기 = 변동성 맞춤: 계좌 대비 노출 = min(2.5배, 연 60% ÷ 최근 20일 변동성). 출렁이는 때일수록 작게.
@@ -21,8 +23,8 @@ import crypto_paper as cp
 
 D = cp.D
 SF, OF = D / "crypto_lev_state.json", D / "crypto_lev.json"
-SYM, LEV, MAXE, COST, FUND, MM = "BTC-USD", 5, 2.5, 0.0015, 0.0003, 0.005
-VT, TRAIL, REBAL = 0.60, 0.08, 0.25
+SYM, LEV, MAXE, COST, FUND, MM = "BTC-USD", 10, 5.0, 0.0015, 0.0003, 0.005
+VT, TRAIL, REBAL = 1.20, 0.08, 0.25
 CASH0 = 10000.0
 
 
@@ -62,7 +64,7 @@ def open_(S, side, px, eqv, E, today, t):
     S["cash"] -= m
     fee = m * LEV * COST
     S["pos"] = {"side": side, "since": today, "at": t.isoformat(), "entry": px, "entry0": px, "margin": m - fee, "basis": m,
-                "margin0": m, "liq": liq_px(px, side), "ext": px, "E": E, "eq_in": eqv}
+                "margin0": m, "liq": liq_px(px, side), "ext": px, "E": E, "eq_in": eqv, "lev": LEV}
     S["fund_day"] = today
     return S["pos"]
 
@@ -75,8 +77,17 @@ def run():
     S = json.loads(SF.read_text()) if SF.exists() else {}
     if not S:
         S = {"start": today, "cash": CASH0, "pos": None, "trades": [], "eq": [], "last_bar": None, "liq": 0, "last_chk": t.isoformat(), "p0": px}
-        cp.say(S, "claude", "── 5배 레버리지 실험 계좌 개설 · 가상 $10,000 · 비트코인만 ──")
+        cp.say(S, "claude", f"── {LEV}배 레버리지 실험 계좌 개설 · 가상 $10,000 · 비트코인만 ──")
     p = S["pos"]
+    # 배수 바꾸기 (11/21 5배 → 10배): 옛 배수로 지금 가격에 정리하고, 바로 새 배수로 다시 판단
+    if p and p.get("lev", 5) != LEV:
+        old = p.get("lev", 5)
+        val = max(0.0, p["margin"] * (1 + p["side"] * old * (px / p["entry"] - 1)) - p["margin"] * old * px / p["entry"] * COST)
+        S["cash"] += val; pl_usd = val - p["basis"]
+        S["trades"].append({"side": p["side"], "in": p["since"], "out": today, "entry": p.get("entry0", p["entry"]), "exit": px, "pl": pl_usd / p.get("eq_in", CASH0),
+                            "usd": round(pl_usd, 2), "liq": False, "why": f"{old}배 → {LEV}배 전환으로 정리 (사용자 요청)"})
+        cp.say(S, "claude", f"사용자 요청으로 {old}배 → {LEV}배 전환. 지금 {('롱' if p['side'] > 0 else '숏')}을 ${px:,.0f}에 정리({pl_usd:+,.0f}$)하고, 같은 규칙(50일선·변동성 맞춤·추적 손절 8%)으로 {LEV}배 다시 판단해요. 강제 청산선이 ±19.5% → ±9.5%로 가까워져요.")
+        S["pos"] = p = None; S["last_bar"] = None; S.pop("block", None)
     nm = lambda x: "롱" if x > 0 else "숏"
     if p:  # 옛 형식 → 새 형식
         p.setdefault("side", 1); p.setdefault("entry0", p["entry"]); p.setdefault("basis", p.get("margin0", p["margin"])); p.setdefault("ext", p["entry"]); p.setdefault("eq_in", CASH0)
