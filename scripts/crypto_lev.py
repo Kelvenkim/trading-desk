@@ -24,7 +24,8 @@ import crypto_paper as cp
 D = cp.D
 SF, OF = D / "crypto_lev_state.json", D / "crypto_lev.json"
 SYM, LEV, MAXE, COST, FUND, MM = "BTC-USD", 10, 5.0, 0.0015, 0.0003, 0.005
-VT, TRAIL, REBAL = 1.20, 0.08, 0.25
+VT, TRAIL, REBAL = 1.20, 0.07, 0.25   # 11/21: 10배라 청산선(±9.5%)과 거리 두려고 추적 손절 8%→7%
+DD_CUT = -0.15                          # 손실 최소화: 계좌가 최고점보다 15%↓면 노출 절반
 CASH0 = 10000.0
 
 
@@ -129,6 +130,9 @@ def run():
         if S.get("block") and want != S["block"]:
             S.pop("block")
         v = vol20(c); E = round(min(MAXE, VT / v), 2)
+        pk = max([CASH0] + [x for _, x in S["eq"]]); eq_now_ = S["cash"] + (pval(p, px) if p else 0)
+        if eq_now_ / pk - 1 <= DD_CUT:
+            E = round(E / 2, 2); cp.say(S, "risk", f"손실 최소화: 계좌가 최고점 대비 {eq_now_ / pk - 1:+.1%} → 노출 절반({E:.2f}배)")
         cur = p["side"] if p else 0
         cp.say(S, "scout", f"비트코인 {d[-1]} 마감 ${c[-1]:,.0f} · 50일선 ${m50:,.0f} ({(c[-1] / m50 - 1) * 100:+.1f}%) · 20일 변동성 연 {v:.0%} → 목표 노출 {E:.2f}배")
         if p and want != cur:

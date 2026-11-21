@@ -20,7 +20,7 @@ const DeskUI = (() => {
   const ACC = {                                        // 이름, 색, 설명, 펼칠 상세, 종류 — 탭 순서도 이 순서 (11/21 사용자 지정)
     ai: ["AI 데스크", "#2fa36b", "주식 · 며칠~몇 주 보유", "more-ai", "stock"],
     coin: ["코인", "#9b6bd8", "BTC·ETH · 50일선 위 롱·아래 숏", "more-coin", "coin"],
-    lev: ["코인 10배", "#d86bb4", "BTC 10배 레버리지 · 50일선 · 추적 손절 8%", "more-coin", "coin"],
+    lev: ["코인 10배", "#d86bb4", "BTC 10배 레버리지 · 50일선 · 추적 손절 7%", "more-coin", "coin"],
     day: ["데이트레이딩", "#e5484d", "주식 · 그날 사서 그날 팔기", "more-day", "stock"],
     scalp10: ["코인 10배 단타", "#e07040", "BTC·ETH 5분봉 평균 회귀 · 10배", "", "coin"],
   };
