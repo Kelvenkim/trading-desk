@@ -19,6 +19,7 @@
  * 4) 코인 5분봉 단기 실험:  GET /scalp (상태 보기) — 같은 Cron에서 5분마다, 주말 포함
  *    BTC·ETH 5분봉 볼린저 밴드(20봉, 2.5표준편차) 바깥 → 평균 회귀. 손절 ATR×3, 평균 닿으면 정리, 최대 1시간.
  *    ⚠ 과거 60일 시험(research/crypto5m)에서 수수료 0.05% 기준으로는 비용을 이기는 우위가 없었어요. 기록용 실험이에요.
+ *    GET /scalp5 — 같은 신호를 5배 레버리지로 (사용자 요청 11/21)
  */
 const ALLOWED_HOSTS = [
   "fchart.stock.naver.com",
@@ -99,9 +100,9 @@ export default {
     }
 
     // ---------------- 코인 5분봉 실험 상태 ----------------
-    if (reqUrl.pathname === "/scalp") {
+    if (reqUrl.pathname === "/scalp" || reqUrl.pathname === "/scalp5") {
       if (!env.DAY) return json({ error: "KV 'DAY' 바인딩이 없어요" }, 501);
-      const st = await env.DAY.get("scalp");
+      const st = await env.DAY.get(reqUrl.pathname.slice(1));
       return new Response(st || "{}", { headers: { ...cors, "content-type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
     }
 
@@ -143,7 +144,7 @@ export default {
   // 예약 실행 (Cron Trigger): 데이트레이딩 계좌
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runDay(env).catch((e) => console.log("day error", e && e.message)));
-    ctx.waitUntil(runScalp(env).catch((e) => console.log("scalp error", e && e.message)));
+    ctx.waitUntil(runScalpAll(env).catch((e) => console.log("scalp error", e && e.message)));
   },
 };
 
@@ -307,6 +308,10 @@ async function runDay(env) {
 //  한쪽 0.02%(지정가)일 때만 이 방식(볼린저 20·2.5·손절 ATR×3·최대 12봉)이 BTC +0.005%·ETH +0.019%로 겨우 플러스.
 //  → '돈을 벌 거라 믿는 전략'이 아니라 '5분봉 단타가 비용을 이길 수 있는지' 실제로 기록해 보는 실험이에요.
 const SC = { syms: ["BTC-USD", "ETH-USD"], n: 20, k: 2.5, atrN: 14, stopAtr: 3, maxBars: 12, risk: 0.005, capW: 0.5, fee: 0.0005, dayHalt: -0.02 };
+// 레버리지 실험(11/21 사용자 요청): 같은 신호, 코인마다 계좌의 2.5배어치(둘 다 잡으면 5배). 손절·수수료 같음.
+// 과거 60일: 수수료 없으면 +152%, 왕복 0.10%면 −61%(낙폭 −68%) — 레버리지는 수수료 손실도 같이 키워요.
+const SC5 = { ...SC, key: "scalp5", lev: 5, notionalW: 2.5, dayHalt: -0.10 };
+SC.key = "scalp";
 
 async function cbars(sym) {
   const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=5m&range=2d`, { headers: UA });
@@ -344,20 +349,23 @@ function scClose(S, sym, px, why, t) {
   const p = S.pos[sym]; if (!p) return;
   const fee = p.qty * px * SC.fee, pnl = p.side * p.qty * (px - p.entry) - fee;
   S.cash += pnl;
-  const pl = p.side * (px / p.entry - 1) - 2 * SC.fee;
-  S.trades.push({ sym, side: p.side, in: p.at, out: new Date(t * 1000).toISOString(), entry: +p.entry.toFixed(2), exit: +px.toFixed(2), pl: +pl.toFixed(5), usd: +(pnl - p.fee_in).toFixed(2), why, bars: p.bars });
+  const pl = p.side * (px / p.entry - 1) - 2 * SC.fee;                     // 가격 기준(수수료 포함)
+  const acct = pl * (p.w || 1);                                               // 계좌 대비 (레버리지면 노출 배수만큼 커짐)
+  S.trades.push({ sym, side: p.side, in: p.at, out: new Date(t * 1000).toISOString(), entry: +p.entry.toFixed(2), exit: +px.toFixed(2), pl: +pl.toFixed(5), acct: +acct.toFixed(5), usd: +(pnl - p.fee_in).toFixed(2), why, bars: p.bars });
   if (S.trades.length > 3000) S.trades = S.trades.slice(-3000);
   delete S.pos[sym];
-  S.chat.push({ at: new Date().toISOString(), who: why.includes("손절") ? "risk" : "executor", text: `${sym.replace("-USD", "")} ${p.side > 0 ? "롱" : "숏"} 정리 ${px.toFixed(2)} (${pl >= 0 ? "+" : ""}${(pl * 100).toFixed(2)}%, 수수료 포함) — ${why}` });
+  S.chat.push({ at: new Date().toISOString(), who: why.includes("손절") ? "risk" : "executor", text: `${sym.replace("-USD", "")} ${p.side > 0 ? "롱" : "숏"} 정리 ${px.toFixed(2)} (${pl >= 0 ? "+" : ""}${(pl * 100).toFixed(2)}%${p.w > 1 ? `, 계좌 ${acct >= 0 ? "+" : ""}${(acct * 100).toFixed(2)}%` : ""}, 수수료 포함) — ${why}` });
 }
 
-async function runScalp(env) {
+async function runScalp(env, C = SC, pre = null) {
   if (!env.DAY) return { skip: "KV 'DAY' 바인딩 없음" };
-  let S = await env.DAY.get("scalp", "json");
+  let S = await env.DAY.get(C.key, "json");
   const now = new Date(), day = now.toISOString().slice(0, 10);
-  if (!S) S = { start: day, cash: 10000, pos: {}, trades: [], chat: [], eq: [], last: {}, day: {}, rule: "5분봉 볼린저(20봉·2.5σ) 바깥 → 평균 회귀, 손절 ATR×3, 최대 1시간, 롱·숏, 수수료 한쪽 0.05%" };
-  const px = {}, B = {};
-  for (const sym of SC.syms) { try { B[sym] = await cbars(sym); } catch (_) { B[sym] = null; } if (B[sym] && B[sym].length) px[sym] = B[sym][B[sym].length - 1].c; }
+  if (!S) S = { start: day, cash: 10000, pos: {}, trades: [], chat: [], eq: [], last: {}, day: {}, liq_n: 0, lev: C.lev || 1,
+    rule: "5분봉 볼린저(20봉·2.5σ) 바깥 → 평균 회귀, 손절 ATR×3, 최대 1시간, 롱·숏, 수수료 한쪽 0.05%" + (C.lev ? ` · ${C.lev}배 레버리지(코인마다 계좌의 ${C.notionalW}배)` : "") };
+  const px = {}, B = pre || {};
+  if (!pre) for (const sym of SC.syms) { try { B[sym] = await cbars(sym); } catch (_) { B[sym] = null; } }
+  for (const sym of SC.syms) if (B[sym] && B[sym].length) px[sym] = B[sym][B[sym].length - 1].c;
   if (S.day.d !== day) S.day = { d: day, e0: scEq(S, px) };
   for (const sym of SC.syms) {
     const b = B[sym]; if (!b || b.length < 60) continue;
@@ -379,13 +387,14 @@ async function runScalp(env) {
     S.last[sym] = I.t;
     if (S.pos[sym]) continue;
     const eq = scEq(S, px);
-    if (S.day.e0 && eq / S.day.e0 - 1 <= SC.dayHalt) { if (!S.day.halt) { S.day.halt = true; S.chat.push({ at: now.toISOString(), who: "risk", text: `오늘(UTC) 손실 ${((eq / S.day.e0 - 1) * 100).toFixed(1)}% — 하루 −2% 한도라 신규 진입 멈춰요.` }); } continue; }
+    if (eq <= 0) continue;
+    if (S.day.e0 && eq / S.day.e0 - 1 <= C.dayHalt) { if (!S.day.halt) { S.day.halt = true; S.chat.push({ at: now.toISOString(), who: "risk", text: `오늘(UTC) 손실 ${((eq / S.day.e0 - 1) * 100).toFixed(1)}% — 하루 ${(C.dayHalt * 100).toFixed(0)}% 한도라 신규 진입 멈춰요.` }); } continue; }
     const side = I.c < I.mean - SC.k * I.sd ? 1 : I.c > I.mean + SC.k * I.sd ? -1 : 0;
     if (!side || !I.atr) continue;
-    const stopD = SC.stopAtr * I.atr, qty = Math.min((eq * SC.risk) / stopD, (eq * SC.capW) / I.c);
+    const stopD = SC.stopAtr * I.atr, qty = C.notionalW ? (eq * C.notionalW) / I.c : Math.min((eq * SC.risk) / stopD, (eq * SC.capW) / I.c);
     const fee_in = qty * I.c * SC.fee;
     S.cash -= fee_in;
-    S.pos[sym] = { side, qty, entry: I.c, stop: I.c - side * stopD, at: new Date(I.t * 1000 + 300000).toISOString(), seen: I.t, bars: 0, fee_in, z: +((I.c - I.mean) / I.sd).toFixed(2) };
+    S.pos[sym] = { side, qty, entry: I.c, stop: I.c - side * stopD, at: new Date(I.t * 1000 + 300000).toISOString(), seen: I.t, bars: 0, fee_in, z: +((I.c - I.mean) / I.sd).toFixed(2), w: +(qty * I.c / eq).toFixed(3) };
     S.chat.push({ at: now.toISOString(), who: "executor", text: `${sym.replace("-USD", "")} ${side > 0 ? "롱" : "숏"} ${I.c.toFixed(2)} — 5분봉이 20봉 평균에서 ${((I.c - I.mean) / I.sd).toFixed(1)}σ 벗어남 · 손절 ${(I.c - side * stopD).toFixed(2)} · $${(qty * I.c).toFixed(0)}어치` });
   }
   const e = scEq(S, px);
@@ -394,6 +403,11 @@ async function runScalp(env) {
   if (S.eq.length > 4000) S.eq = S.eq.slice(-4000);
   if (S.chat.length > 600) S.chat = S.chat.slice(-600);
   S.eq_now = +e.toFixed(2); S.made = now.toISOString(); S.px = px;
-  await env.DAY.put("scalp", JSON.stringify(S));
-  return { ok: true, eq: S.eq_now };
+  await env.DAY.put(C.key, JSON.stringify(S));
+  return { ok: true, eq: S.eq_now, B };
+}
+
+async function runScalpAll(env) {
+  const r = await runScalp(env, SC);
+  return runScalp(env, SC5, r && r.B);
 }

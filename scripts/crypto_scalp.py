@@ -11,16 +11,17 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def main():
     proxy = json.loads((ROOT / "data/config.json").read_text())["proxy"].rstrip("/")
-    req = urllib.request.Request(proxy + "/scalp", headers={"Origin": "https://kelvenkim.github.io", "User-Agent": "trading-desk"})
-    try:
-        S = json.loads(urllib.request.urlopen(req, timeout=20).read() or b"{}")
-    except Exception as e:
-        print("5분 실험 상태 못 받음:", e); return
-    if not S.get("eq"):
-        print("5분 실험: 아직 기록 없음 (Worker 새 코드·매일 Cron 필요)"); return
-    S["n_trades"] = len(S.get("trades", []))
-    (ROOT / "data/us/crypto_scalp.json").write_text(json.dumps(S, ensure_ascii=False, separators=(",", ":")))
-    print("5분 실험 저장:", S.get("eq_now"), "거래", S["n_trades"])
+    for route, out in (("scalp", "crypto_scalp.json"), ("scalp5", "crypto_scalp5.json")):   # 1배 · 5배 레버리지
+        req = urllib.request.Request(f"{proxy}/{route}", headers={"Origin": "https://kelvenkim.github.io", "User-Agent": "trading-desk"})
+        try:
+            S = json.loads(urllib.request.urlopen(req, timeout=20).read() or b"{}")
+        except Exception as e:
+            print(route, "상태 못 받음:", e); continue
+        if not S.get("eq"):
+            print(route, "아직 기록 없음 (Worker 새 코드·매일 Cron 필요)"); continue
+        S["n_trades"] = len(S.get("trades", []))
+        (ROOT / "data/us" / out).write_text(json.dumps(S, ensure_ascii=False, separators=(",", ":")))
+        print(route, "저장:", S.get("eq_now"), "거래", S["n_trades"])
 
 
 if __name__ == "__main__":
