@@ -1217,3 +1217,9 @@ body { padding-bottom: 26px; }
 .rk-why > summary { list-style: none; cursor: pointer; display: grid; gap: 6px; } .rk-why > summary::-webkit-details-marker { display: none; }
 .rk-why[open] > summary .muted { display: none; } .rk-why .trust-txt { margin-top: 10px; }
 .trust-stage .k b { font-size: inherit; font-weight: 700; }
+
+/* 사이트 전체 용어 풀이 */
+.gl { border-bottom: 1px dashed rgba(124,131,255,.7); cursor: help; }
+.gl:hover, .gl:focus { color: var(--accent); outline: none; }
+#gl-tip { position: fixed; z-index: 9999; background: #08090b; color: var(--muted); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; font-size: 12.5px; line-height: 1.55; box-shadow: 0 8px 24px rgba(0,0,0,.45); pointer-events: auto; }
+#gl-tip b { display: block; color: var(--accent); font-size: 13px; margin-bottom: 2px; }
