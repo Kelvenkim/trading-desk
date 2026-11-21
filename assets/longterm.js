@@ -28,7 +28,12 @@ const LongUI = (() => {
         const c = e.target.closest("[data-co]"); if (c) { openCo(c.dataset.co); return; }
         const ind = e.target.closest("[data-ind]"); if (ind) { load(ind.dataset.ind); return; }
       });
-      $("#lt-dialog").addEventListener("click", (e) => { if (e.target.closest("[data-close]") || e.target.id === "lt-dialog") $("#lt-dialog").close(); const s = e.target.closest("[data-sym]"); if (s) { $("#lt-dialog").close(); App.openChart(s.dataset.sym); } });
+      $("#lt-dialog").addEventListener("click", (e) => {
+        const g = e.target.closest(".gl-t");
+        if (g) { const box = $("#lt-gl"), k = g.dataset.gl, on = !box.hidden && box.dataset.k === k;
+          document.querySelectorAll(".gl-t").forEach((x) => x.classList.toggle("on", !on && x === g));
+          box.hidden = on; box.dataset.k = k; box.innerHTML = `<b>${esc(k)}</b> ${esc((R.gloss || {})[k] || "")}`; return; }
+        if (e.target.closest("[data-close]") || e.target.id === "lt-dialog") $("#lt-dialog").close(); const s = e.target.closest("[data-sym]"); if (s) { $("#lt-dialog").close(); App.openChart(s.dataset.sym); } });
       $("#lt-dialog").addEventListener("input", (e) => { if (e.target.id === "lt-pg") evDraw(); });
     }
     try { I = await (await fetch("data/us/longterm/index.json?t=" + Date.now())).json(); } catch (_) { $("#lt-body").innerHTML = `<p class="muted">아직 리서치가 없어요.</p>`; return; }
@@ -77,19 +82,32 @@ const LongUI = (() => {
       <details class="lt-step"><summary><b>출처 ${R.sources.length}개</b></summary><ul class="lt-ul small">${R.sources.map((s) => `<li><a href="${esc(s)}" target="_blank" rel="noopener">${esc(s)}</a></li>`).join("")}</ul></details>`;
   }
 
+  function gl(txt) {                                // 어려운 말에 밑줄 → 누르면 풀이
+    const G = (R && R.gloss) || {}; let h = esc(txt);
+    const keys = Object.keys(G).sort((a, b) => b.length - a.length).filter((k) => txt.includes(k));
+    const used = [];
+    for (const k of keys) {
+      if (used.some((u) => u.includes(k))) continue;
+      const ek = esc(k), i = h.indexOf(ek);
+      if (i < 0 || h.slice(0, i).lastIndexOf("<") > h.slice(0, i).lastIndexOf(">")) continue;
+      h = h.slice(0, i) + `<button class="gl-t" data-gl="${ek}">${ek}</button>` + h.slice(i + ek.length); used.push(k);
+    }
+    return h;
+  }
   function openCo(t) {
     const c = R && R.companies.find((x) => x.t === t); if (!c) return;
     cur = c; const v = c.v, sc = c.sc, m = c.m || {};
     const row = (n, q, x) => `<tr><td><b>${n}</b><span class="s">${q}</span></td><td>${tag(x[1])} ${esc(x[0])}</td></tr>`;
     $("#lt-dlg-body").innerHTML = `
       <div class="lt-dhead"><div><h3>${esc(c.name)} <span class="muted">${esc(c.t)} · ${esc(c.exch)}</span></h3><span class="muted small">${esc(c.layer)} · ${esc(R.name)} 리서치 ${esc(R.asof)}</span></div>
-        <div class="lt-dbtn"><a class="lt-pdf" href="reports/longterm/${esc(R.key)}/${esc(c.t)}.pdf" target="_blank" rel="noopener">PDF로 깊게 보기</a><button class="lt-pdf" data-sym="${esc(c.t)}">차트</button><button class="icon-btn" data-close>✕</button></div></div>
+        <div class="lt-dbtn"><a class="lt-pdf" href="reports/longterm/${esc(R.key)}/${esc(c.t)}.pdf" target="_blank" rel="noopener">분석표 PDF</a><button class="lt-pdf" data-sym="${esc(c.t)}">차트</button><button class="icon-btn" data-close>✕</button></div></div>
       ${c.about ? `<div class="lt-about">
-        <div class="lt-ab"><span class="k">어떤 회사?</span><p>${esc(c.about.what)}</p></div>
-        <div class="lt-ab"><span class="k">뭘 만드나?</span><p>${esc(c.about.makes)}</p></div>
-        <div class="lt-ab"><span class="k">왜 필요한가?</span><p>${esc(c.about.why)}</p></div>
-        ${c.about.like ? `<p class="lt-like">한 줄로 — ${esc(c.about.like)}</p>` : ""}
-        <p class="muted small">더 깊게 보려면 위의 <b>PDF</b> — 기술·돈 버는 법·최근 이슈·궁금증 Q&A·우리 검증 공식까지 담았어요.</p></div>` : ""}
+        <div class="lt-ab"><span class="k">사업 정의</span><p>${gl(c.about.what)}</p></div>
+        <div class="lt-ab"><span class="k">제품·매출원</span><p>${gl(c.about.makes)}</p></div>
+        <div class="lt-ab"><span class="k">왜 필요한가</span><p>${gl(c.about.why)}</p></div>
+        ${c.about.edge ? `<p class="lt-like"><b>핵심 한 줄</b> — ${gl(c.about.edge)}</p>` : ""}
+        <div class="lt-gl" id="lt-gl" hidden></div>
+        <p class="muted small">밑줄 친 말을 누르면 뜻이 나와요. 투자 논지·쟁점·재무 추세·동종 비교·역산 밸류에이션·리스크까지는 위의 <b>분석표 PDF</b>에서.</p></div>` : ""}
       <div class="lt-kpi">${[["주가", has(m.px) ? m.px.toLocaleString() + " " + (m.cur || "") : "—"], ["시가총액", big(m.mcap, m.cur)], ["20일 거래대금", big(m.adv, m.cur)], ["매출 대비 몸값", has(m.ps) ? m.ps.toFixed(1) + "배" : "—"], ["200일선", has(m.ma200) ? m.ma200.toLocaleString() : "—"], ["52주 범위", has(m.lo52) ? `${m.lo52.toLocaleString()} ~ ${m.hi52.toLocaleString()}` : "—"]].map(([k, x]) => `<div class="hd-stat"><span class="k">${k}</span><b>${x}</b></div>`).join("")}</div>
       <p class="small"><b>주요 제품</b> ${esc(c.products)}<br><b>주요 고객</b> ${esc(c.customers)}<br><b>최근 성장</b> ${tag(c.growth[1])} ${esc(c.growth[0])}</p>
       <h4>5단계 · 회사 검증</h4>
@@ -110,7 +128,7 @@ const LongUI = (() => {
         <div class="lt-sc1"><h5>기본 · 약 ${sc.base.mult}배</h5><p><b>핵심 가정</b> ${esc(sc.base.assume)}</p><p><b>가장 강한 근거</b> ${esc(sc.base.evidence)}</p><p><b>주가가 부진할 수 있는 이유</b> ${esc(sc.base.why_weak)}</p></div>
         <div class="lt-sc1"><h5 class="down">최악 · 약 ${sc.worst.mult}배</h5><p><b>핵심 가정</b> ${esc(sc.worst.assume)}</p><p><b>위험</b> ${esc(sc.worst.risks)}</p><p><b>가장 강한 근거</b> ${esc(sc.worst.evidence)}</p><p><b>손실 경로</b> ${esc(sc.worst.loss)}</p></div>
       </div>
-      <p class="muted small">배수는 지금 주가 대비 2029년 무렵을 가정한 추정이에요(사실 아님). 근거가 바뀌면 같이 바뀌어요.</p>
+      <p class="muted small">배수는 리서치 시점 주가 대비 2029년 무렵을 가정한 추정이에요(사실 아님). 근거가 바뀌면 같이 바뀌어요.</p>
       <h4>장기 손익비 · 검증된 공식</h4>
       <div class="lt-ev"><label>잘 풀릴 확률 pG <input id="lt-pg" type="range" min="0" max="100" value="${c.ev.pg}"><b id="lt-pgv"></b></label><div id="lt-evout"></div></div>
       <ul class="hd-notes">${(m.formulas || []).map((f) => `<li class="${f.ok ? "pos" : "neg"}"><b>${esc(f.t)}</b> <span class="muted small">— ${esc(f.why)}</span></li>`).join("") || "<li>숫자 아직 없음</li>"}</ul>
@@ -135,6 +153,7 @@ const LongUI = (() => {
     document.querySelectorAll(".lt-pane").forEach((p) => (p.hidden = p.dataset.pane !== k));
   }
   async function openTicker(key, t) {               // 차트 화면에서 '장기 리서치' 바로가기
+    await onShow();                                  // 버튼(닫기·용어) 연결이 안 된 채 열리는 문제 방지
     pane("res");
     if (!R || R.key !== key) await load(key);
     openCo(t);

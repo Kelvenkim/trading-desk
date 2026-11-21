@@ -43,6 +43,8 @@ def metrics(t):
         "ma50": round(m50, 2) if m50 else None, "ma200": round(m200, 2) if m200 else None, "rsi": round(r, 1),
         "hi52": round(float(c[-252:].max()), 2), "lo52": round(float(c[-252:].min()), 2), "mom121": mom,
     }
+    w = c[-260:].resample("W").last().dropna()
+    out["wk"] = [[d.strftime("%Y-%m-%d"), round(float(x), 2)] for d, x in w.items()]      # 1년 주간 종가 (분석표 가격 그래프)
     d50 = px / m50 - 1 if m50 else None
     # 우리가 검증한 공식 판정
     F = []
@@ -60,7 +62,53 @@ def metrics(t):
         F.append({"k": "mom", "ok": mom > 0, "t": f"12-1 모멘텀 {mom * 100:+.0f}%",
                   "why": "2016~2026 순위 검증: 12-1 모멘텀 상위가 20일 뒤 평균 +1.65% (참고용)"})
     out["formulas"] = F
+    try:
+        out["fin"] = fin(tk)
+    except Exception as e:
+        print("재무 실패", t, e)
+    try:
+        cal = tk.calendar or {}
+        ed = cal.get("Earnings Date") or []
+        out["street"] = {"target": info.get("targetMeanPrice"), "n": info.get("numberOfAnalystOpinions"), "rec": info.get("recommendationKey"),
+                         "short": info.get("shortPercentOfFloat"), "ev": info.get("enterpriseValue"), "emp": info.get("fullTimeEmployees"),
+                         "insider": info.get("heldPercentInsiders"), "inst": info.get("heldPercentInstitutions"),
+                         "next_rev": cal.get("Revenue Average"), "next_eps": cal.get("Earnings Average"),
+                         "earn": str(ed[0]) if ed else None}
+    except Exception as e:
+        print("월가 숫자 실패", t, e)
     return out
+
+
+def fin(tk):
+    """최근 분기 재무 (최대 8분기, 오래된 → 최근). 값은 원 단위 그대로, 없으면 None"""
+    def rows(df, names):
+        o = {}
+        for k, n in names.items():
+            o[k] = {str(c.date()): (None if v != v else float(v)) for c, v in df.loc[n].items()} if df is not None and n in df.index else {}
+        return o
+    I = rows(tk.quarterly_income_stmt, {"rev": "Total Revenue", "gp": "Gross Profit", "op": "Operating Income", "ni": "Net Income", "rnd": "Research And Development"})
+    C = rows(tk.quarterly_cashflow, {"ocf": "Operating Cash Flow", "capex": "Capital Expenditure", "fcf": "Free Cash Flow", "sbc": "Stock Based Compensation"})
+    B = rows(tk.quarterly_balance_sheet, {"cash": "Cash Cash Equivalents And Short Term Investments", "debt": "Total Debt", "sh": "Ordinary Shares Number"})
+    A = {**I, **C, **B}
+    qs = sorted(set(A["rev"]) | set(A["fcf"]))[-8:]
+    if not qs:
+        return None
+    Q = [{"q": q, **{k: A[k].get(q) for k in A}} for q in qs]
+    Q = [x for x in Q if x["rev"] is not None or x["fcf"] is not None]
+    for x in Q:
+        x["gm"] = x["gp"] / x["rev"] if x.get("gp") is not None and x.get("rev") else None
+        x["om"] = x["op"] / x["rev"] if x.get("op") is not None and x.get("rev") else None
+    by = {x["q"]: x for x in Q}
+    for x in Q:                                   # 전년 같은 분기 대비 (분기 날짜가 1년 차이 나는 것)
+        y = str(int(x["q"][:4]) - 1) + x["q"][4:]
+        p = by.get(y)
+        x["yoy"] = x["rev"] / p["rev"] - 1 if p and p.get("rev") and x.get("rev") else None
+        x["sh_yoy"] = x["sh"] / p["sh"] - 1 if p and p.get("sh") and x.get("sh") else None
+    last = Q[-1]; f4 = [x["fcf"] for x in Q[-4:] if x.get("fcf") is not None]
+    burn = -sum(f4) / len(f4) if f4 and sum(f4) < 0 else None
+    cash = next((x["cash"] for x in reversed(Q) if x.get("cash") is not None), None)
+    return {"q": Q, "ttm_rev": sum(x["rev"] for x in Q[-4:] if x.get("rev")) if len(Q) >= 4 else None,
+            "ttm_fcf": sum(f4) if len(f4) == 4 else None, "burn_q": burn, "runway_q": cash / burn if burn and cash else None}
 
 
 def run(keys=None):
