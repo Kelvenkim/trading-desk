@@ -1,6 +1,13 @@
 {
  "industries": [
   {
+   "key": "software",
+   "name": "AI 소프트웨어·클라우드",
+   "asof": "2026-11-21",
+   "verdict": "비우호",
+   "n": 5
+  },
+  {
    "key": "defense",
    "name": "방산·우주",
    "asof": "2026-11-20",
