@@ -1,6 +1,13 @@
 {
  "industries": [
   {
+   "key": "industrial",
+   "name": "인프라·기계",
+   "asof": "2026-11-21",
+   "verdict": "중립",
+   "n": 3
+  },
+  {
    "key": "software",
    "name": "AI 소프트웨어·클라우드",
    "asof": "2026-11-21",
