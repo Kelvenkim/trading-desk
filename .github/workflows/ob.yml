@@ -1,0 +1,35 @@
+name: 코인 오더블록 모의 계좌
+
+on:
+  schedule:
+    - cron: "11 * * * *"    # 매시간 (1시간봉 마감 뒤). GitHub 예약이 늦거나 빠져도 다음 실행 때 밀린 봉을 순서대로 처리
+    - cron: "41 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  ob:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: 오더블록 계좌
+        run: python scripts/ob_paper.py
+      - name: 저장
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/us/ob_paper.json
+          git diff --cached --quiet && exit 0
+          git commit -m "오더블록 계좌 갱신"
+          for i in 1 2 3; do git pull --rebase -X theirs origin main && git push && break; sleep 5; done

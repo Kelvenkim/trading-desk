@@ -23,6 +23,7 @@ const DeskUI = (() => {
     lev: ["코인 10배", "#d86bb4", "BTC 10배 레버리지 · 50일선 · 추적 손절 7%", "more-coin", "coin"],
     day: ["데이트레이딩", "#e5484d", "주식 · 그날 사서 그날 팔기", "more-day", "stock"],
     scalp10: ["코인 10배 단타", "#e07040", "BTC·ETH 5분봉 평균 회귀 · 10배", "", "coin"],
+    ob: ["코인 오더블록", "#3fb6c9", "BTC·ETH·SOL 1시간봉 오더블록 · 1회 손실 계좌 1% · 횟수 제한 없음", "", "coin"],
   };
   let SM = { log: [], acct: (() => { try { return localStorage.getItem("tradingdesk.acct") || "ai"; } catch (_) { return "ai"; } })() };
   const getj = async (u) => { try { const r = await fetch(u + "?t=" + Date.now()); return r.ok ? await r.json() : null; } catch (_) { return null; } };
@@ -41,7 +42,8 @@ const DeskUI = (() => {
   }
   async function renderSummary() {
     renderReports();
-    const [A, D, C, L, Q0] = await Promise.all(["data/us/ai_paper.json", "data/us/day_desk.json", "data/us/crypto_paper.json", "data/us/crypto_lev.json", "data/us/crypto_scalp10.json"].map(getj));
+    const [A, D, C, L, Q0] = await Promise.all(["data/us/ai_paper.json", "data/us/day_desk.json", "data/us/crypto_paper.json", "data/us/crypto_lev.json", "data/us/crypto_scalp10.json", "data/us/ob_paper.json"].map(getj));
+    const O = await getj("data/us/ob_paper.json");
     let Q = Q0;                                         // 10배 단타: 중계 서버에서 실시간, 없으면 저장본
     try { const px = Data.getProxy && Data.getProxy(); if (px) { const r = await fetch(px.replace(/\/$/, "") + "/scalp10", { cache: "no-store" }); if (r.ok) { const j = await r.json(); if (j.eq) Q = j; } } } catch (_) {}
     // 1) 계좌 탭 (토스증권처럼 위에 계좌, 고르면 아래가 그 계좌로 바뀜)
@@ -52,11 +54,12 @@ const DeskUI = (() => {
     if (L) card("lev", L.eq_now, 10000, L.start, `강제 청산 ${L.liq_n}번 · 11/21 5배→10배`);
     if (D && D.eq && D.eq.length) card("day", D.eq[D.eq.length - 1][1], 10000, D.start, `매매 ${(D.trades || []).length}번`); else cards.day = { k: "day", off: "시작 전", extra: "월요일(11/23) 미국장부터 시작" };
     if (Q && Q.eq) card("scalp10", Q.eq_now, 10000, Q.start, `매매 ${(Q.trades || []).length}번 · 수수료 포함 · 하루 −10%면 멈춤`); else cards.scalp10 = { k: "scalp10", off: "시작 전", extra: "Worker 새 코드·매일 실행 뒤 시작" };
+    if (O && O.eq) card("ob", O.eq_now, 10000, O.start, `끝난 매매 ${O.n_trades || 0}번 · 대기 ${Object.values(O.pend || {}).reduce((a, x) => a + x.length, 0)}개 · 수수료 포함`); else cards.ob = { k: "ob", off: "시작 전", extra: "1시간마다 자동 실행" };
     if (!ACC[SM.acct]) SM.acct = "ai";
     $("#sm-accts").innerHTML = Object.keys(ACC).map((k) => { const c = cards[k] || { off: "—" };
       return `<button class="acct-tab ${k === SM.acct ? "on" : ""}" data-acct="${k}" style="--c:${ACC[k][1]}"><span class="nm">${ACC[k][0]}</span><span class="ret ${c.off ? "muted" : cls(c.r)}">${c.off ? c.off : pct(c.r, 2)}</span></button>`; }).join("");
     { const c = cards[SM.acct] || { off: "—" }, [nm, col, how, more] = ACC[SM.acct];
-      const chatSrc = SM.acct === "scalp10" && Q ? Q.chat : null;
+      const chatSrc = SM.acct === "scalp10" && Q ? Q.chat : SM.acct === "ob" && O ? O.chat : null;
       $("#sm-hero").innerHTML = `<div class="hero-top" style="--c:${col}"><div><span class="nm">${nm}</span><span class="how">${how}</span></div>
         <span class="ret ${c.off ? "" : cls(c.r)}">${c.off ? c.off : pct(c.r, 2)}</span></div>
         <div class="hero-sub">${c.off ? "" : `<b>${usd(c.eq, 0)}</b> · 가상 $10,000 · ${md(c.start)}부터`}${c.extra ? ` · ${c.extra}` : ""}</div>
@@ -71,6 +74,7 @@ const DeskUI = (() => {
     if (C) for (const p of C.pos) rows.push({ k: "coin", sym: p.sym, nm: p.name, side: p.side, since: p.since, entry: p.entry, now: p.now, pl: p.pl, stop: null, target: null, why: "50일선 " + (p.side < 0 ? "아래 → 숏" : "위 → 롱") + " (종가 기준, 50일선 반대로 넘으면 정리)" });
     if (L && L.pos) { const p = L.pos; rows.push({ k: "lev", sym: "BTC-USD", nm: "비트코인", side: p.side, since: p.since, entry: p.entry, now: L.now, pl: p.pl, stop: p.stop, stopLbl: `추적 손절 · 청산 ${px$(p.liq)}`, target: null, why: `계좌의 ${(p.expo || 0).toFixed(2)}배 노출 (증거금 × ${L.lev}배, 변동성 맞춤) · 수익률은 계좌 대비` }); }
     for (const [k, QQ] of [["scalp10", Q]]) if (QQ && QQ.pos) for (const [sym, p] of Object.entries(QQ.pos)) { const now = (QQ.px || {})[sym]; rows.push({ k, sym, nm: sym.startsWith("BTC") ? "비트코인" : "이더리움", side: p.side, since: (p.at || "").slice(0, 16).replace("T", " "), entry: p.entry, now, pl: now ? p.side * (now / p.entry - 1) * (p.w > 1 ? p.w : 1) : null, stop: p.stop, target: null, why: `5분봉이 평균에서 ${p.z}σ 벗어남 → 평균 회귀 (최대 1시간)${p.w > 1 ? ` · 계좌의 ${p.w}배 노출, 수익률은 계좌 대비` : ""}` }); }
+    if (O && O.pos) for (const [sym, p] of Object.entries(O.pos)) { const now = (O.px || {})[sym]; rows.push({ k: "ob", sym, nm: COINNM[sym] || sym, side: p.side, since: (p.at || "").slice(0, 16).replace("T", " "), entry: p.fill, now, pl: now ? p.side * (now / p.fill - 1) : null, stop: p.stop, stopLbl: p.be ? "본전 손절 (절반 익절 뒤)" : "오더블록 꼬리 끝", target: p.be ? null : p.wave, why: (O.journal[p.jid] || {}).why_in ? O.journal[p.jid].why_in.join(" · ") : "" }); }
     SM.rows = rows;
     const allRows = rows;
     rows = allRows.filter((r) => r.k === SM.acct);
@@ -91,11 +95,35 @@ const DeskUI = (() => {
     if (C) for (const t of C.trades || []) log.push({ k: "coin", d: t.out, sym: t.sym, nm: t.sym.startsWith("BTC") ? "비트코인" : "이더리움", side: t.side, a: t.entry, b: t.exit, din: t.in, pl: t.pl, why: "50일선 반대로 넘어가서 정리" });
     if (L) for (const t of L.trades || []) log.push({ k: "lev", d: t.out, sym: "BTC-USD", nm: "비트코인", side: t.side, a: t.entry, b: t.exit, din: t.in, pl: t.pl, why: t.liq ? "💥 강제 청산 (증거금 전부 손실)" : t.why || "50일선 반대로 넘어가서 정리" });
     for (const [k, QQ] of [["scalp10", Q]]) if (QQ) for (const t of (QQ.trades || []).slice(-300)) log.push({ k, d: t.out, sym: t.sym, nm: t.sym.startsWith("BTC") ? "비트코인" : "이더리움", side: t.side, a: t.entry, b: t.exit, din: t.in, pl: t.acct != null ? t.acct : t.pl, why: t.why + " · 수익률은 계좌 대비" });
+    if (O) for (const j of O.journal || []) if (j.exit != null) log.push({ k: "ob", d: (j.out_at || "").slice(0, 16).replace("T", " "), sym: j.sym, nm: COINNM[j.sym] || j.sym, side: j.side === "숏" ? -1 : 1, a: j.fill, b: j.exit, din: (j.in_at || "").slice(0, 16).replace("T", " "), pl: j.pnl / 10000, why: `${j.why_out} · ${j.R >= 0 ? "+" : ""}${j.R}R · 수익률은 계좌 대비` });
     for (const r of allRows) log.push({ k: r.k, d: r.since, sym: r.sym, nm: r.nm, side: r.side, a: r.entry, b: null, din: r.since, pl: r.pl, open: true, why: r.why });
     log.sort((x, y) => (y.d || "").localeCompare(x.d || "") || (y.open ? 1 : 0) - (x.open ? 1 : 0));
     SM.log = log; renderLog();
+    renderJournal(O);
     const tm = (x) => x ? new Date(x).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }) : "";
     $("#sm-made").textContent = `주식 ${A && A.eq.length ? md(A.eq[A.eq.length - 1][0]) + " 마감" : "—"} · 코인 ${C ? tm(C.made) : "—"} 기준`;
+  }
+  const COINNM = { "BTC-USD": "비트코인", "ETH-USD": "이더리움", "SOL-USD": "솔라나" };
+  function renderJournal(O) {                          // 오더블록 매매일지: 진입 이유 · 손절/익절 이유 · 피드백
+    const el = $("#ob-journal"); if (!el) return;
+    el.hidden = SM.acct !== "ob"; if (el.hidden) return;
+    const J = ((O && O.journal) || []).slice().reverse();
+    const done = J.filter((j) => j.exit != null), w = done.filter((j) => j.R > 0).length, avgR = done.length ? done.reduce((a, j) => a + j.R, 0) / done.length : null;
+    const mt = done.filter((j) => j.mtf), mR = mt.length ? mt.reduce((a, j) => a + j.R, 0) / mt.length : null;
+    const tm = (x) => x ? new Date(x).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }) : "";
+    el.innerHTML = `<div class="tt-head"><h3>매매일지</h3><span class="muted small">${done.length ? `끝난 ${done.length}번 · 승 ${w} · 평균 ${avgR >= 0 ? "+" : ""}${avgR.toFixed(2)}R${mt.length ? ` · 4시간 OB 겹친 거래 ${mt.length}번 평균 ${mR >= 0 ? "+" : ""}${mR.toFixed(2)}R` : ""}` : "아직 끝난 매매 없음 — 오더블록 자리가 나오면 기록돼요"}</span></div>
+      <p class="muted small">규칙: ${esc((O && O.rule) || "")}</p>
+      ${J.map((j) => `<details class="ob-j ${j.exit == null ? "open-pos" : j.R > 0 ? "win" : "loss"}"><summary>
+          <span class="ob-j-t"><b>${esc(COINNM[j.sym] || j.sym)} ${esc(j.side)}</b> <span class="muted small">${tm(j.in_at)} 진입</span></span>
+          <span class="ob-j-r ${j.exit == null ? "" : j.R > 0 ? "up" : "down"}">${j.exit == null ? "보유 중" : `${j.R >= 0 ? "+" : ""}${j.R}R`}</span></summary>
+        <div class="ob-j-b">
+          <p class="small">진입 ${j.fill} · 손절 ${j.stop} (${j.risk_pct}%) · 목표 ${j.target} · $${Math.round(j.size).toLocaleString()}어치${j.mtf ? " · <b>4시간 OB 겹침</b>" : ""}</p>
+          <h5>진입 이유</h5><ul>${(j.why_in || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+          ${(j.partial || []).map((x) => `<h5>부분 익절</h5><p class="small">${tm(x.at)} · ${x.px} · ${esc(x.why)} · ${x.pnl >= 0 ? "+" : ""}$${x.pnl}</p>`).join("")}
+          ${j.exit != null ? `<h5>${j.R > 0 ? "익절" : "손절"} 이유</h5><p class="small">${tm(j.out_at)} · ${j.exit} · ${esc(j.why_out)} · ${j.pnl >= 0 ? "+" : ""}$${j.pnl} · ${j.bars}봉 보유 · 최대 유리 +${j.mfe}% / 최대 불리 −${j.mae}%</p>
+          <h5>피드백</h5><ul>${(j.feedback || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+        </div></details>`).join("")}
+      ${(O && O.skips && O.skips.length) ? `<details class="ob-j"><summary><span class="ob-j-t"><b>진입 안 한 자리 ${O.skips.length}개</b> <span class="muted small">구간에 안 닿음 · 무효화 · 손익비 부족</span></span></summary><div class="ob-j-b"><ul>${O.skips.slice(-30).reverse().map((x) => `<li class="small">${esc(COINNM[x.sym] || x.sym)} ${esc(x.side)} ${x.entry} — ${esc(x.why)}</li>`).join("")}</ul></div></details>` : ""}`;
   }
   function renderLog() {
     const all = SM.log.filter((r) => r.k === SM.acct), L = all.slice(0, 60);
