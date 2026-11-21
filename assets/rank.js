@@ -22,14 +22,15 @@ const RankUI = (() => {
     $("#rk-date").textContent = `${L.date} 미국장 종가 기준 · S&P500·나스닥100 ${L.rows.length}종목`;
     const VB = (R.variants_backfill || {}).variants || {}, vt = (VB["테마 눌림"] || {})["20"] || {}, vm = (VB["12-1 모멘텀"] || {})["20"] || {}, vo = (VB["우리 점수"] || {})["20"] || {};
     const g = L.regime || {};
-    $("#rk-trust").innerHTML = `
-      <div class="trust-stage"><span class="k">기본</span><b>테마 눌림</b><span class="k">강한 테마 + 최근 5일 눌림</span></div>
+    $("#rk-trust").innerHTML = `<details class="rk-why"><summary>
+      <div class="trust-stage"><span class="k">기본</span><b>테마 눌림</b><span class="k">강한 테마 + 최근 5일 눌림 · 과거 20일 초과 <b class="up">${pct(vt.ex, 2)}</b> · S&P ${g.up ? "200일선 위" : "200일선 아래"}</span></div>
+      <span class="muted small">왜 이 순서인지 보기 ›</span></summary>
       <div class="trust-txt">
         미국 과거 검증(2016~2026, 다음 날 시가 매수): 상위 20이 20일 뒤 평균보다 <b class="up">${pct(vt.ex, 2)}</b>, 11년 중 ${vt.years_pos || "—"}년 플러스, 상승장·하락장 모두 플러스.
         12-1 모멘텀 ${pct(vm.ex, 2)}, 우리 점수 ${pct(vo.ex, 2)}.
         <br>시장: S&P500이 200일선 ${g.up ? "위" : "아래"} (${pct(g.sp_vs200)}). 순위는 상대 비교라 시장 전체가 빠지면 같이 빠져요.
         <span class="muted small">지금 지수에 남은 종목·지금 테마 구성으로 계산해 실제보다 좋게 나왔을 수 있어요.</span>
-      </div>`;
+      </div></details>`;
   }
 
   function reasons(r) {

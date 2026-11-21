@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="assets/style.css?v=da556b47" />
+  <link rel="stylesheet" href="assets/style.css?v=89edc93e" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -188,7 +188,7 @@
           <p class="hint">종목을 누르면 일봉 차트·지지/저항·매매 계획이 펼쳐져요. 미국장 마감 후(한국 시각 아침) 갱신돼요.</p>
         </div>
         <div>
-          <div class="box"><div class="box-head"><h2>지난 순위 추적</h2></div><div class="table-wrap" id="rk-track"></div></div>
+          <details class="box lt-frame"><summary><b>지난 순위 추적</b> <span class="muted small">날짜별 성적 · 채점 결과</span></summary><div class="table-wrap" id="rk-track"></div></details>
         </div>
       </div>
     </section>
@@ -196,10 +196,11 @@
     <!-- ================= 장기 테마 ================= -->
     <section id="tab-theme" class="panel">
       <div class="rk-head"><h2>장기 투자 <span class="muted small" id="th-date"></span></h2>
-        <p class="muted small th-intro">산업 리서치(매크로 → 산업 이야기 → 공급망 병목 → 상장 공급사 → 회사 검증 → 시나리오 → 분류)와 테마 점수를 한곳에 모았어요. 결론이 아니라 "어떤 조건이면 좋고, 어떤 조건이 깨지면 가설이 무너지는지"로 적어요.</p></div>
+        <p class="muted small th-intro">산업을 고르면 회사별 판단이 나와요. 세부 근거는 아래 '자세히 보기'에 접어 뒀어요.</p></div>
       <div class="lt-tabs"><button class="lt-tab on" data-lt="res">산업·종목 리서치</button><button class="lt-tab" data-lt="th">테마 점수</button></div>
       <div id="lt-root" class="lt-pane" data-pane="res">
-        <div class="lt-legend small"><span class="lt-k lt-f">사실</span> 공시·보도로 확인 <span class="lt-k lt-e">추정</span> 판단·가정 <span class="lt-k lt-u">모름</span> 확인 못 함</div>
+        <div class="lt-inds" id="lt-inds"></div>
+        <div class="box" id="lt-body"><p class="muted">불러오는 중…</p></div>
         <details class="box lt-frame"><summary><b>모든 장기 종목 판단의 기본 틀</b> <span class="muted small">7단계 · 건너뛰지 않기 · <span id="lt-progress"></span></span></summary>
           <ol class="lt-steps">
             <li><b>매크로</b> — 우호·비우호 요인, 유동성, 지정학 → 우호/중립/비우호 판정</li>
@@ -210,12 +211,11 @@
             <li><b>시나리오</b> — 최고·기본·최악 모두 (가정·근거·약점·손실 경로)</li>
             <li><b>분류</b> — 핵심 후보 / 관찰 / 병목 노출 / 투기 / 부적합 / 제외</li>
           </ol>
+          <p class="small"><span class="lt-k lt-f">사실</span> 공시·보도로 확인 <span class="lt-k lt-e">추정</span> 판단·가정 <span class="lt-k lt-u">모름</span> 확인 못 함</p>
           <p class="hint">원칙: ① 백지에서 시작(예전에 자주 본 종목이라도 이번에 새로 검증 안 되면 넣지 않음) ② 결론이 아니라 조건(어떤 조건이면 좋고, 어떤 조건이 깨지면 가설이 무너지는지) ③ 사실·추정·모름 구분, 모르면 모른다고.</p>
         </details>
-        <div class="lt-inds" id="lt-inds"></div>
-        <div class="box" id="lt-body"><p class="muted">불러오는 중…</p></div>
-        <div class="box"><div class="box-head"><h2>우리가 검증한 공식 <span class="muted small">모든 회사에 자동 적용</span></h2></div><ul class="lt-forms" id="lt-formulas"></ul>
-          <p class="hint">'검증' = 과거 데이터로 앞·뒤 기간 모두 확인한 것. 과거 성적이 미래를 보장하지 않아요.</p></div>
+        <details class="box lt-frame"><summary><b>우리가 검증한 공식</b> <span class="muted small">모든 회사에 자동 적용</span></summary><ul class="lt-forms" id="lt-formulas"></ul>
+          <p class="hint">'검증' = 과거 데이터로 앞·뒤 기간 모두 확인한 것. 과거 성적이 미래를 보장하지 않아요.</p></details>
       </div>
       <div class="lt-pane" data-pane="th" hidden>
       <div class="rk-head"><p class="muted small th-intro">종목보다 먼저 "어떤 기술·트렌드·정책 이야기에 올라탈지"를 보는 곳이에요. 3개월~1년 관점이에요. 테마를 누르면 이야기·근거·지수 차트·종목·내 판단이 펼쳐져요.</p></div>
@@ -706,9 +706,9 @@
   <script src="assets/draw.js?v=f61bef61"></script>
   <script src="assets/bt.js?v=0254c648"></script>
   <script src="assets/levels.js?v=dfcb1e20"></script>
-  <script src="assets/rank.js?v=379e9e82"></script>
+  <script src="assets/rank.js?v=b67267f1"></script>
   <script src="assets/theme.js?v=eb3ce486"></script>
-  <script src="assets/longterm.js?v=feb1588e"></script>
+  <script src="assets/longterm.js?v=3f59cca1"></script>
   <script src="assets/news.js?v=8195726c"></script>
   <script src="assets/home.js?v=b6ddf735"></script>
   <script src="assets/company.js?v=75dbfcb5"></script>
