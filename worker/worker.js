@@ -13,7 +13,12 @@
  *
  * 3) 데이트레이딩 모의 계좌:  GET /day (상태 보기) · 예약 실행(Cron)으로 5분마다 혼자 매매
  *    설정: 이 Worker → Settings → Bindings → KV namespace 추가 (변수 이름 DAY)
- *          Settings → Triggers → Cron Triggers 추가 — 5분마다, 월~금 (식: 별표/5 * * * 1-5)
+ *          Settings → Trigger events → Cron Triggers 추가 — 5분마다 매일 (식: 별표/5 * * * *)
+ *          (주식은 코드가 미국장 시간인지 스스로 확인해요. 코인은 주말에도 돌아요)
+ *
+ * 4) 코인 5분봉 단기 실험:  GET /scalp (상태 보기) — 같은 Cron에서 5분마다, 주말 포함
+ *    BTC·ETH 5분봉 볼린저 밴드(20봉, 2.5표준편차) 바깥 → 평균 회귀. 손절 ATR×3, 평균 닿으면 정리, 최대 1시간.
+ *    ⚠ 과거 60일 시험(research/crypto5m)에서 수수료 0.05% 기준으로는 비용을 이기는 우위가 없었어요. 기록용 실험이에요.
  */
 const ALLOWED_HOSTS = [
   "fchart.stock.naver.com",
@@ -93,6 +98,13 @@ export default {
       return new Response(st || "{}", { headers: { ...cors, "content-type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
     }
 
+    // ---------------- 코인 5분봉 실험 상태 ----------------
+    if (reqUrl.pathname === "/scalp") {
+      if (!env.DAY) return json({ error: "KV 'DAY' 바인딩이 없어요" }, 501);
+      const st = await env.DAY.get("scalp");
+      return new Response(st || "{}", { headers: { ...cors, "content-type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
+    }
+
     // ---------------- 시세 중계 ----------------
     const target = reqUrl.searchParams.get("url");
     if (!target) return new Response("Trading Desk proxy OK" + (env.ANTHROPIC_API_KEY ? " · chat ready" : ""), { headers: cors });
@@ -131,6 +143,7 @@ export default {
   // 예약 실행 (Cron Trigger): 데이트레이딩 계좌
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runDay(env).catch((e) => console.log("day error", e && e.message)));
+    ctx.waitUntil(runScalp(env).catch((e) => console.log("scalp error", e && e.message)));
   },
 };
 
@@ -285,4 +298,102 @@ async function runDay(env) {
   }
   await env.DAY.put("state", JSON.stringify(S));
   return { ok: true, eq, pos: Object.keys(S.pos), n: S.today.n };
+}
+
+
+// ======================= 코인 5분봉 단기 실험 (가상 $10,000, 롱·숏, 주말 포함) =======================
+// 근거: research/crypto5m/bt.py — 2026-09-23~11-21 BTC·ETH 5분봉 72가지 시험.
+//  수수료 한쪽 0.05%: 모든 방식이 거래당 약 −0.03~−0.12%로 손실(무작위 진입 −0.10%와 비슷).
+//  한쪽 0.02%(지정가)일 때만 이 방식(볼린저 20·2.5·손절 ATR×3·최대 12봉)이 BTC +0.005%·ETH +0.019%로 겨우 플러스.
+//  → '돈을 벌 거라 믿는 전략'이 아니라 '5분봉 단타가 비용을 이길 수 있는지' 실제로 기록해 보는 실험이에요.
+const SC = { syms: ["BTC-USD", "ETH-USD"], n: 20, k: 2.5, atrN: 14, stopAtr: 3, maxBars: 12, risk: 0.005, capW: 0.5, fee: 0.0005, dayHalt: -0.02 };
+
+async function cbars(sym) {
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=5m&range=2d`, { headers: UA });
+  if (!r.ok) return null;
+  const j = await r.json(); const x = j.chart && j.chart.result && j.chart.result[0];
+  if (!x || !x.timestamp) return null;
+  const q = x.indicators.quote[0], out = [];
+  for (let i = 0; i < x.timestamp.length; i++) {
+    if (q.close[i] == null || q.open[i] == null || q.high[i] == null || q.low[i] == null) continue;
+    out.push({ t: x.timestamp[i], o: q.open[i], h: q.high[i], l: q.low[i], c: q.close[i] });
+  }
+  if (out.length && Date.now() / 1000 - out[out.length - 1].t < 300) out.pop();   // 진행 중인 봉 제외
+  return out;
+}
+
+function cind(b) {
+  const n = SC.n, m = b.length; if (m < 60) return null;
+  const cl = b.slice(-n).map((x) => x.c), mean = cl.reduce((a, v) => a + v, 0) / n;
+  const sd = Math.sqrt(cl.reduce((a, v) => a + (v - mean) ** 2, 0) / (n - 1));
+  let atr = null;
+  for (let i = 1; i < m; i++) {
+    const tr = Math.max(b[i].h - b[i].l, Math.abs(b[i].h - b[i - 1].c), Math.abs(b[i].l - b[i - 1].c));
+    atr = atr == null ? tr : atr + (tr - atr) / SC.atrN;
+  }
+  return { mean, sd, atr, c: b[m - 1].c, t: b[m - 1].t };
+}
+
+function scEq(S, px) {
+  let e = S.cash;
+  for (const [sym, p] of Object.entries(S.pos)) e += p.side * p.qty * ((px[sym] || p.entry) - p.entry);
+  return e;
+}
+
+function scClose(S, sym, px, why, t) {
+  const p = S.pos[sym]; if (!p) return;
+  const fee = p.qty * px * SC.fee, pnl = p.side * p.qty * (px - p.entry) - fee;
+  S.cash += pnl;
+  const pl = p.side * (px / p.entry - 1) - 2 * SC.fee;
+  S.trades.push({ sym, side: p.side, in: p.at, out: new Date(t * 1000).toISOString(), entry: +p.entry.toFixed(2), exit: +px.toFixed(2), pl: +pl.toFixed(5), usd: +(pnl - p.fee_in).toFixed(2), why, bars: p.bars });
+  if (S.trades.length > 3000) S.trades = S.trades.slice(-3000);
+  delete S.pos[sym];
+  S.chat.push({ at: new Date().toISOString(), who: why.includes("손절") ? "risk" : "executor", text: `${sym.replace("-USD", "")} ${p.side > 0 ? "롱" : "숏"} 정리 ${px.toFixed(2)} (${pl >= 0 ? "+" : ""}${(pl * 100).toFixed(2)}%, 수수료 포함) — ${why}` });
+}
+
+async function runScalp(env) {
+  if (!env.DAY) return { skip: "KV 'DAY' 바인딩 없음" };
+  let S = await env.DAY.get("scalp", "json");
+  const now = new Date(), day = now.toISOString().slice(0, 10);
+  if (!S) S = { start: day, cash: 10000, pos: {}, trades: [], chat: [], eq: [], last: {}, day: {}, rule: "5분봉 볼린저(20봉·2.5σ) 바깥 → 평균 회귀, 손절 ATR×3, 최대 1시간, 롱·숏, 수수료 한쪽 0.05%" };
+  const px = {}, B = {};
+  for (const sym of SC.syms) { try { B[sym] = await cbars(sym); } catch (_) { B[sym] = null; } if (B[sym] && B[sym].length) px[sym] = B[sym][B[sym].length - 1].c; }
+  if (S.day.d !== day) S.day = { d: day, e0: scEq(S, px) };
+  for (const sym of SC.syms) {
+    const b = B[sym]; if (!b || b.length < 60) continue;
+    // 1) 보유 중이면: 마지막으로 본 봉 다음부터 손절·평균 회귀·시간 정리 확인
+    const p = S.pos[sym];
+    if (p) {
+      for (const x of b.filter((x) => x.t > p.seen)) {
+        p.seen = x.t; p.bars += 1;
+        if (p.side > 0 && x.l <= p.stop) { scClose(S, sym, Math.min(x.o, p.stop), "손절 (ATR×3)", x.t); break; }
+        if (p.side < 0 && x.h >= p.stop) { scClose(S, sym, Math.max(x.o, p.stop), "손절 (ATR×3)", x.t); break; }
+        const upto = b.filter((y) => y.t <= x.t), I = cind(upto);
+        if (I && ((p.side > 0 && x.c >= I.mean) || (p.side < 0 && x.c <= I.mean))) { scClose(S, sym, x.c, "평균 닿음 (익절·정리)", x.t); break; }
+        if (p.bars >= SC.maxBars) { scClose(S, sym, x.c, "1시간 지남 (시간 정리)", x.t); break; }
+      }
+    }
+    // 2) 새 봉이 닫혔고 보유 없음 → 진입 판단
+    const I = cind(b);
+    if (!I || S.last[sym] === I.t) continue;
+    S.last[sym] = I.t;
+    if (S.pos[sym]) continue;
+    const eq = scEq(S, px);
+    if (S.day.e0 && eq / S.day.e0 - 1 <= SC.dayHalt) { if (!S.day.halt) { S.day.halt = true; S.chat.push({ at: now.toISOString(), who: "risk", text: `오늘(UTC) 손실 ${((eq / S.day.e0 - 1) * 100).toFixed(1)}% — 하루 −2% 한도라 신규 진입 멈춰요.` }); } continue; }
+    const side = I.c < I.mean - SC.k * I.sd ? 1 : I.c > I.mean + SC.k * I.sd ? -1 : 0;
+    if (!side || !I.atr) continue;
+    const stopD = SC.stopAtr * I.atr, qty = Math.min((eq * SC.risk) / stopD, (eq * SC.capW) / I.c);
+    const fee_in = qty * I.c * SC.fee;
+    S.cash -= fee_in;
+    S.pos[sym] = { side, qty, entry: I.c, stop: I.c - side * stopD, at: new Date(I.t * 1000 + 300000).toISOString(), seen: I.t, bars: 0, fee_in, z: +((I.c - I.mean) / I.sd).toFixed(2) };
+    S.chat.push({ at: now.toISOString(), who: "executor", text: `${sym.replace("-USD", "")} ${side > 0 ? "롱" : "숏"} ${I.c.toFixed(2)} — 5분봉이 20봉 평균에서 ${((I.c - I.mean) / I.sd).toFixed(1)}σ 벗어남 · 손절 ${(I.c - side * stopD).toFixed(2)} · $${(qty * I.c).toFixed(0)}어치` });
+  }
+  const e = scEq(S, px);
+  const last = S.eq[S.eq.length - 1];
+  if (!last || Date.now() - Date.parse(last[0]) > 25 * 60 * 1000) S.eq.push([now.toISOString().slice(0, 16), +e.toFixed(2)]);
+  if (S.eq.length > 4000) S.eq = S.eq.slice(-4000);
+  if (S.chat.length > 600) S.chat = S.chat.slice(-600);
+  S.eq_now = +e.toFixed(2); S.made = now.toISOString(); S.px = px;
+  await env.DAY.put("scalp", JSON.stringify(S));
+  return { ok: true, eq: S.eq_now };
 }

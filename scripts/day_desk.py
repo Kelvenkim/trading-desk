@@ -47,6 +47,10 @@ def main(force=False):
     S = fetch_state()
     if S and S.get("eq"):
         (D / "day_desk.json").write_text(json.dumps(S, ensure_ascii=False, separators=(",", ":")))
+    try:
+        import crypto_scalp; crypto_scalp.main()
+    except Exception as e:
+        print("5분 실험 기록 실패:", e)
     # 감시 종목: AI 데스크 일봉 점수 상위 + 대형주 (거래대금 $1억↑)
     try:
         A = json.loads((D / "ai_paper_state.json").read_text()); ds = A.get("dscore", {})

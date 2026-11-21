@@ -26,6 +26,8 @@ jobs:
         run: python scripts/crypto_paper.py
       - name: 5배 레버리지 실험 계좌
         run: python scripts/crypto_lev.py || echo "5배 계좌 실패"
+      - name: 5분봉 단기 실험 기록 (매매는 Cloudflare Worker가 5분마다)
+        run: python scripts/crypto_scalp.py || echo "5분 실험 기록 실패"
       - name: 저장
         run: |
           git config user.name "github-actions[bot]"

@@ -22,6 +22,7 @@ const DeskUI = (() => {
     day: ["데이트레이딩", "#e5484d", "주식 · 그날 사서 그날 팔기", "more-day", "stock"],
     coin: ["코인", "#9b6bd8", "BTC·ETH · 50일선 위 롱·아래 숏", "more-coin", "coin"],
     lev: ["코인 5배", "#d86bb4", "BTC 5배 레버리지 실험", "more-coin", "coin"],
+    scalp: ["코인 5분 단타", "#e0a040", "BTC·ETH 5분봉 평균 회귀 실험", "more-coin", "coin"],
     basket: ["추천 바구니", "#3b6fd8", "순위 상위 · 5일마다 재분배", "", "stock"],
     spy: ["S&P500", "#8a8f98", "비교 기준 · 그냥 보유", "", "stock"],
   };
@@ -42,7 +43,9 @@ const DeskUI = (() => {
   }
   async function renderSummary() {
     renderReports();
-    const [A, D, C, L, P] = await Promise.all(["data/us/ai_paper.json", "data/us/day_desk.json", "data/us/crypto_paper.json", "data/us/crypto_lev.json", "data/us/paper.json"].map(getj));
+    const [A, D, C, L, P, Q0] = await Promise.all(["data/us/ai_paper.json", "data/us/day_desk.json", "data/us/crypto_paper.json", "data/us/crypto_lev.json", "data/us/paper.json", "data/us/crypto_scalp.json"].map(getj));
+    let Q = Q0;                                         // 5분 단타: 중계 서버에서 실시간, 없으면 저장본
+    try { const px = Data.getProxy && Data.getProxy(); if (px) { const r = await fetch(px.replace(/\/$/, "") + "/scalp", { cache: "no-store" }); if (r.ok) { const j = await r.json(); if (j.eq) Q = j; } } } catch (_) {}
     // 1) 계좌 카드
     const cards = [];
     const card = (k, eq, base, start, extra) => cards.push({ k, eq, r: eq == null ? null : eq / base - 1, start, extra });
@@ -50,6 +53,7 @@ const DeskUI = (() => {
     if (D && D.eq && D.eq.length) card("day", D.eq[D.eq.length - 1][1], 10000, D.start, `매매 ${(D.trades || []).length}번`); else cards.push({ k: "day", off: "시작 전", extra: "Cloudflare 설정 뒤 시작" });
     if (C) card("coin", C.eq_now, 10000, C.start, `같은 기간 BTC ${pct(C.btc_ret, 1)}`);
     if (L) card("lev", L.eq_now, 10000, L.start, `강제 청산 ${L.liq_n}번`);
+    if (Q && Q.eq) card("scalp", Q.eq_now, 10000, Q.start, `매매 ${(Q.trades || []).length}번 · 수수료 포함`); else cards.push({ k: "scalp", off: "시작 전", extra: "Worker 새 코드·매일 실행 뒤 시작" });
     if (P) for (const k of ["basket", "spy"]) { const e = P.acct[k].eq; card(k, e[e.length - 1][1], P.cash0, P.start, `보유 ${P.acct[k].pos.length}종목`); }
     $("#sm-accts").innerHTML = cards.map((c) => { const [nm, col, how, tgt] = ACC[c.k];
       return `<button class="sm-acct ${c.k === "spy" ? "bench" : ""} ${c.off ? "off" : ""}" data-open="${tgt}" style="border-top:3px solid ${col}">
@@ -62,6 +66,7 @@ const DeskUI = (() => {
     if (D && D.pos) for (const [sym, p] of Object.entries(D.pos)) rows.push({ k: "day", sym, side: 1, since: D.today && D.today.day, entry: p.entry, now: null, pl: null, stop: p.stop, target: p.target, why: (p.sig || []).join(" · ") });
     if (C) for (const p of C.pos) rows.push({ k: "coin", sym: p.sym, nm: p.name, side: p.side, since: p.since, entry: p.entry, now: p.now, pl: p.pl, stop: null, target: null, why: "50일선 " + (p.side < 0 ? "아래 → 숏" : "위 → 롱") + " (종가 기준, 50일선 반대로 넘으면 정리)" });
     if (L && L.pos) { const p = L.pos; rows.push({ k: "lev", sym: "BTC-USD", nm: "비트코인", side: p.side, since: p.since, entry: p.entry, now: L.now, pl: p.pl, stop: p.stop, stopLbl: `추적 손절 · 청산 ${px$(p.liq)}`, target: null, why: `계좌의 ${(p.expo || 0).toFixed(2)}배 노출 (증거금 × ${L.lev}배, 변동성 맞춤) · 수익률은 계좌 대비` }); }
+    if (Q && Q.pos) for (const [sym, p] of Object.entries(Q.pos)) { const now = (Q.px || {})[sym]; rows.push({ k: "scalp", sym, nm: sym.startsWith("BTC") ? "비트코인" : "이더리움", side: p.side, since: (p.at || "").slice(0, 16).replace("T", " "), entry: p.entry, now, pl: now ? p.side * (now / p.entry - 1) : null, stop: p.stop, target: null, why: `5분봉이 평균에서 ${p.z}σ 벗어남 → 평균 회귀 (최대 1시간)` }); }
     const order = Object.keys(ACC);
     rows.sort((a, b) => order.indexOf(a.k) - order.indexOf(b.k) || (b.pl ?? -9) - (a.pl ?? -9));
     $("#sm-pos-sub").textContent = rows.length ? `${rows.length}개 · 수익률은 산 가격 대비 (수수료 전)` : "";
@@ -79,6 +84,7 @@ const DeskUI = (() => {
     if (D) for (const t of D.trades || []) log.push({ k: "day", d: t.day, sym: t.sym, side: 1, a: t.entry, b: t.exit, din: t.day, pl: t.pl, why: t.why });
     if (C) for (const t of C.trades || []) log.push({ k: "coin", d: t.out, sym: t.sym, nm: t.sym.startsWith("BTC") ? "비트코인" : "이더리움", side: t.side, a: t.entry, b: t.exit, din: t.in, pl: t.pl, why: "50일선 반대로 넘어가서 정리" });
     if (L) for (const t of L.trades || []) log.push({ k: "lev", d: t.out, sym: "BTC-USD", nm: "비트코인", side: t.side, a: t.entry, b: t.exit, din: t.in, pl: t.pl, why: t.liq ? "💥 강제 청산 (증거금 전부 손실)" : "50일선 반대로 넘어가서 정리" });
+    if (Q) for (const t of (Q.trades || []).slice(-300)) log.push({ k: "scalp", d: t.out, sym: t.sym, nm: t.sym.startsWith("BTC") ? "비트코인" : "이더리움", side: t.side, a: t.entry, b: t.exit, din: t.in, pl: t.pl, why: t.why });
     for (const r of rows) log.push({ k: r.k, d: r.since, sym: r.sym, nm: r.nm, side: r.side, a: r.entry, b: null, din: r.since, pl: r.pl, open: true, why: r.why });
     log.sort((x, y) => (y.d || "").localeCompare(x.d || "") || (y.open ? 1 : 0) - (x.open ? 1 : 0));
     SM.log = log; renderLog();
