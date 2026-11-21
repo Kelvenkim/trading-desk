@@ -82,6 +82,11 @@ def run(keys=None):
                                "be": -L / (G - L) if G > L else None, "ideal": G >= 3 and L >= -0.5}
                 c["m"] = m
             time.sleep(0.3)
+        try:
+            from longterm_about import apply as about_apply   # 회사 소개(어떤 회사·뭘 만드나·왜 필요한가) + 깊게 보기
+            about_apply(R)
+        except Exception as e:
+            print("소개 붙이기 실패", e)
         R["metrics_at"] = datetime.now(timezone.utc).isoformat(timespec="minutes")
         p.write_text(json.dumps(R, ensure_ascii=False, indent=1))
         print("장기 리서치 숫자 갱신:", p.stem, sum(1 for c in R["companies"] if c.get("m")), "/", len(R["companies"]))

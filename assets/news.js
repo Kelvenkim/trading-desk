@@ -3,6 +3,8 @@ const NewsUI = (() => {
   const { $, esc } = U;
   let J = null, loaded = false, who = "trump";
   const f = { kind: "all", theme: "", q: "" };
+  const PER = 20;                                   // 한 페이지 20건
+  let days = [], day = null, page = 1; const cache = {};
   const ago = (at) => { if (!at) return ""; const m = (Date.now() - Date.parse(at.replace(" ", "T") + ":00+09:00")) / 60000; return m < 60 ? `${Math.max(1, Math.round(m))}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : at.slice(5, 10).replace("-", "/"); };
 
   async function load() {
@@ -11,15 +13,27 @@ const NewsUI = (() => {
     loaded = true;
     $("#nw-made").textContent = `${J.made} 갱신 · 30분마다`;
     $("#nw-theme").innerHTML = `<option value="">모든 테마</option>` + Object.entries(J.themes || {}).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
-    renderList(); renderPeople();
+    try { days = await (await fetch("data/news/days/index.json?t=" + Date.now())).json(); } catch (_) { days = []; }
+    renderPeople(); await pick(days.length ? days[0].d : null);
+  }
+
+  async function pick(d) {                          // 날짜 고르기 — 날짜별 파일이라 지난 뉴스도 그대로 남아 있어요
+    day = d; page = 1;
+    if (d && !cache[d]) { try { cache[d] = await (await fetch(`data/news/days/${d}.json?t=` + Date.now())).json(); } catch (_) { cache[d] = []; } }
+    const wd = (x) => "일월화수목금토"[new Date(x + "T00:00:00+09:00").getDay()];
+    $("#nw-days").innerHTML = days.map((x) => `<button class="${x.d === day ? "on" : ""}" data-day="${x.d}">${x.d.slice(5).replace("-", "/")} (${wd(x.d)}) <span class="muted">${x.n}</span></button>`).join("");
+    renderList();
   }
 
   function renderList() {
     const q = f.q.trim();
-    const L = J.news.filter((n) => (f.kind === "all" || (f.kind === "pol" && n.pol) || (f.kind === "up" && n.s > 0) || (f.kind === "down" && n.s < 0) || (f.kind === "who" && n.who.length)) &&
+    const src = day ? cache[day] || [] : J.news;
+    const L = src.filter((n) => (f.kind === "all" || (f.kind === "pol" && n.pol) || (f.kind === "up" && n.s > 0) || (f.kind === "down" && n.s < 0) || (f.kind === "who" && n.who.length)) &&
       (!f.theme || n.themes.includes(f.theme)) && (!q || n.t.includes(q) || (n.b || "").includes(q)));
-    $("#nw-count").textContent = `${L.length}건`;
-    $("#nw-list").innerHTML = L.map((n) => `<div class="nw">
+    const pages = Math.max(1, Math.ceil(L.length / PER)); page = Math.min(page, pages);
+    $("#nw-count").textContent = `${L.length}건 · ${page}/${pages}쪽`;
+    $("#nw-pager").innerHTML = pages < 2 ? "" : pager(pages);
+    $("#nw-list").innerHTML = L.slice((page - 1) * PER, page * PER).map((n) => `<div class="nw">
       <div class="nw-meta"><span>${ago(n.at)}</span><span>${esc(n.o || "")}</span>${n.pol ? `<span class="tag pol">정책</span>` : ""}${n.s > 0 ? `<span class="up">▲ 호재 단어</span>` : n.s < 0 ? `<span class="down">▼ 악재 단어</span>` : ""}</div>
       <a class="nw-t" href="${esc(n.u)}" target="_blank" rel="noopener">${esc(n.t)}</a>
       ${n.b ? `<div class="nw-b">${esc(n.b)}…</div>` : ""}
@@ -27,6 +41,13 @@ const NewsUI = (() => {
         ${n.stocks.map(([nm, cd]) => `<button class="nw-stock" data-code="${cd}">${esc(nm)}</button>`).join("")}
         ${n.who.map((k) => `<span class="nw-who">${esc((J.people.find((p) => p.key === k) || {}).name || k)}</span>`).join("")}</div>
     </div>`).join("") || `<p class="muted">조건에 맞는 뉴스가 없어요.</p>`;
+  }
+
+  function pager(n) {
+    const nums = [...new Set([1, page - 2, page - 1, page, page + 1, page + 2, n])].filter((x) => x >= 1 && x <= n).sort((a, b) => a - b);
+    let out = `<button data-pg="${page - 1}" ${page === 1 ? "disabled" : ""}>‹</button>`, prev = 0;
+    for (const x of nums) { if (x - prev > 1) out += `<span class="muted">…</span>`; out += `<button data-pg="${x}" class="${x === page ? "on" : ""}">${x}</button>`; prev = x; }
+    return out + `<button data-pg="${page + 1}" ${page === n ? "disabled" : ""}>›</button>`;
   }
 
   let span = 30;
@@ -61,15 +82,17 @@ const NewsUI = (() => {
 
   function init() {
     $("#tab-news").addEventListener("click", (e) => {
-      const k = e.target.closest("[data-kind]"); if (k) { f.kind = k.dataset.kind; document.querySelectorAll("#nw-kinds button").forEach((b) => b.classList.toggle("on", b === k)); renderList(); return; }
+      const dy = e.target.closest("[data-day]"); if (dy) { pick(dy.dataset.day); return; }
+      const pg = e.target.closest("[data-pg]"); if (pg && !pg.disabled) { page = +pg.dataset.pg; renderList(); $("#nw-list").closest(".box").scrollIntoView({ block: "start", behavior: "smooth" }); return; }
+      const k = e.target.closest("[data-kind]"); if (k) { f.kind = k.dataset.kind; page = 1; document.querySelectorAll("#nw-kinds button").forEach((b) => b.classList.toggle("on", b === k)); renderList(); return; }
       const w = e.target.closest("[data-who]"); if (w) { who = w.dataset.who; renderPeople(); return; }
       const sp = e.target.closest("[data-span]"); if (sp) { span = +sp.dataset.span; renderPeople(); return; }
       const th = e.target.closest("[data-theme]"); if (th) { e.preventDefault(); window.App && App.showTheme(th.dataset.theme); return; }
       const st = e.target.closest("[data-code]");
       if (st) { const code = st.dataset.code; Data.loadSymbols().then((l) => { const h = l.find((x) => x.symbol.startsWith(code + ".")); window.App && App.openChart(h ? h.symbol : code + ".KS"); }); }
     });
-    $("#nw-theme").addEventListener("change", (e) => { f.theme = e.target.value; renderList(); });
-    $("#nw-q").addEventListener("input", (e) => { f.q = e.target.value; renderList(); });
+    $("#nw-theme").addEventListener("change", (e) => { f.theme = e.target.value; page = 1; renderList(); });
+    $("#nw-q").addEventListener("input", (e) => { f.q = e.target.value; page = 1; renderList(); });
   }
   return { init, onShow: () => { if (!loaded) load(); } };
 })();

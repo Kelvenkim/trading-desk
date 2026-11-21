@@ -193,6 +193,27 @@ def count_window(items, fn, days):
     return a, b
 
 
+DAYS = OUT / "days"
+
+
+def save_days(items):
+    """시장 뉴스를 날짜별 파일에 계속 쌓아요 (지우지 않음) → 뉴스 탭에서 날짜·페이지로 넘겨 봄"""
+    DAYS.mkdir(parents=True, exist_ok=True)
+    by = {}
+    for n in items:
+        if n.get("at"):
+            by.setdefault(n["at"][:10], []).append(n)
+    for d, L in by.items():
+        p = DAYS / f"{d}.json"
+        old = json.loads(p.read_text()) if p.exists() else []
+        seen = {x["t"] for x in old} | {x["u"] for x in old}
+        new = [x for x in L if x["t"] not in seen and x["u"] not in seen]
+        if new or not p.exists():
+            p.write_text(json.dumps(sorted(old + new, key=lambda x: x["at"], reverse=True), ensure_ascii=False, separators=(",", ":")))
+    idx = [{"d": f.stem, "n": len(json.loads(f.read_text()))} for f in sorted(DAYS.glob("20*.json"), reverse=True)]
+    (DAYS / "index.json").write_text(json.dumps(idx, ensure_ascii=False, separators=(",", ":")))
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     arch_p = OUT / "archive.json"
@@ -271,6 +292,7 @@ def main():
             continue
         seen.add(n["t"]); uniq.append(n)
     arch_p.write_text(json.dumps(arch, ensure_ascii=False, separators=(",", ":")))
+    save_days(uniq)
     tnames = {n["key"]: n["name"] for n in NARR}
     (OUT / "latest.json").write_text(json.dumps({"made": NOW.strftime("%Y-%m-%d %H:%M"), "news": uniq, "people": people, "themes": tnames},
                                                 ensure_ascii=False, separators=(",", ":")))

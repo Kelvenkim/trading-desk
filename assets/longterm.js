@@ -83,7 +83,13 @@ const LongUI = (() => {
     const row = (n, q, x) => `<tr><td><b>${n}</b><span class="s">${q}</span></td><td>${tag(x[1])} ${esc(x[0])}</td></tr>`;
     $("#lt-dlg-body").innerHTML = `
       <div class="lt-dhead"><div><h3>${esc(c.name)} <span class="muted">${esc(c.t)} · ${esc(c.exch)}</span></h3><span class="muted small">${esc(c.layer)} · ${esc(R.name)} 리서치 ${esc(R.asof)}</span></div>
-        <div class="lt-dbtn"><a class="lt-pdf" href="reports/longterm/${esc(R.key)}/${esc(c.t)}.pdf" target="_blank" rel="noopener">PDF ↓</a><button class="lt-pdf" data-sym="${esc(c.t)}">차트</button><button class="icon-btn" data-close>✕</button></div></div>
+        <div class="lt-dbtn"><a class="lt-pdf" href="reports/longterm/${esc(R.key)}/${esc(c.t)}.pdf" target="_blank" rel="noopener">PDF로 깊게 보기</a><button class="lt-pdf" data-sym="${esc(c.t)}">차트</button><button class="icon-btn" data-close>✕</button></div></div>
+      ${c.about ? `<div class="lt-about">
+        <div class="lt-ab"><span class="k">어떤 회사?</span><p>${esc(c.about.what)}</p></div>
+        <div class="lt-ab"><span class="k">뭘 만드나?</span><p>${esc(c.about.makes)}</p></div>
+        <div class="lt-ab"><span class="k">왜 필요한가?</span><p>${esc(c.about.why)}</p></div>
+        ${c.about.like ? `<p class="lt-like">한 줄로 — ${esc(c.about.like)}</p>` : ""}
+        <p class="muted small">더 깊게 보려면 위의 <b>PDF</b> — 기술·돈 버는 법·최근 이슈·궁금증 Q&A·우리 검증 공식까지 담았어요.</p></div>` : ""}
       <div class="lt-kpi">${[["주가", has(m.px) ? m.px.toLocaleString() + " " + (m.cur || "") : "—"], ["시가총액", big(m.mcap, m.cur)], ["20일 거래대금", big(m.adv, m.cur)], ["매출 대비 몸값", has(m.ps) ? m.ps.toFixed(1) + "배" : "—"], ["200일선", has(m.ma200) ? m.ma200.toLocaleString() : "—"], ["52주 범위", has(m.lo52) ? `${m.lo52.toLocaleString()} ~ ${m.hi52.toLocaleString()}` : "—"]].map(([k, x]) => `<div class="hd-stat"><span class="k">${k}</span><b>${x}</b></div>`).join("")}</div>
       <p class="small"><b>주요 제품</b> ${esc(c.products)}<br><b>주요 고객</b> ${esc(c.customers)}<br><b>최근 성장</b> ${tag(c.growth[1])} ${esc(c.growth[0])}</p>
       <h4>5단계 · 회사 검증</h4>
