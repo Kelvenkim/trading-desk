@@ -35,6 +35,14 @@ const CompanyUI = (() => {
     const el = $("#co-info"); if (!el) return;
     const my = ++seq;
     if (!sym || Data.isKR(sym)) { el.innerHTML = ""; el.hidden = true; quick(null); return; }
+    if (/-USD$/.test(sym)) {                                      // 코인: 회사 정보 대신 짧은 안내
+      quick(null); el.hidden = false;
+      const nm = (Data.info(sym) || {}).name || sym;
+      el.innerHTML = `<div class="co-box"><h3 class="co-h">${esc(nm)} <span class="muted small">${esc(sym)} · 코인</span></h3>
+        <p class="small">코인은 회사가 아니라서 매출·PER 같은 기업 정보가 없어요. 24시간·주말에도 거래되고, 가격은 금리·달러·ETF 자금 흐름에 크게 움직여요.</p>
+        <p class="small muted">차트는 위에서 일봉·분봉 모두 볼 수 있어요. 우리 코인 전략(50일선 추세 + 추적 손절, 10배)은 AI 데스크의 '코인 10배' 탭에서 확인해요.</p></div>`;
+      return;
+    }
     el.hidden = false;
     el.innerHTML = `<div class="co-load muted">기업 정보를 불러오는 중…</div>`;
     let p = cache[sym];

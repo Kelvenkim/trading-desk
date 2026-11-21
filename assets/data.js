@@ -50,6 +50,16 @@ const Data = (() => {
     return meta;
   }
 
+  // 코인 (야후 파이낸스 기호) — [기호, 영문 이름(별칭 포함), 한국어 이름]
+  const CRYPTO = [
+    ["BTC-USD", "Bitcoin BTC", "비트코인"], ["ETH-USD", "Ethereum ETH", "이더리움"], ["SOL-USD", "Solana SOL", "솔라나"],
+    ["XRP-USD", "XRP Ripple", "리플"], ["BNB-USD", "BNB Binance Coin", "바이낸스코인"], ["DOGE-USD", "Dogecoin DOGE", "도지코인"],
+    ["ADA-USD", "Cardano ADA", "에이다"], ["TRX-USD", "TRON TRX", "트론"], ["AVAX-USD", "Avalanche AVAX", "아발란체"],
+    ["LINK-USD", "Chainlink LINK", "체인링크"], ["DOT-USD", "Polkadot DOT", "폴카닷"], ["LTC-USD", "Litecoin LTC", "라이트코인"],
+    ["BCH-USD", "Bitcoin Cash BCH", "비트코인캐시"], ["XLM-USD", "Stellar XLM", "스텔라루멘"], ["SHIB-USD", "Shiba Inu SHIB", "시바이누"],
+    ["HBAR-USD", "Hedera HBAR", "헤데라"], ["ATOM-USD", "Cosmos ATOM", "코스모스"], ["ETC-USD", "Ethereum Classic ETC", "이더리움클래식"],
+    ["NEAR-USD", "NEAR Protocol", "니어프로토콜"], ["XMR-USD", "Monero XMR", "모네로"],
+  ];
   function loadSymbols() {
     if (symbols) return Promise.resolve(symbols);
     if (!symbolsPromise) {
@@ -61,7 +71,8 @@ const Data = (() => {
           const have = new Set(list.map((x) => x[0]));
           ((u && u.stocks) || []).forEach((x) => { if (!have.has(x.t)) list.push([x.t, x.name, "US"]); });
           const big = new Set(((u && u.stocks) || []).map((x) => x.t));
-          symbols = list.map(([symbol, name, market], rank) => ({ symbol, name: ko[symbol] ? `${name}` : name, ko: ko[symbol] || "", market: "US",
+          [...CRYPTO].reverse().forEach(([t, nm, k]) => { if (!have.has(t)) { list.unshift([t, nm, "COIN"]); ko[t] = k; big.add(t); } });   // 코인도 검색 (야후 '-USD' 시세)
+          symbols = list.map(([symbol, name, market], rank) => ({ symbol, name: ko[symbol] ? `${name}` : name, ko: ko[symbol] || "", market: market === "COIN" ? "코인" : "US",
             rank: big.has(symbol) ? rank - 100000 : rank, key: norm(name), alias: norm(ko[symbol] || ""), cho: chosung(ko[symbol] || name) }));
           return symbols;
         });
