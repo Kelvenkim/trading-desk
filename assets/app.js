@@ -133,13 +133,17 @@
     const m = U.usMarket(), el = $("#chart-foot"); if (!el || !live.at) return;
     const t = live.at.toLocaleTimeString("ko-KR", { hour12: false });
     const auto = live.src === "live";
+    if (/-USD$/.test(cur.sym || "")) {                       // 코인: 24시간 거래, 한국 시각
+      el.innerHTML = `<span class="live-dot ${auto ? "on" : ""}"></span>코인 <b>24시간 거래</b> · 차트 시각은 한국 시각 · 마지막 갱신 <b>${t}</b>${auto ? " · 1분마다 자동 갱신" : " · 저장된 시세 (↻로 최신 받기)"} · ${live.n.toLocaleString("ko-KR")}개 봉`;
+      return;
+    }
     el.innerHTML = `<span class="live-dot ${auto && m.live ? "on" : ""}"></span>미국장 <b>${m.state}</b> · 뉴욕 ${m.ny} · 한국 ${m.kst}
       · 마지막 갱신 <b>${t}</b>${auto ? (m.live ? " · 1분마다 자동 갱신" : " · 장 열리면 자동 갱신") : " · 저장된 시세 (↻로 최신 받기)"} · ${live.n.toLocaleString("ko-KR")}개 봉`;
   }
   async function liveTick() {
     if (live.busy || !cur.sym || document.hidden || !$("#tab-chart").classList.contains("active") || live.src !== "live") return;
     const m = U.usMarket();
-    if (!m.live && live.at && Date.now() - live.at < 15 * 60000) return;     // 장 밖에서는 15분에 한 번만
+    if (!m.live && !/-USD$/.test(cur.sym) && live.at && Date.now() - live.at < 15 * 60000) return;     // 장 밖에서는 15분에 한 번만 (코인은 24시간이라 매분)
     live.busy = true;
     const seq = cur.seq;
     try {

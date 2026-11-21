@@ -133,7 +133,8 @@ const Data = (() => {
     offCache.set(key, off);
     return off;
   }
-  const tzOff = (sym, ms) => (isKR(sym) ? KST : nyOffset(ms));
+  // 코인은 24시간이라 뉴욕 서머타임 해제(11월 첫 일요일) 때 시각이 겹쳐 차트가 멈춤 → 한국 시각(서머타임 없음)으로 표시
+  const tzOff = (sym, ms) => (isKR(sym) || /-USD$/.test(sym) ? KST : nyOffset(ms));
   const fromIntradayRows = (rows, sym = "") => rows.map(([u, o, h, l, c, v]) => {
     const off = tzOff(sym, u * 1000);
     return { t: u + off, ms: u * 1000, day: new Date((u + off) * 1000).toISOString().slice(0, 10), o, h, l, c, v };
@@ -267,7 +268,7 @@ const Data = (() => {
       bars = await intraday(sym, iv, opts.fresh);
     }
     // 차트 라이브러리는 시간이 겹치면 안 되므로 정리
-    bars = bars.filter((b, i) => i === 0 || b.t !== bars[i - 1].t);
+    { let last = -Infinity; bars = bars.filter((b) => { if (!(b.t > last)) return false; last = b.t; return true; }); }   // 시간이 겹치거나 거꾸로 가면 버림
     cache.set(key, { bars, at: Date.now(), remote });
     return bars;
   }
