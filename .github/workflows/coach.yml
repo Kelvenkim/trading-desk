@@ -24,11 +24,13 @@ jobs:
       - run: pip install -r requirements.txt
       - name: 코치 봇 시험
         run: python scripts/coach.py
+      - name: 확실한 자리 데이터 (비중·우리만의 그래프용)
+        run: python scripts/edge.py || echo "edge 실패"
       - name: 저장
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/us/coach.json data/us/formula_cfg.json
+          git add data/us/coach.json data/us/formula_cfg.json data/us/edge.json
           git diff --cached --quiet && exit 0
           git commit -m "공식 피드백방 갱신"
           for i in 1 2 3; do git pull --rebase -X theirs origin main && git push && break; sleep 5; done

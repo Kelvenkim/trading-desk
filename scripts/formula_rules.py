@@ -57,13 +57,31 @@ def params(formula):
 
 
 def context(d):
-    """상위 추세(1시간 EMA 1200 ≈ 50일선 방향), 변동성 수준(ATR%가 90일 중앙값보다 큰지)"""
+    """상위 추세(1시간 EMA 1200 ≈ 50일선 방향), 변동성 수준(ATR%가 90일 중앙값보다 큰지)
+    + 11/22 '우리만의 그래프'용 특징: RSI14, 200EMA에서 떨어진 정도, 거래량 배수(20봉 평균 대비), ATR%"""
     c = d.close; pc = c.shift()
     tr = pd.concat([d.high - d.low, (d.high - pc).abs(), (d.low - pc).abs()], axis=1).max(axis=1)
     A = tr.ewm(alpha=1 / 14, adjust=False).mean()
     atrp = A / c
+    dl = c.diff(); u = dl.clip(lower=0).ewm(alpha=1 / 14, adjust=False).mean(); w = (-dl.clip(upper=0)).ewm(alpha=1 / 14, adjust=False).mean()
+    vr = (d.volume / d.volume.rolling(20).mean()) if "volume" in d else pd.Series(np.nan, index=d.index)
     return dict(htf=np.sign(c - c.ewm(span=1200, adjust=False).mean()).values,
-                volhi=(atrp > atrp.rolling(24 * 90, min_periods=24 * 20).median()).values)
+                volhi=(atrp > atrp.rolling(24 * 90, min_periods=24 * 20).median()).values,
+                rsi=(100 - 100 / (1 + u / w)).values, trend=(c / c.ewm(span=200, adjust=False).mean() - 1).values,
+                vr=vr.values, atrp=atrp.values)
+
+
+def feat(X, j, side, t, risk, **extra):
+    """진입 순간의 특징 기록 (11/22 형 목표: ① 확실한 자리에 더 큰 비중 ② 그것만 보면 판단되는 '우리만의 그래프')
+    모든 계좌의 진입마다 남겨서, 결과(R)와 같이 모음 → 어떤 특징이 결과를 가르는지 찾는 데이터"""
+    g = lambda k: (None if X.get(k) is None or not np.isfinite(X[k][j]) else float(X[k][j]))
+    tt = pd.Timestamp(t)
+    out = dict(side=int(side), hour=int(tt.hour), wd=int(tt.weekday()), risk=round(float(risk) * 100, 3),
+               htf=bool(X["htf"][j] == side), volhi=bool(X["volhi"][j]),
+               rsi=None if g("rsi") is None else round(g("rsi"), 1), trend=None if g("trend") is None else round(g("trend") * side * 100, 2),
+               vr=None if g("vr") is None else round(g("vr"), 2), atrp=None if g("atrp") is None else round(g("atrp") * 100, 3))
+    out.update({k: (round(float(v), 3) if isinstance(v, (float, np.floating)) else (bool(v) if isinstance(v, (bool, np.bool_)) else v)) for k, v in extra.items()})
+    return out
 
 
 def check(formula, f, C=None):

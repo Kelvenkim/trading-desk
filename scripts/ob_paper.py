@@ -179,7 +179,8 @@ def run():
                     bad = FR.check("ob", dict(t=t[k], htf=X["htf"][k] == s, volhi=bool(X["volhi"][k]), risk=abs(fill - q["stop"]) / fill,
                                               fvg=q["fvg"], gap=q["gap"], vhi=q.get("vhi", False)), FC)
                     if bad:
-                        log_skip(S, sym, q, "코치가 붙인 조건 불통과 — " + " · ".join(bad)); continue
+                        log_skip(S, sym, q, "공식 점검이 붙인 조건 불통과 — " + " · ".join(bad)); continue
+                    q["feat"] = FR.feat(X, k, s, t[k], abs(fill - q["stop"]) / fill, fvg=q["fvg"], gap=q["gap"], vhi=q.get("vhi", False), k=q.get("k", 2), ratio=q.get("ratio", 0))
                     open_pos(S, sym, q, float(fill), tk, Z); continue
                 q["wave"] = max(q["wave"], float(h[k])) if s > 0 else min(q["wave"], float(l[k])); q["age"] += 1
                 if (s > 0 and c[k] < q["stop"]) or (s < 0 and c[k] > q["stop"]):
@@ -229,7 +230,7 @@ def open_pos(S, sym, q, fill, tk, Z):
              realized=0.0, mfe=0.0, mae=0.0, mtf=mtf, risk_pct=dist, notional=qty * fill, jid=len(S["journal"]))
     S["pos"][sym] = p
     S["journal"].append({"id": p["jid"], "sym": sym, "side": side, "in_at": tk, "fill": round(fill, 4), "stop": round(q["stop"], 4), "target": round(q["wave"], 4),
-                         "risk_pct": round(dist * 100, 3), "size": round(qty * fill, 2), "why_in": why, "mtf": mtf, "ob": {k: q[k] for k in ("t", "ratio", "prev", "fvg_sz", "atr")}})
+                         "risk_pct": round(dist * 100, 3), "size": round(qty * fill, 2), "why_in": why, "mtf": mtf, "feat": {**(q.get("feat") or {}), "mtf": mtf}, "ob": {k: q[k] for k in ("t", "ratio", "prev", "fvg_sz", "atr")}})
     say(S, f"{sym[:3]} {side} 진입 {fmt(fill)} — 오더블록 구간 터치 · 손절 {fmt(q['stop'])}({dist * 100:.2f}%) · 목표(파동 {'고점' if s > 0 else '저점'}) {fmt(q['wave'])} · ${qty * fill:,.0f}어치 · 4시간 OB {'겹침' if mtf else '안 겹침'}")
 
 

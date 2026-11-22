@@ -37,7 +37,7 @@ def bars(sym):
     d = yf.Ticker(sym).history(period="180d", interval="1h").dropna()
     d.index = d.index.tz_convert("UTC"); d.columns = [c.lower() for c in d.columns]
     d = d[d.index + pd.Timedelta(hours=1) <= pd.Timestamp(now())]
-    return d[["open", "high", "low", "close"]]
+    return d[["open", "high", "low", "close", "volume"]]
 
 
 def ind(d):
@@ -118,6 +118,7 @@ def run():
             why = (f"{'상승' if s > 0 else '하락'} 추세(EMA50 {f(I['e50'][j])} {'>' if s > 0 else '<'} EMA200 {f(I['e200'][j])}) 안에서 "
                    f"EMA20({f(I['e20'][j])})까지 {'눌렸다 양봉' if s > 0 else '반등했다 음봉'} 마감 · 직전 RSI {I['rsi'][j - 1]:.0f}")
             S["pos"][sym] = dict(side=s, qty=float(qty), entry=e, stop=float(stop), stop0=float(stop), best=e, trailed=False, bars=0, at=tk, fee=float(fee), why=why,
+                                 feat=FR.feat(X, j, s, t[k], risk / e),
                                  risk_usd=float(qty * risk), expo=round(float(qty * e / eq), 2))
             say(S, "executor", f"{NM[sym]} {'롱' if s > 0 else '숏'} {f(e)} — {why} · 손절 {f(stop)} ({risk / e * 100:.2f}%) · 계좌의 {qty * e / eq:.1f}배 노출")
         S["last"][sym] = t[-1].isoformat()
@@ -132,7 +133,7 @@ def close(S, sym, xp, why, tk):
     p = S["pos"].pop(sym); s = p["side"]
     pnl = p["qty"] * (xp - p["entry"]) * s - p["qty"] * xp * CFG["fee"]
     S["cash"] += pnl; tot = pnl - p["fee"]; R = tot / p["risk_usd"] if p["risk_usd"] else 0
-    S["trades"].append(dict(sym=sym, side=s, **{"in": p["at"], "out": tk}, entry=p["entry"], exit=xp, usd=round(tot, 2), R=round(R, 2),
+    S["trades"].append(dict(sym=sym, side=s, **{"in": p["at"], "out": tk}, entry=p["entry"], exit=xp, usd=round(tot, 2), R=round(R, 2), feat=p.get("feat"),
                             acct=round(tot / 10000, 5), why=why, entry_why=p["why"], bars=p["bars"], expo=p["expo"]))
     say(S, "risk", f"{NM[sym]} {'롱' if s > 0 else '숏'} 정리 {f(xp)} — {why} · {tot:+,.0f}$ ({R:+.2f}R, {p['bars']}봉 보유)")
 

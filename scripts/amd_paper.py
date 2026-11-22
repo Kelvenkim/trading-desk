@@ -126,7 +126,8 @@ def step(S, sym, j, o, h, l, c, v, A, t):
             bad = FR.check("amd", dict(t=t[j], htf=X["htf"][j] == s, volhi=bool(X["volhi"][j]), risk=(e - q["stop"]) * s / e,
                                        mvol=q.get("mvol", 1.0), boxw=q["width_atr"]), FC)
             if bad:
-                say(S, "risk", f"{nm} POC 체결 자리지만 진입 안 함 — 코치가 붙인 조건 불통과: {' · '.join(bad)}"); return
+                say(S, "risk", f"{nm} POC 체결 자리지만 진입 안 함 — 공식 점검이 붙인 조건 불통과: {' · '.join(bad)}"); return
+            q["feat"] = FR.feat(X, j, s, t[j], (e - q["stop"]) * s / e, mvol=q.get("mvol", 1.0), boxw=q["width_atr"])
             open_pos(S, sym, q, e, tk)
             step_same_bar(S, sym, j, o, h, l, c, tk)
             return
@@ -176,7 +177,7 @@ def open_pos(S, sym, q, e, tk):
            (f"③ 진입: POC {f(q['poc'])}로 되돌아와 {f(e)}에 체결" if (e - q['poc']) * s >= -1e-9 else f"③ 진입: 복귀 뒤 가격이 POC {f(q['poc'])}보다 {'아래' if s > 0 else '위'}(더 좋은 자리)라 {f(e)}에 바로 체결") + f" · 손절 {f(q['stop'])}(조작 꼬리 끝 밖) · 목표 {f(tgt)}(손익비 {CFG['rr']:.0f})"]
     jid = len(S["journal"])
     S["journal"].append(dict(id=jid, sym=sym, side="롱" if s > 0 else "숏", in_at=tk, fill=round(e, 4), stop=round(q["stop"], 4), target=round(tgt, 4),
-                             risk_pct=round(risk / e * 100, 2), size=round(qty * e, 2), why_in=why, exit=None))
+                             risk_pct=round(risk / e * 100, 2), size=round(qty * e, 2), why_in=why, exit=None, feat=q.get("feat")))
     S["pos"][sym] = dict(side=s, qty=float(qty), fill=e, stop=float(q["stop"]), target=float(tgt), bars=0, at=tk, fee=float(fee), risk_usd=float(qty * risk),
                          risk_pct=risk / e, mfe=0.0, mae=0.0, jid=jid)
     say(S, "executor", f"{NM[sym]} {'롱' if s > 0 else '숏'} {f(e)} 진입 — POC 되돌림 · 손절 {f(q['stop'])} ({risk / e * 100:.2f}%) · 목표 {f(tgt)} · 계좌의 {qty * e / eq:.1f}배")
