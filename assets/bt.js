@@ -142,8 +142,6 @@ const BTUI = (() => {
   function renderParams() {
     const sid = $("#bt-strategy").value, St = BT.STRATEGIES[sid];
     $("#bt-desc").textContent = St.desc;
-    if (St.preset && S.lastSid !== sid && S.lastSid !== undefined) writeOpt(St.preset);   // 오더블록·AMD: 롱·숏 둘 다 + 위험 기준 크기로
-    S.lastSid = sid;
     $("#bt-params").innerHTML = St.params.map((p) => p.type === "select"
       ? `<label>${p.label}<select data-p="${p.key}">${p.options.map((o) => `<option ${o === p.def ? "selected" : ""}>${o}</option>`).join("")}</select></label>`
       : `<label>${p.label}<input type="number" data-p="${p.key}" value="${p.def}" min="${p.min ?? ""}" max="${p.max ?? ""}" step="${p.step ?? 1}"></label>`).join("");
@@ -495,6 +493,12 @@ const BTUI = (() => {
     const L = S.last;
     if (L && ((L.opt && L.opt.etfTaxFree) || (L.list && L.list.some((x) => x.opt.etfTaxFree)))) w.push("ETF는 매도 시 증권거래세가 없어서 매도 비용에서 세금 0.20%를 빼고 계산했어요.");
     if (st.trades < 20) w.push(`거래가 ${st.trades}회뿐이라 우연히 나온 결과일 수 있어요.`);
+    const fn = st.funnel || (L && L.list && L.list.reduce((a, x) => { const f = x.res.stats.funnel; if (f) for (const k in f) a[k] = (a[k] || 0) + f[k]; return a; }, null));
+    if (fn && st.trades < 30) {                                         // 오더블록·AMD: 단계마다 몇 개가 남았나 → 왜 거래가 적은지
+      const iv = Data.IV[$("#bt-interval").value];
+      w.push(`단계별로 남은 자리: ${Object.entries(fn).map(([k, v]) => `${k} ${v}`).join(" → ")} → 실제 거래 ${st.trades}` +
+        (iv && iv.daily ? " · 이 전략은 1시간봉 기준으로 만든 규칙이라 일봉에선 자리가 아주 드물어요. 봉 주기를 1시간으로 바꿔보세요." : " · 조건(갭 배수·필터)을 하나씩 풀거나 기간을 늘리면 자리가 늘어요."));
+    }
     if (st.blocked) w.push(`상·하한가 때문에 ${st.blocked}번 체결하지 못했어요.`);
     if (st.capped) w.push(`거래량 한도 때문에 ${st.capped}번 주문을 줄여서 체결했어요.`);
     if (kind === "basket" && $("#bt-basket").value.startsWith("top")) w.push("현재 시가총액 상위 종목을 과거에 적용해서 실제보다 좋게 나왔을 수 있어요.");
@@ -1281,7 +1285,7 @@ ETF는 매도 시 증권거래세가 없어 매도 비용을 0.015% 정도로 �
       $("#o-dayClose").checked = !iv.daily;
     };
     $("#bt-interval").addEventListener("change", () => { setDates(); saveForm(); });
-    $("#bt-strategy").addEventListener("change", () => { renderParams(); saveForm(); });
+    $("#bt-strategy").addEventListener("change", () => { renderParams(); const St = BT.STRATEGIES[$("#bt-strategy").value]; if (St.preset) writeOpt(St.preset); saveForm(); });   // 오더블록·AMD 고르면 롱·숏 둘 다 + 위험 기준 크기로 (처음 고를 때도)
     $$("#bt-mode button").forEach((b) => b.addEventListener("click", () => { setMode(b.dataset.mode); countCombos(); saveForm(); }));
     $("#bt-basket").addEventListener("change", () => { syncBasket(); saveForm(); });
     $("#bt-controls").addEventListener("change", (e) => { if (e.target.id && e.target.id.startsWith("o-")) { updateWhen(); saveForm(); } if (e.target.dataset.p) saveForm(); });

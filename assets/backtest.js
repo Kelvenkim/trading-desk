@@ -452,10 +452,13 @@ const BT = (() => {
     const opp = new Map(); obs.forEach((o) => { if (o.disp) { if (!opp.has(o.i)) opp.set(o.i, new Set()); opp.get(o.i).add(o.side); } });
     const need = ["gap", "sweep", "fvg"].filter((k) => yes(p[k])), plans = [];
     const zt = new Array(n).fill(NaN), zb = new Array(n).fill(NaN);
+    const F = { "오더블록 모양": obs.filter((o) => dirOK(o.side)).length, "필터 통과": 0, "구간 터치": 0, "손익비 통과": 0 };   // 거래가 적을 때 어디서 걸러졌는지
     let busy = -1;
     for (const ob of obs) {
       const { i, side: s, entry: e, stop: st } = ob;
-      if (i <= busy || !dirOK(s) || need.some((f) => !ob[f])) continue;
+      if (!dirOK(s) || need.some((f) => !ob[f])) continue;
+      F["필터 통과"]++;
+      if (i <= busy) continue;
       let j = null, wave = s > 0 ? b[i].h : b[i].l;
       for (let k = i + 1; k < Math.min(n, i + 1 + p.W); k++) {
         if ((s > 0 && b[k].l <= e) || (s < 0 && b[k].h >= e)) { j = k; break; }
@@ -463,8 +466,10 @@ const BT = (() => {
         if ((s > 0 && b[k].c < st) || (s < 0 && b[k].c > st)) break;
       }
       if (j == null) continue;
+      F["구간 터치"]++;
       const risk = Math.abs(e - st);
       if (Math.abs(wave - e) < p.minrr * risk) continue;
+      F["손익비 통과"]++;
       if ((s > 0 && b[j].o <= st) || (s < 0 && b[j].o >= st)) continue;   // 갭으로 손절선 밖에서 열리면 오더블록이 이미 깨진 것 → 진입 안 함 (주식 밤사이 갭)
       const fill = s > 0 ? Math.min(b[j].o, e) : Math.max(b[j].o, e);
       // 왼쪽 '손절 %'·'익절 %'·'최대 보유 봉'도 함께 적용 (11/22): 손절은 오더블록 꼬리 끝과 손절 % 중 가까운 쪽, 익절 %에 닿으면 남은 것 전부 정리
@@ -490,7 +495,7 @@ const BT = (() => {
       plans.push({ ei: j, side: s, e: fill, stop: st1, target: wave, legs, mark: { i: i - 1, text: "OB" }, why: (legs.length > 1 && legs[0].w < 1 ? "절반 익절 → " : "") + why });
       busy = k;
     }
-    return { plans, lines: [{ name: "OB 구간 위", data: zt, color: "#3fb6c9" }, { name: "OB 구간 아래", data: zb, color: "#3fb6c9" }] };
+    return { plans, funnel: F, lines: [{ name: "OB 구간 위", data: zt, color: "#3fb6c9" }, { name: "OB 구간 아래", data: zb, color: "#3fb6c9" }] };
   }
   function pocOf(b, a, z, rows = 24) {
     let lo = Infinity, hi = -Infinity; for (let i = a; i < z; i++) { lo = Math.min(lo, b[i].l); hi = Math.max(hi, b[i].h); }
@@ -509,19 +514,23 @@ const BT = (() => {
     const lp = new Array(n).fill(NaN), lh = new Array(n).fill(NaN), ll = new Array(n).fill(NaN);
     let obi = null;
     if (p.conf === "오더블록 겹침만") { obi = { 1: [], "-1": [] }; obFind(b, { K: 2, L: 20, dmin: 0.15 }).filter((o) => o.k === 2 && o.gap && o.sweep).forEach((o) => obi[o.side].push(o.i)); }
+    const F = { "박스 이탈(조작 후보)": 0, "박스 안 복귀": 0, "방향·자리 통과": 0, "POC 체결": 0 };
     let i = N + 20;
     while (i < n - 2) {
       let blo = Infinity, bhi = -Infinity; for (let q = i - N; q < i; q++) { blo = Math.min(blo, b[q].l); bhi = Math.max(bhi, b[q].h); }
       if (!isFinite(A[i - 1]) || bhi - blo > p.m * A[i - 1]) { i++; continue; }
       const s = b[i].l < blo ? 1 : b[i].h > bhi ? -1 : 0;
       if (!s) { i++; continue; }
+      F["박스 이탈(조작 후보)"]++;
       let ext = s > 0 ? b[i].l : b[i].h, k = null;
       for (let j = i; j < Math.min(n - 1, i + p.reclaim); j++) {
         ext = s > 0 ? Math.min(ext, b[j].l) : Math.max(ext, b[j].h);
         if ((s > 0 && b[j].c > blo) || (s < 0 && b[j].c < bhi)) { k = j; break; }
       }
       if (k == null) { i += p.reclaim; continue; }
+      F["박스 안 복귀"]++;
       if (!dirOK(s) || (obi && !obi[s].some((x) => x >= i - 1 && x <= k + 1))) { i = k + 1; continue; }
+      F["방향·자리 통과"]++;
       const poc = pocOf(b, i - N, i), stop = ext - s * 0.1 * A[k];
       let e, j0 = null;
       if (p.entry === "복귀 즉시") { e = b[k + 1].o; j0 = k + 1; }
@@ -532,6 +541,7 @@ const BT = (() => {
         }
         if (j0 == null) { i = k + 1; continue; }
       }
+      F["POC 체결"]++;
       const risk = (e - stop) * s;
       if (risk <= 0.05 * A[k]) { i = k + 1; continue; }
       let tgt = p.tgt === "박스 반대쪽" ? (s > 0 ? bhi : blo) : e + s * (p.tgt === "손익비 3" ? 3 : 2) * risk;
@@ -551,7 +561,7 @@ const BT = (() => {
       plans.push({ ei: j0, side: s, e, stop: stp, target: tgt, legs: [{ i: j, w: 1, px: x }], why, mark: { i, text: "조작" } });
       i = j + 1;
     }
-    return { plans, lines: [{ name: "POC", data: lp, color: "#f5b942" }, { name: "매집 박스 위", data: lh, color: "#9a8cff" }, { name: "매집 박스 아래", data: ll, color: "#9a8cff" }] };
+    return { plans, funnel: F, lines: [{ name: "POC", data: lp, color: "#f5b942" }, { name: "매집 박스 위", data: lh, color: "#9a8cff" }, { name: "매집 박스 아래", data: ll, color: "#9a8cff" }] };
   }
 
   const STRATEGIES = {
@@ -572,7 +582,7 @@ const BT = (() => {
         { key: "stopRule", label: "손절 기준", type: "select", options: ["꼬리 터치", "종가 이탈"], def: "꼬리 터치" },
         { key: "tp", label: "파동 고점에서", type: "select", options: ["절반 익절", "전부 익절"], def: "절반 익절" },
       ],
-      simulate(b, p, opt) { const r = obPlans(b, p, opt); return bookTrades(b, r.plans, opt, r.lines); },
+      simulate(b, p, opt) { const r = obPlans(b, p, opt), o = bookTrades(b, r.plans, opt, r.lines); o.stats.funnel = r.funnel; return o; },
       signals(b) { return { entry: b.map(() => false), exit: b.map(() => false), lines: [] }; },
     },
     amd: {
@@ -589,7 +599,7 @@ const BT = (() => {
         { key: "hold", label: "최대 보유 봉 수", def: 48, min: 1, max: 1000 },
         { key: "conf", label: "자리", type: "select", options: ["전체", "오더블록 겹침만"], def: "전체" },
       ],
-      simulate(b, p, opt) { const r = amdPlans(b, p, opt); return bookTrades(b, r.plans, opt, r.lines); },
+      simulate(b, p, opt) { const r = amdPlans(b, p, opt), o = bookTrades(b, r.plans, opt, r.lines); o.stats.funnel = r.funnel; return o; },
       signals(b) { return { entry: b.map(() => false), exit: b.map(() => false), lines: [] }; },
     },
     ma_cross: {
