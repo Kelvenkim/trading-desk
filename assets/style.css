@@ -1232,3 +1232,11 @@ body { padding-bottom: 26px; }
 .ob-j.win { box-shadow: inset 3px 0 0 var(--up); padding-left: 8px; } .ob-j.loss { box-shadow: inset 3px 0 0 var(--down); padding-left: 8px; } .ob-j.open-pos { box-shadow: inset 3px 0 0 var(--accent); padding-left: 8px; }
 .ob-j-b { padding: 0 2px 12px; } .ob-j-b h5 { margin: 10px 0 4px; font-size: 12.5px; color: var(--accent); } .ob-j-b ul { margin: 0; padding-left: 16px; font-size: 13px; line-height: 1.6; }
 
+
+/* 전체 화면에서도 그리기 도구 막대 보이기 (PC: 왼쪽 세로, 폰: 아래 가로) */
+body.chart-full .toolbar { position: fixed; z-index: 61; left: max(8px, env(safe-area-inset-left)); top: max(8px, env(safe-area-inset-top)); bottom: max(8px, env(safe-area-inset-bottom)); width: 46px; }
+body.chart-full .center.full { left: calc(max(8px, env(safe-area-inset-left)) + 50px); width: auto; right: 0; }
+@media (max-width: 640px) {
+  body.chart-full .toolbar { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 46px; border-radius: 0; padding: 4px 8px max(4px, env(safe-area-inset-bottom)); box-sizing: content-box; }
+  body.chart-full .center.full { left: 0; right: 0; width: 100vw; padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
+}

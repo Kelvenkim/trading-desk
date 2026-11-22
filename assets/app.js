@@ -41,7 +41,7 @@
     // 전체 화면: 차트 영역을 화면 가득 (아이폰 사파리도 되도록 CSS 방식)
     const center = $("#chart-wrap").closest(".center");
     const setFull = (on) => {
-      center.classList.toggle("full", on); document.body.classList.toggle("no-scroll", on);
+      center.classList.toggle("full", on); document.body.classList.toggle("no-scroll", on); document.body.classList.toggle("chart-full", on);   // 그리기 도구는 전체 화면에서도 옆에
       $("#full-close").hidden = !on; $("#fit-btn").title = on ? "전체 화면 닫기" : "전체 화면 (Esc로 닫기)";
     };
     $("#fit-btn").addEventListener("click", () => setFull(!center.classList.contains("full")));
