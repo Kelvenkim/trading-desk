@@ -32,6 +32,7 @@ RULES = {
     "ens_vt": "추세 신호 10개 중 켜진 비율 × 변동성 맞춤(연 40%, 최대 2배) — 11/19 미션 최종 후보",
 }
 FUND = 0.0003  # 숏 유지 비용(펀딩) 하루 0.03%
+PART = False   # True = 코인 계좌 안의 50일선 칸 (python scripts/crypto_paper.py coin3)
 SWITCH_DAYS, SWITCH_GAP = 28, 0.05
 
 
@@ -191,6 +192,9 @@ def run():
         say(S, "claude", "── 코인 계좌 개설 · 가상 $10,000 · 비트코인·이더리움 · 주말에도 돌아가요 ──")
         say(S, "analyst", "시험 결과: 1시간 돌파 매매는 최근 2년 BTC -65~-93%(그냥 보유 -35%)로 탈락. 하루 단위 50일선 추세 추종은 2018년·2022년·2024년 어디서 시작해도 그냥 보유보다 나았어요(BTC 2022~: +101% vs +35%).")
         say(S, "risk", "코인마다 계좌의 최대 50%. 일봉 종가가 50일선 아래로 마감하면 전량 정리. 하루 안의 출렁임엔 바로 반응하지 않아요(1시간 단위 손절은 시험에서 계속 털려서 크게 졌어요).")
+        if PART:                                                 # 11/22 형: 코인 계좌의 '50일선 칸' (AMD·오더블록·50일선 3칸)
+            S["rule"] = "ls50"; S["lock"] = "코인 계좌 50일선 칸 — 50일선 롱·숏 고정"
+            say(S, "claude", f"── 코인 계좌 50일선 칸 시작 · ${CASH0:,.2f} (계좌의 1/3) · 50일선 위면 롱, 아래면 숏 ──")
     rule = S["rule"]
     # 1) 새로 마감된 일봉마다 판단 (코인별)
     for s, b in B.items():
@@ -279,4 +283,6 @@ def run():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "coin3":       # 11/22 형: 코인 계좌 = AMD + 오더블록 + 50일선, 돈을 1/3씩
+        SF, OF = D / "crypto_part_coin_state.json", D / "crypto_part_coin.json"; CASH0 = 3592.50; PART = True
     run()

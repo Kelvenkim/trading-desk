@@ -25,7 +25,11 @@ jobs:
       - name: 코인 계좌
         run: python scripts/crypto_paper.py
       - name: 5배 레버리지 실험 계좌
-        run: python scripts/crypto_lev.py || echo "5배 계좌 실패"
+        run: python scripts/crypto_lev.py || echo "10배 50일선 계좌 실패"
+      - name: 코인·코인 10배 계좌의 50일선 칸 (11/22 형: AMD+오더블록+50일선 3칸)
+        run: |
+          python scripts/crypto_paper.py coin3 || echo "코인 50일선 칸 실패"
+          python scripts/crypto_lev.py lev3 || echo "10배 50일선 칸 실패"
       - name: 5분봉 단기 실험 기록 (매매는 Cloudflare Worker가 5분마다)
         run: python scripts/crypto_scalp.py || echo "5분 실험 기록 실패"
       - name: 저장

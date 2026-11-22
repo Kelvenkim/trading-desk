@@ -81,7 +81,7 @@ def run():
         print("코인 10배(50일선) 계좌는", S["retired"], "에 새 방식으로 옮겨서 더 안 돌림"); return
     if not S:
         S = {"start": today, "cash": CASH0, "pos": None, "trades": [], "eq": [], "last_bar": None, "liq": 0, "last_chk": t.isoformat(), "p0": px}
-        cp.say(S, "claude", f"── {LEV}배 레버리지 실험 계좌 개설 · 가상 $10,000 · 비트코인만 ──")
+        cp.say(S, "claude", f"── 코인 10배 계좌 50일선 칸 시작 · ${CASH0:,.2f} (계좌의 1/3) · 비트코인 50일선 롱·숏 · 증거금 {LEV}배 ──" if CASH0 != 10000.0 else f"── {LEV}배 레버리지 실험 계좌 개설 · 가상 $10,000 · 비트코인만 ──")
     p = S["pos"]
     # 배수 바꾸기 (11/21 5배 → 10배): 옛 배수로 지금 가격에 정리하고, 바로 새 배수로 다시 판단
     if p and p.get("lev", 5) != LEV:
@@ -179,4 +179,7 @@ def run():
 
 
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "lev3":        # 11/22 형: 코인 10배 계좌 = AMD + 오더블록 + 50일선, 돈을 1/3씩
+        SF, OF = D / "crypto_part_lev_state.json", D / "crypto_part_lev.json"; CASH0 = 3845.05
     run()

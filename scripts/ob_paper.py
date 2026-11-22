@@ -282,10 +282,10 @@ def log_skip(S, sym, q, why):
 
 if __name__ == "__main__":
     import sys
-    # 11/22 형: 코인·코인 10배도 오더블록을 같이 씀 → 각 계좌의 '오더블록 칸'(계좌 돈의 절반). 완화판이라 위험은 AMD의 ¼ (전체 기준)
+    # 11/22 형: 코인·코인 10배도 오더블록을 같이 씀 → 각 계좌의 '오더블록 칸'(계좌 돈의 1/3). 완화판이라 위험은 AMD의 ¼ (전체 기준)
     prof = sys.argv[1] if len(sys.argv) > 1 else ""
     if prof == "lev10":      # 코인 10배 오더블록 칸: 비트코인 · 한 번 손절 시 전체 −0.5% · 노출 최대 10배
-        OUT = ROOT / "data/us/lev10_ob.json"; SYMS = ["BTC-USD"]; CFG.update(risk=0.01, maxE=10.0)
+        OUT = ROOT / "data/us/lev10_ob.json"; SYMS = ["BTC-USD"]; CFG.update(risk=0.015, maxE=10.0)
     elif prof == "coin":     # 코인(1배) 오더블록 칸: BTC·ETH · 한 번 손절 시 전체 −0.25% · 노출 최대 1배
-        OUT = ROOT / "data/us/coin_ob.json"; SYMS = ["BTC-USD", "ETH-USD"]; CFG.update(risk=0.005, maxE=1.0)
+        OUT = ROOT / "data/us/coin_ob.json"; SYMS = ["BTC-USD", "ETH-USD"]; CFG.update(risk=0.0075, maxE=1.0)
     run()
