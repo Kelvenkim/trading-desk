@@ -914,7 +914,9 @@ const BTUI = (() => {
 
   // ================= 화면 전환 =================
   function showSub(name) {
-    $$("#bt-subtabs button").forEach((b) => b.classList.toggle("on", b.dataset.sub === name));
+    $$("#bt-subtabs button[data-sub]").forEach((b) => b.classList.toggle("on", b.dataset.sub === name));
+    { const anc = $("#bt-subtabs-anchor"), hdr = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--top")) || 60;   // 아래로 내려가 있었으면 새 탭 맨 위로
+      if (anc && anc.getBoundingClientRect().top < hdr) window.scrollTo({ top: anc.getBoundingClientRect().top + window.scrollY - hdr }); }
     $$("[data-subpanel]").forEach((p) => (p.hidden = p.dataset.subpanel !== name));
     if (name === "opt") { renderRanges(); }
     if (name === "saved") renderSaved();
@@ -1273,7 +1275,8 @@ ETF는 매도 시 증권거래세가 없어 매도 비용을 0.015% 정도로 �
     });
 
     $("#bt-run").addEventListener("click", () => run());
-    $$("#bt-subtabs button").forEach((b) => b.addEventListener("click", () => showSub(b.dataset.sub)));
+    $$("#bt-subtabs button[data-sub]").forEach((b) => b.addEventListener("click", () => showSub(b.dataset.sub)));
+    $("#bt-totop").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
     $("#bt-pine").addEventListener("click", () => {
       const sid = $("#bt-strategy").value;
       $("#pine-code").textContent = BT.pine(sid, readParams(), readOpt(), `TD - ${BT.STRATEGIES[sid].name}`);

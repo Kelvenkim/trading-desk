@@ -1282,3 +1282,9 @@ body.chart-full .center.full { left: calc(max(8px, env(safe-area-inset-left)) + 
 .fm-view-body img { display: block; width: 100%; cursor: zoom-in; }
 .fm-view-body img.zoom { width: 220%; max-width: none; cursor: zoom-out; }
 @media (max-width: 640px) { .fm-view-bar .muted { display: none; } .fm-view-body img.zoom { width: 300%; } }
+
+/* 백테스트 결과·자동 탐색·저장한 결과 탭을 스크롤해도 위에 붙어 있게 (어디서든 돌아가기, 11/22) */
+#bt-subtabs { position: sticky; top: var(--top); z-index: 15; background: var(--bg); padding-top: 6px; overflow-x: auto; scrollbar-width: none; }
+#bt-subtabs::-webkit-scrollbar { display: none; }
+#bt-subtabs button { white-space: nowrap; }
+#bt-subtabs .bt-top { margin-left: auto; color: var(--muted); font-weight: 500; }
