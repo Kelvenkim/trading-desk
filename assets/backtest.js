@@ -466,12 +466,17 @@ const BT = (() => {
       const risk = Math.abs(e - st);
       if (Math.abs(wave - e) < p.minrr * risk) continue;
       const fill = s > 0 ? Math.min(b[j].o, e) : Math.max(b[j].o, e);
-      const legs = []; let rem = 1, be = false, stop = st, why = "보유 시간 끝", k = j;
+      // 왼쪽 '손절 %'·'익절 %'·'최대 보유 봉'도 함께 적용 (11/22): 손절은 오더블록 꼬리 끝과 손절 % 중 가까운 쪽, 익절 %에 닿으면 남은 것 전부 정리
+      let st1 = st, capped = false;
+      if (opt.stopLoss > 0) { const cs = fill * (1 - s * opt.stopLoss / 100); if (s > 0 ? cs > st1 : cs < st1) { st1 = cs; capped = true; } }
+      const tpx = opt.takeProfit > 0 ? fill * (1 + s * opt.takeProfit / 100) : NaN, hold = opt.maxHold > 0 ? opt.maxHold : p.hold;
+      const legs = []; let rem = 1, be = false, stop = st1, why = "보유 시간 끝", k = j;
       const rule2 = p.stopRule === "종가 이탈";
-      for (k = j; k < Math.min(n, j + p.hold); k++) {
+      for (k = j; k < Math.min(n, j + hold); k++) {
         let hit = s > 0 ? b[k].l <= stop : b[k].h >= stop;
         if (rule2 && !be) hit = s > 0 ? b[k].c < stop : b[k].c > stop;
-        if (hit) { const px = rule2 && !be ? b[k].c : k > j ? (s > 0 ? Math.min(b[k].o, stop) : Math.max(b[k].o, stop)) : stop; legs.push({ i: k, w: rem, px }); rem = 0; why = be ? "본전 손절" : "손절 (꼬리 끝)"; break; }
+        if (hit) { const px = rule2 && !be ? b[k].c : k > j ? (s > 0 ? Math.min(b[k].o, stop) : Math.max(b[k].o, stop)) : stop; legs.push({ i: k, w: rem, px }); rem = 0; why = be ? "본전 손절" : capped ? `손절 ${opt.stopLoss}%` : "손절 (꼬리 끝)"; break; }
+        if (isFinite(tpx) && ((s > 0 && b[k].h >= tpx) || (s < 0 && b[k].l <= tpx))) { legs.push({ i: k, w: rem, px: k > j ? (s > 0 ? Math.max(b[k].o, tpx) : Math.min(b[k].o, tpx)) : tpx }); rem = 0; why = `익절 ${opt.takeProfit}%`; break; }
         if (!be && ((s > 0 && b[k].h >= wave) || (s < 0 && b[k].l <= wave))) {
           const part = p.tp === "전부 익절" ? 1 : 0.5; legs.push({ i: k, w: part, px: wave }); rem -= part; be = true; stop = fill;
           if (rem <= 1e-9) { why = "파동 고점 익절"; break; }
@@ -479,9 +484,9 @@ const BT = (() => {
         }
         if (k > j && be && opp.has(k) && opp.get(k).has(-s)) { legs.push({ i: k, w: rem, px: b[k].c }); rem = 0; why = "반대 오더블록"; break; }
       }
-      if (rem > 1e-9) { k = Math.min(n - 1, j + p.hold - 1); legs.push({ i: k, w: rem, px: b[k].c }); }
+      if (rem > 1e-9) { k = Math.min(n - 1, j + hold - 1); legs.push({ i: k, w: rem, px: b[k].c }); }
       for (let x = i + 1; x <= k; x++) { zt[x] = Math.max(e, st); zb[x] = Math.min(e, st); }
-      plans.push({ ei: j, side: s, e: fill, stop: st, target: wave, legs, why: (legs.length > 1 && legs[0].w < 1 ? "절반 익절 → " : "") + why });
+      plans.push({ ei: j, side: s, e: fill, stop: st1, target: wave, legs, why: (legs.length > 1 && legs[0].w < 1 ? "절반 익절 → " : "") + why });
       busy = k;
     }
     return { plans, lines: [{ name: "OB 구간 위", data: zt, color: "#3fb6c9" }, { name: "OB 구간 아래", data: zb, color: "#3fb6c9" }] };
@@ -528,16 +533,21 @@ const BT = (() => {
       }
       const risk = (e - stop) * s;
       if (risk <= 0.05 * A[k]) { i = k + 1; continue; }
-      const tgt = p.tgt === "박스 반대쪽" ? (s > 0 ? bhi : blo) : e + s * (p.tgt === "손익비 3" ? 3 : 2) * risk;
+      let tgt = p.tgt === "박스 반대쪽" ? (s > 0 ? bhi : blo) : e + s * (p.tgt === "손익비 3" ? 3 : 2) * risk;
       if ((tgt - e) * s < risk) { i = k + 1; continue; }
+      // 왼쪽 '손절 %'·'익절 %'·'최대 보유 봉'도 함께 적용: 더 가까운 쪽이 먼저
+      let stp = stop, why0 = "손절 (조작 꼬리 끝)", why1 = "목표 도달 (분산)";
+      if (opt.stopLoss > 0) { const cs = e * (1 - s * opt.stopLoss / 100); if (s > 0 ? cs > stp : cs < stp) { stp = cs; why0 = `손절 ${opt.stopLoss}%`; } }
+      if (opt.takeProfit > 0) { const tp = e * (1 + s * opt.takeProfit / 100); if (s > 0 ? tp < tgt : tp > tgt) { tgt = tp; why1 = `익절 ${opt.takeProfit}%`; } }
+      const hold = opt.maxHold > 0 ? opt.maxHold : p.hold;
       let x = null, j = j0, why = "보유 시간 끝";
-      for (; j < Math.min(n, j0 + p.hold); j++) {
-        if ((s > 0 && b[j].l <= stop) || (s < 0 && b[j].h >= stop)) { x = j > j0 ? (s > 0 ? Math.min(b[j].o, stop) : Math.max(b[j].o, stop)) : stop; why = "손절 (조작 꼬리 끝)"; break; }
-        if ((s > 0 && b[j].h >= tgt) || (s < 0 && b[j].l <= tgt)) { x = tgt; why = "목표 도달 (분산)"; break; }
+      for (; j < Math.min(n, j0 + hold); j++) {
+        if ((s > 0 && b[j].l <= stp) || (s < 0 && b[j].h >= stp)) { x = j > j0 ? (s > 0 ? Math.min(b[j].o, stp) : Math.max(b[j].o, stp)) : stp; why = why0; break; }
+        if ((s > 0 && b[j].h >= tgt) || (s < 0 && b[j].l <= tgt)) { x = tgt; why = why1; break; }
       }
       if (x == null) { j = Math.min(n - 1, j); x = b[j].c; }
       for (let q = i - N; q <= j; q++) { lp[q] = poc; if (q < i) { lh[q] = bhi; ll[q] = blo; } }
-      plans.push({ ei: j0, side: s, e, stop, target: tgt, legs: [{ i: j, w: 1, px: x }], why });
+      plans.push({ ei: j0, side: s, e, stop: stp, target: tgt, legs: [{ i: j, w: 1, px: x }], why });
       i = j + 1;
     }
     return { plans, lines: [{ name: "POC", data: lp, color: "#f5b942" }, { name: "매집 박스 위", data: lh, color: "#9a8cff" }, { name: "매집 박스 아래", data: ll, color: "#9a8cff" }] };
