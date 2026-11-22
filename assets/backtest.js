@@ -429,7 +429,7 @@ const BT = (() => {
         if (cur.rem <= 1e-9) {
           const pnl = cur.real - cur.fee; eq += pnl;
           trades.push({ side: p.side, entryIdx: p.ei, exitIdx: i, bars: i - p.ei, entryPx: p.e, exitPx: p.legs[p.legs.length - 1].px, pnl, ret: pnl / cur.notional * 100,
-            reason: p.why, adds: 0, partial: p.legs.length > 1, r: pnl / (cur.notional * Math.abs(p.e - p.stop) / p.e), stopPx: p.stop, targetPx: p.target, tag: p.tag });
+            reason: p.why, adds: 0, partial: p.legs.length > 1, r: pnl / (cur.notional * Math.abs(p.e - p.stop) / p.e), stopPx: p.stop, targetPx: p.target, tag: p.tag, mark: p.mark });
           cur = null; eqArr[i] = eq;
           if (pi < plans.length && plans[pi].ei === i) { i--; continue; }   // 같은 봉에 다음 거래 시작
         } else eqArr[i] = eq + cur.real - cur.fee + cur.notional * cur.rem * p.side * (b[i].c / p.e - 1);
@@ -465,6 +465,7 @@ const BT = (() => {
       if (j == null) continue;
       const risk = Math.abs(e - st);
       if (Math.abs(wave - e) < p.minrr * risk) continue;
+      if ((s > 0 && b[j].o <= st) || (s < 0 && b[j].o >= st)) continue;   // 갭으로 손절선 밖에서 열리면 오더블록이 이미 깨진 것 → 진입 안 함 (주식 밤사이 갭)
       const fill = s > 0 ? Math.min(b[j].o, e) : Math.max(b[j].o, e);
       // 왼쪽 '손절 %'·'익절 %'·'최대 보유 봉'도 함께 적용 (11/22): 손절은 오더블록 꼬리 끝과 손절 % 중 가까운 쪽, 익절 %에 닿으면 남은 것 전부 정리
       let st1 = st, capped = false;
@@ -486,7 +487,7 @@ const BT = (() => {
       }
       if (rem > 1e-9) { k = Math.min(n - 1, j + hold - 1); legs.push({ i: k, w: rem, px: b[k].c }); }
       for (let x = i + 1; x <= k; x++) { zt[x] = Math.max(e, st); zb[x] = Math.min(e, st); }
-      plans.push({ ei: j, side: s, e: fill, stop: st1, target: wave, legs, why: (legs.length > 1 && legs[0].w < 1 ? "절반 익절 → " : "") + why });
+      plans.push({ ei: j, side: s, e: fill, stop: st1, target: wave, legs, mark: { i: i - 1, text: "OB" }, why: (legs.length > 1 && legs[0].w < 1 ? "절반 익절 → " : "") + why });
       busy = k;
     }
     return { plans, lines: [{ name: "OB 구간 위", data: zt, color: "#3fb6c9" }, { name: "OB 구간 아래", data: zb, color: "#3fb6c9" }] };
@@ -547,7 +548,7 @@ const BT = (() => {
       }
       if (x == null) { j = Math.min(n - 1, j); x = b[j].c; }
       for (let q = i - N; q <= j; q++) { lp[q] = poc; if (q < i) { lh[q] = bhi; ll[q] = blo; } }
-      plans.push({ ei: j0, side: s, e, stop: stp, target: tgt, legs: [{ i: j, w: 1, px: x }], why });
+      plans.push({ ei: j0, side: s, e, stop: stp, target: tgt, legs: [{ i: j, w: 1, px: x }], why, mark: { i, text: "조작" } });
       i = j + 1;
     }
     return { plans, lines: [{ name: "POC", data: lp, color: "#f5b942" }, { name: "매집 박스 위", data: lh, color: "#9a8cff" }, { name: "매집 박스 아래", data: ll, color: "#9a8cff" }] };

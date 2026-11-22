@@ -1288,3 +1288,6 @@ body.chart-full .center.full { left: calc(max(8px, env(safe-area-inset-left)) + 
 #bt-subtabs::-webkit-scrollbar { display: none; }
 #bt-subtabs button { white-space: nowrap; }
 #bt-subtabs .bt-top { margin-left: auto; color: var(--muted); font-weight: 500; }
+
+#bt-trades tr.click { cursor: pointer; }
+#bt-trades tr.click:hover td { background: var(--hover); }

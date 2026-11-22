@@ -522,7 +522,7 @@ const BTUI = (() => {
     $("#bt-monthly").innerHTML = `<thead><tr><th></th>${Array.from({ length: 12 }, (_, i) => `<th class="r">${i + 1}월</th>`).join("")}<th class="r">연간</th></tr></thead><tbody>${rows}</tbody>`;
   }
   function renderTrades(trades, open, labelOf, symOf) {
-    const rows = trades.map((t, i) => `<tr><td>${i + 1}</td><td class="${t.side > 0 ? "up" : "down"}">${DIR[t.side]}</td>
+    const rows = trades.map((t, i) => `<tr data-ti="${i}" class="${t.name ? "" : "click"}"><td>${i + 1}</td><td class="${t.side > 0 ? "up" : "down"}">${DIR[t.side]}</td>
       <td>${t.name ? `<b>${esc(t.name)}</b> ` : ""}${labelOf(t, t.entryIdx)}</td><td class="r">${fmtPx(t.entryPx, symOf(t))}</td>
       <td>${labelOf(t, t.exitIdx)}</td><td class="r">${fmtPx(t.exitPx, symOf(t))}</td><td class="r">${t.bars}봉</td>
       <td class="r ${cls(t.ret)}">${fmtPct(t.ret)}</td><td>${esc(t.reason)}${t.adds ? ` · 추가 ${t.adds}회` : ""}${t.partial ? " · 1차 익절" : ""}</td></tr>`);
@@ -546,9 +546,18 @@ const BTUI = (() => {
     C.pc.applyOptions({ localization: { locale: "ko-KR", priceFormatter: (v) => fmtPx(v, sym) } });
     C.candles.setData(bars.map((b) => ({ time: b.t, open: b.o, high: b.h, low: b.l, close: b.c })));
     C.lines.forEach((s) => C.pc.removeSeries(s));
-    C.lines = r.lines.map((ln) => {
-      const s = C.pc.addSeries(LC.LineSeries, { color: ln.color, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-      s.setData(bars.map((b, i) => ({ time: b.t, value: ln.data[i] })).filter((x) => isFinite(x.value))); return s;
+    // 값이 끊긴 구간(오더블록 구간·POC 등)은 조각마다 따로 그려서 서로 선으로 이어지지 않게
+    C.lines = [];
+    r.lines.forEach((ln) => {
+      const d = ln.data; let same = 0, tot = 0;
+      for (let i = 1; i < d.length; i++) if (isFinite(d[i]) && isFinite(d[i - 1])) { tot++; if (d[i] === d[i - 1]) same++; }
+      const step = tot > 0 && same / tot > 0.8;                    // 계단 모양(구간 값) → 값이 바뀌는 곳에서도 끊음
+      const runs = []; let cur = null;
+      bars.forEach((b, i) => { const v = d[i]; if (!isFinite(v)) { cur = null; return; } if (!cur || (step && v !== cur.v)) { cur = { pts: [] }; runs.push(cur); } cur.pts.push({ time: b.t, value: v }); cur.v = v; });
+      (runs.length > 1 ? runs.slice(-150) : runs).forEach((run) => {
+        const s = C.pc.addSeries(LC.LineSeries, { color: ln.color, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+        s.setData(run.pts); C.lines.push(s);
+      });
     });
     // 차트 셋업: 거래마다 손절선(파랑)·목표선(빨강)을 진입~청산 구간에만 그림 (최근 80거래)
     const planned = [...r.trades, ...(r.open ? [{ ...r.open, exitIdx: bars.length - 1 }] : [])].filter((t) => isFinite(t.stopPx)).slice(-80);
@@ -567,6 +576,7 @@ const BTUI = (() => {
       const text = f.kind === "add" ? "추가" : f.kind === "tp1" ? "1차 익절" : closing ? `${t.ret >= 0 ? "+" : ""}${t.ret.toFixed(1)}%` : f.buy ? (f.kind === "open" ? "매수" : "환매") : "숏";
       return { time: bars[f.i].t, position: f.buy ? "belowBar" : "aboveBar", color: f.buy ? UP : DOWN, shape: f.buy ? "arrowUp" : "arrowDown", text };
     });
+    r.trades.forEach((t) => { if (t.mark && bars[t.mark.i]) marks.push({ time: bars[t.mark.i].t, position: t.side > 0 ? "belowBar" : "aboveBar", color: "#3fb6c9", shape: "square", text: t.mark.text }); });   // 오더블록이 생긴 봉·조작 봉 표시
     marks.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
     C.marks.setMarkers(marks.slice(-800));
     C.pc.timeScale().fitContent();
@@ -1293,6 +1303,14 @@ ETF는 매도 시 증권거래세가 없어 매도 비용을 0.015% 정도로 �
     $("#pine-copy").addEventListener("click", async () => {
       try { await navigator.clipboard.writeText($("#pine-code").textContent); toast("복사했어요. TradingView Pine 에디터에 붙여넣으세요."); }
       catch (_) { toast("클립보드를 쓸 수 없어요. 코드를 직접 선택해서 복사해주세요.", true); }
+    });
+    // 거래를 누르면 가격 차트가 그 거래(오더블록·조작 봉 ~ 청산)로 이동 (11/22)
+    $("#bt-trades").addEventListener("click", (e) => {
+      const tr = e.target.closest("tr[data-ti]"); if (!tr || !S.last || S.last.kind !== "single") return;
+      const t = S.last.res.trades[+tr.dataset.ti]; if (!t) return;
+      const a = Math.min(t.mark ? t.mark.i : t.entryIdx, t.entryIdx);
+      S.charts.pc.timeScale().setVisibleLogicalRange({ from: a - 20, to: t.exitIdx + 20 });
+      $("#bt-price-box").scrollIntoView({ behavior: "smooth", block: "start" });
     });
     $("#bt-trades-csv").addEventListener("click", () => {
       const L = S.last; if (!L) { toast("먼저 백테스트를 실행해주세요."); return; }
