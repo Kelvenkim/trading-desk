@@ -203,4 +203,9 @@ def feedback(p, R, why):
 
 
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "lev10":
+        # 코인 10배 계좌 (11/22 형: '10배는 2%로') — 같은 AMD 규칙을 비트코인만, 한 번 손절 시 계좌 −2%, 노출 최대 10배
+        # 시험(research/amd, BTC 1시간봉 2년 550번): 평균 노출 4.6배 · 2년 +84% · 최대 낙폭 −34% · 최악 한 번 −3.5%(갭)
+        OUT = ROOT / "data/us/lev10.json"; SYMS = ["BTC-USD"]; CFG.update(risk=0.02, maxE=10.0)
     run()

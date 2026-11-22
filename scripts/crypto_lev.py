@@ -77,6 +77,8 @@ def run():
     B = cp.load_bars()[SYM]
     c, d, px = B["close"], B["days"], B["live"]
     S = json.loads(SF.read_text()) if SF.exists() else {}
+    if S.get("retired"):                                         # 11/22 형 결정으로 새 방식(scripts/amd_paper.py lev10 → data/us/lev10.json)으로 옮김
+        print("코인 10배(50일선) 계좌는", S["retired"], "에 새 방식으로 옮겨서 더 안 돌림"); return
     if not S:
         S = {"start": today, "cash": CASH0, "pos": None, "trades": [], "eq": [], "last_bar": None, "liq": 0, "last_chk": t.isoformat(), "p0": px}
         cp.say(S, "claude", f"── {LEV}배 레버리지 실험 계좌 개설 · 가상 $10,000 · 비트코인만 ──")
