@@ -329,6 +329,12 @@ def run():
         D0 = apply_filters(raw, filt); base = pd.concat(D0.values())
         act = FR.active_text(key, C)
         L = [dict(who="judge", ok=None, text=f"{name} 지금 규칙{(' (+ ' + act + ')') if act else ''} 2년 시험: {len(base)}번 · 승률 {(base.r > 0).mean():.0%} · 평균 {base.r.mean():+.2f}R · BTC·ETH 하루 {(len(D0['BTC-USD']) + len(D0.get('ETH-USD', []))) / days:.1f}번")]
+        # 시기별 점검 (11/22 형: 좋은 해·나쁜 해가 있으니 유연하게) — 분기마다 성적, 최근 3개월이 2년 평균보다 확실히 나쁜지
+        qs = base.groupby(pd.DatetimeIndex(base.t).to_period("Q")).r.agg(["mean", "size"])
+        rec = base[base.t >= base.t.max() - pd.Timedelta(days=90)].r
+        se = float(base.r.std() / np.sqrt(max(1, len(rec))))
+        L.append(dict(who="judge", ok=None, text="분기별 거래당: " + " · ".join(f"{p}: {m:+.2f}R({int(n)})" for p, (m, n) in qs.iterrows())
+                      + f" → 최근 3개월 {rec.mean():+.2f}R ({len(rec)}번)" + (" ⚠️ 2년 평균보다 확실히 나쁨 — 요즘 시장에 안 맞을 수 있음" if len(rec) >= 20 and rec.mean() < base.r.mean() - 2 * se else " — 2년 평균 범위 안")))
         cands = []
         # ① 붙어 있는 조건 빼보기 (효과가 사라졌으면 뺌)
         for n, thr in filt.items():
