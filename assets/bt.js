@@ -1015,7 +1015,7 @@ const BTUI = (() => {
 - 최적화 결과는 학습 1위보다 '검증 성적'과 '순위 상관'을 중심으로 판단해. 상관이 0.1 미만이면 과최적화라고 분명히 말해.
 - 수익을 장담하거나 특정 종목 매수·매도를 권하지 마. 연구용 도구라는 전제로 사실과 수치 중심으로 말해.
 
-봉 id: ${Data.INTERVALS.map((x) => `${x.id}(${x.label})`).join(", ")}. 분봉은 최근 60일(1시간봉 약 2년), 1분봉은 최근 5일 정도. 분봉이면 day_close를 보통 켜.
+봉 id: ${Data.INTERVALS.map((x) => `${x.id}(${x.label})`).join(", ")}. 분봉은 최근 60일(1시간봉 약 2년), 1분봉은 최근 5일 정도. 분봉이면 day_close를 보통 켜(단, 코인·ob_hyung·amd는 끄기). 기간: "2026년"·"25년"은 연도(그해 1월 1일부터), "1년 동안"·"2년"은 오늘부터 거꾸로 센 기간이야. 헷갈리게 읽지 마.
 여러 종목 묶음: coin3(BTC·ETH·SOL), coin13(코인 13개), coin20(코인 20개), top20(미국 대형주 20, 생존 편향), ndx(나스닥100, 생존 편향), watch(관심종목).
 
 전략
@@ -1166,17 +1166,37 @@ ETF는 매도 시 증권거래세가 없어 매도 비용을 0.015% 정도로 �
     }
   }
 
+  function parsePeriod(q) {
+    const today = new Date().toISOString().slice(0, 10), ymd = (d) => d.toISOString().slice(0, 10);
+    const cal = [...q.matchAll(/(20\d{2}|\d{2})\s*년(?!\s*(동안|간|치))/g)].map((m) => +m[1]).filter((y) => y >= 2000 || (y >= 15 && y <= 40)).map((y) => (y < 100 ? 2000 + y : y));
+    const dur = [...q.matchAll(/(\d{1,2})\s*년\s*(동안|간|치)?/g)].filter((m) => m[2] || +m[1] <= 10).map((m) => +m[1]).filter((n) => n >= 1 && n <= 10);
+    const mons = (q.match(/(\d+)\s*개월/) || [])[1];
+    const out = {};
+    if (cal.length >= 2) { out.start = `${Math.min(...cal)}-01-01`; out.end = `${Math.max(...cal)}-12-31`; }
+    else if (cal.length === 1) {
+      const y = cal[0], n = dur.find((d) => d !== y % 100);
+      out.start = `${y}-01-01`;
+      if (n) { const e = new Date(Date.UTC(y + n, 0, 0)); out.end = ymd(e); }          // 2025년부터 2년 → 2025-01-01 ~ 2026-12-31
+      else if (/부터|이후|이래/.test(q)) out.end = today;
+      else out.end = `${y}-12-31`;                                                       // 2026년 → 그해 전체
+    } else if (dur.length || mons) {
+      const d = new Date(); d.setMonth(d.getMonth() - (dur.length ? dur[0] * 12 : +mons)); out.start = ymd(d); out.end = today;
+    }
+    if (out.end && out.end > today) out.end = today;
+    return out;
+  }
+
   // AI 연결 전 간단 모드
   async function localCommand(text, code) {
     const a = {}, q = text.replace(/\s+/g, " ");
     const numOf = (re) => { const m = q.match(re); return m ? +m[1] : undefined; };
     for (const [k, v] of [["1분", "1m"], ["15분", "15m"], ["30분", "30m"], ["5분", "5m"], ["1시간", "1h"], ["60분", "1h"], ["시간봉", "1h"], ["일봉", "1d"], ["주봉", "1w"], ["월봉", "1M"]])
       if (q.includes(k)) { a.interval = v; break; }
-    for (const [re, v] of [[/이동평균|이평|골든|크로스/i, "ma_cross"], [/rsi/i, "rsi"], [/볼린저|박스/, "bollinger"], [/돌파|급등/, "breakout"]])
+    for (const [re, v] of [[/오더\s*블[럭록]|order\s*block|\bob\b/i, "ob_hyung"], [/amd|매집|조작|분산/i, "amd"], [/이동평균|이평|골든|크로스/i, "ma_cross"], [/rsi/i, "rsi"], [/볼린저|박스/, "bollinger"], [/돌파|급등/, "breakout"]])
       if (re.test(q)) { a.strategy = v; break; }
     a.stop_loss = numOf(/손절\s*(\d+(?:\.\d+)?)/); a.take_profit = numOf(/익절\s*(\d+(?:\.\d+)?)/); a.trailing = numOf(/트레일링\s*(\d+(?:\.\d+)?)/);
-    const yrs = numOf(/(\d+)\s*년/), mons = numOf(/(\d+)\s*개월/);
-    if (yrs || mons) { const d = new Date(); d.setMonth(d.getMonth() - (yrs ? yrs * 12 : mons)); a.start = d.toISOString().slice(0, 10); a.end = new Date().toISOString().slice(0, 10); }
+    // 기간 (11/22 고침): '2026년'·'25년'은 연도, '1년 동안'·'2년'은 기간. 예전엔 '2026년'을 2026년치로 읽어 항상 전체 기간이 됐음
+    Object.assign(a, parsePeriod(q));
     if (/당일|장\s*마감|단타/.test(q)) a.day_close = true;
     if (/양방향/.test(q)) a.direction = "both"; else if (/숏/.test(q)) a.direction = "short";
     if (/코인\s*13|13개/.test(q)) a.basket = "coin13"; else if (/코인\s*20|코인\s*(전체|다|모두)/.test(q)) a.basket = "coin20"; else if (/코인\s*3|코인\s*묶음/.test(q)) a.basket = "coin3";
