@@ -62,8 +62,8 @@ def run(d, P, cost=0.0005):
             j += 1
         if x is None: j = min(N - 1, j); x = c[j]
         net = side * (x / e - 1) - 2 * cost
-        out.append((d.index[i], net / (risk / e), net, risk / e)); i = j + 1
-    return pd.DataFrame(out, columns=["t", "r", "pct", "risk"])
+        out.append((d.index[i], net / (risk / e), net, risk / e, d.index[j0], d.index[min(j, N - 1)], side, i, k)); i = j + 1
+    return pd.DataFrame(out, columns=["t", "r", "pct", "risk", "te", "tx", "side", "i", "k"])
 
 if __name__ == "__main__":
     iv = sys.argv[1] if len(sys.argv) > 1 else "1h"

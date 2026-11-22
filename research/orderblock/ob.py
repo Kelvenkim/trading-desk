@@ -138,7 +138,7 @@ def simulate(d, obs, P, Z=None):
             k = min(N - 1, j + HOLD - 1); legs.append((rem, c[k]))
         gross = sum(w * s * (px / fill - 1) for w, px in legs)
         net = gross - cost - sum(w for w, _ in legs) * cost
-        trades.append(dict(t=t[i], te=t[j], side=s, r=net / r_unit, pct=net, why=x_why, mtf=mtf, k=ob["k"],
+        trades.append(dict(t=t[i], te=t[j], tx=t[min(k, N - 1)], side=s, r=net / r_unit, pct=net, why=x_why, mtf=mtf, k=ob["k"],
                            sweep=ob["sweep"], fvg=ob["fvg"], gap=ob["gap"], risk=r_unit))
         busy_until = k
     return pd.DataFrame(trades)
