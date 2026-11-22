@@ -24,8 +24,21 @@
   "key": "amd",
   "title": "매집 → 조작 → 분산 (AMD)",
   "date": "2026-11-22",
-  "status": "형 확인 완료 · 시험 전",
-  "desc": "박스권(매집)에 POC → 박스 한쪽을 가짜로 깨는 조작 → 박스 안 복귀 뒤 POC 근처 반대 방향 진입, 손절은 조작 꼬리 끝 밖 → 분산 구간에서 수익",
-  "img": "formulas/amd.png"
+  "status": "모의 계좌 운영 중 (1시간봉 BTC·ETH·SOL, 11/22~)",
+  "desc": "24봉 박스(폭 ≤ ATR×6)에 POC → 박스를 가짜로 깼다가 3봉 안에 복귀(조작) → POC 지정가 진입, 손절은 조작 꼬리 끝 밖 → 목표 손익비 2 · 1회 손실 0.5%",
+  "img": "formulas/amd.png",
+  "live": {
+   "file": "data/us/amd_paper.json",
+   "type": "ob",
+   "acct": "코인 AMD"
+  },
+  "bt": {
+   "n": 1567,
+   "win": 0.46,
+   "avgR": 0.18,
+   "aw": 1.73,
+   "al": -1.16,
+   "note": "1시간봉 2년 BTC·ETH·SOL · 수수료 0.05%"
+  }
  }
 ]
