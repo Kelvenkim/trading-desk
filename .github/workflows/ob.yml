@@ -3,7 +3,9 @@ name: 코인 오더블록 · 10배 단타 모의 계좌
 on:
   schedule:
     - cron: "11 * * * *"    # 매시간 (1시간봉 마감 뒤). GitHub 예약이 늦거나 빠져도 다음 실행 때 밀린 봉을 순서대로 처리
+    - cron: "26 * * * *"    # 11/22: GitHub가 예약을 자주 건너뜀(4시간 넘게 안 돎) → 시간당 4번 걸어둠
     - cron: "41 * * * *"
+    - cron: "56 * * * *"
   workflow_dispatch: {}
 
 permissions:
