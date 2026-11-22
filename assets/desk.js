@@ -67,8 +67,9 @@ const DeskUI = (() => {
     const stat = (f, J) => {
       if (!f.live) return null;
       if (!J) return { n: 0, R: [], ret: null };
-      const R = f.live.type === "ob" ? (J.journal || []).filter((j) => j.exit != null).map((j) => j.R) : (J.trades || []).map((t) => t.R);
-      return { n: R.length, R, ret: J.eq_now != null ? J.eq_now / 10000 - 1 : null };
+      const R = f.live.type === "ob" ? (J.journal || []).filter((j) => j.exit != null).map((j) => j.R)
+        : f.live.type === "pl" ? (J.trades || []).filter((t) => !f.live.since || (t.in || "") >= f.live.since).map((t) => t.pl * 100) : (J.trades || []).map((t) => t.R);   // pl: 주식 계좌는 거래당 수익률(%)로
+      return { n: R.length, R, ret: f.live.since ? null : J.eq_now != null ? J.eq_now / 10000 - 1 : null };   // since: 규칙 시작 뒤 거래만 보므로 계좌 전체 수익률은 숨김
     };
     const card = (f, S) => {
       const bt = f.bt;
@@ -80,9 +81,10 @@ const DeskUI = (() => {
         // 본전 승률 = 평균 손실 / (평균 이익 + 평균 손실) — 이 승률보다 높아야 돈을 범. 표본 적으면 시험 값으로
         const mW = aw.length >= 5 ? aw.reduce((a, r) => a + r, 0) / aw.length : bt && bt.aw, mL = al.length >= 5 ? -al.reduce((a, r) => a + r, 0) / al.length : bt && -bt.al;
         const be = mW && mL ? mL / (mW + mL) : null;
-        const v = n < NEED ? ["wait", `표본 부족 (${n}/${NEED}) — 계속 관찰`] : avgR > 0.1 ? ["good", "유지 — 기대값 플러스"] : avgR > 0 ? ["mid", "고치기 검토 — 남는 게 너무 적음"] : ["bad", "폐기 검토 — 기대값 마이너스"];
+        const pctU = f.live.type === "pl", good = pctU ? 1 : 0.1;          // 주식: 거래당 평균 +1% 넘으면 유지
+        const v = n < NEED ? ["wait", `표본 부족 (${n}/${NEED}) — 계속 관찰`] : avgR > good ? ["good", "유지 — 기대값 플러스"] : avgR > 0 ? ["mid", "고치기 검토 — 남는 게 너무 적음"] : ["bad", "폐기 검토 — 기대값 마이너스"];
         const pctW = (x) => x == null ? "—" : (x * 100).toFixed(0) + "%";
-        const sR = (x) => x == null ? "—" : (x >= 0 ? "+" : "") + x.toFixed(2) + "R";
+        const sR = (x) => x == null ? "—" : (x >= 0 ? "+" : "") + x.toFixed(2) + (pctU ? "%" : "R");
         body = `<div class="fm-stats">
           <div class="fm-row"><span>평가까지</span><div class="fm-bar"><i style="width:${Math.min(100, n / NEED * 100)}%"></i></div><b>${n}/${NEED}번</b></div>
           <div class="fm-row"><span>승률</span><div class="fm-bar win"><i class="${win != null && be != null && win < be ? "lo" : ""}" style="width:${win == null ? 0 : win * 100}%"></i>${be != null ? `<em style="left:${be * 100}%" title="본전 승률"></em>` : ""}${bt ? `<u style="left:${bt.win * 100}%" title="과거 시험 승률"></u>` : ""}</div><b>${pctW(win)}</b></div>
