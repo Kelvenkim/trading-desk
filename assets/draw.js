@@ -14,10 +14,28 @@ const Draw = (() => {
     rect: { pts: 2, name: "박스" },
     fib: { pts: 2, name: "피보나치" },
     vp: { pts: 2, name: "POC" },
+    pos: { pts: 2, name: "손절·익절" },
     measure: { pts: 2, name: "측정" },
     text: { pts: 1, name: "텍스트" },
   };
   const FIB = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+  // 손절·익절 박스: pts = [진입(시작 시각·진입가), 목표(끝 시각·목표가), 손절(끝 시각·손절가)] · 목표가 진입보다 위면 롱, 아래면 숏
+  function posFix(d) {
+    if (!d.pts[2]) { const e = d.pts[0].p, tg = d.pts[1].p; d.pts[2] = { t: d.pts[1].t, p: e - (tg - e) / 2 }; }   // 처음 손절은 손익비 2:1 자리
+    if (d.pts[1].t < d.pts[0].t) { const t = d.pts[0].t; d.pts[0].t = d.pts[1].t; d.pts[1].t = t; }
+    d.pts[2].t = d.pts[1].t;
+  }
+  function posResult(d) {                                  // 진입 뒤 박스 끝까지 목표·손절 중 먼저 닿은 것
+    const B = CV.bars, e = d.pts[0].p, tg = d.pts[1].p, sl = d.pts[2].p, L = tg > e;
+    let i = Math.max(0, Math.ceil(CV.msToLogical(d.pts[0].t))); const end = Math.min(B.length - 1, Math.floor(CV.msToLogical(d.pts[1].t)));
+    for (; i <= end; i++) { const b = B[i]; if (b.l <= e && b.h >= e) break; }    // 진입가에 닿아야 체결
+    if (i > end) return { k: "none" };
+    for (; i <= end; i++) {
+      const b = B[i], hitS = L ? b.l <= sl : b.h >= sl, hitT = L ? b.h >= tg : b.l <= tg;
+      if (hitS) return { k: "stop", i }; if (hitT) return { k: "tgt", i };
+    }
+    return null;
+  }
   // POC: 고른 기간의 가격대별 거래량 (봉 거래량을 저가~고가에 고르게 나눈 근사) · POC = 최다 거래 가격 · VAH/VAL = 거래량 70% 구간
   const VPROWS = 40, vpCache = new Map();
   function vprof(t0, t1) {
@@ -157,6 +175,30 @@ const Draw = (() => {
         ctx.setLineDash([4, 4]); ctx.strokeStyle = alpha(c, 0.6); seg(P[0], P[1]); ctx.setLineDash([]);
         break;
       }
+      case "pos": {
+        const pts = d.pts[2] ? d.pts : [d.pts[0], d.pts[1], { t: d.pts[1].t, p: d.pts[0].p - (d.pts[1].p - d.pts[0].p) / 2 }];
+        const e = pts[0].p, tg = pts[1].p, sl = pts[2].p, L = tg >= e;
+        const x1 = Math.min(P[0].x, P[1].x), x2 = Math.max(P[0].x, P[1].x), w = Math.max(2, x2 - x1);
+        const ye = CV.candle.priceToCoordinate(e), yt = CV.candle.priceToCoordinate(tg), ys = CV.candle.priceToCoordinate(sl);
+        if (ye == null || yt == null || ys == null) break;
+        const G = "#26a65b", R = "#f0525c";
+        ctx.fillStyle = alpha(G, 0.2); ctx.fillRect(x1, Math.min(ye, yt), w, Math.abs(yt - ye));
+        ctx.fillStyle = alpha(R, 0.2); ctx.fillRect(x1, Math.min(ye, ys), w, Math.abs(ys - ye));
+        ctx.lineWidth = 1; ctx.strokeStyle = alpha(G, 0.9); seg({ x: x1, y: yt }, { x: x2, y: yt });
+        ctx.strokeStyle = alpha(R, 0.9); seg({ x: x1, y: ys }, { x: x2, y: ys });
+        ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 1.5; seg({ x: x1, y: ye }, { x: x2, y: ye });
+        const res = d.pts[2] ? posResult(d) : null;
+        if (res && res.k !== "none") {                     // 실제로 먼저 닿은 쪽 표시
+          const xr = ts().logicalToCoordinate(res.i);
+          if (xr != null) { ctx.setLineDash([3, 3]); ctx.strokeStyle = res.k === "tgt" ? G : R; seg({ x: xr, y: ye }, { x: xr, y: res.k === "tgt" ? yt : ys }); ctx.setLineDash([]); }
+        }
+        const pc = (p) => ((p / e - 1) * 100), rr = Math.abs(tg - e) / Math.max(1e-12, Math.abs(e - sl));
+        const mid = x1 + w / 2;
+        label(`목표 ${CV.fmt(tg)} (${pc(tg) >= 0 ? "+" : ""}${pc(tg).toFixed(2)}%)`, mid, yt + (L ? -11 : 11), G, "#fff", "center");
+        label(`손절 ${CV.fmt(sl)} (${pc(sl) >= 0 ? "+" : ""}${pc(sl).toFixed(2)}%)`, mid, ys + (L ? 11 : -11), R, "#fff", "center");
+        label(`${L ? "롱" : "숏"} ${CV.fmt(e)} · 손익비 ${rr.toFixed(2)}${res ? (res.k === "tgt" ? " · 목표 도달 ✓" : res.k === "stop" ? " · 손절 ✗" : " · 진입가 미체결") : ""}`, mid, ye, "rgba(20,20,22,.92)", "#fff", "center");
+        break;
+      }
       case "vp": {
         const x1 = Math.min(P[0].x, P[1].x), x2 = Math.max(P[0].x, P[1].x), w = x2 - x1;
         const V = vprof(d.pts[0].t, d.pts[1].t);
@@ -242,6 +284,11 @@ const Draw = (() => {
           const x1 = Math.min(P[0].x, P[1].x), x2 = Math.max(P[0].x, P[1].x), y1 = Math.min(P[0].y, P[1].y), y2 = Math.max(P[0].y, P[1].y);
           hit = x >= x1 - HIT && x <= x2 + HIT && y >= y1 - HIT && y <= y2 + HIT; break;
         }
+        case "pos": {
+          if (!d.pts[2]) break;
+          const x1 = Math.min(P[0].x, P[1].x), x2 = Math.max(P[0].x, P[1].x), ys = toXY(d.pts[2]).y;
+          hit = x >= x1 - HIT && x <= x2 + HIT && y >= Math.min(P[1].y, ys) - HIT && y <= Math.max(P[1].y, ys) + HIT; break;
+        }
         case "vp": {
           const V = vprof(d.pts[0].t, d.pts[1].t), x1 = Math.min(P[0].x, P[1].x), x2 = Math.max(P[0].x, P[1].x);
           const ya = V ? CV.candle.priceToCoordinate(V.hi) : Math.min(P[0].y, P[1].y), yb = V ? CV.candle.priceToCoordinate(V.lo) : Math.max(P[0].y, P[1].y);
@@ -279,6 +326,7 @@ const Draw = (() => {
       if (!t) { temp = null; dirty = true; return; }
       temp.text = t;
     }
+    if (temp.type === "pos") posFix(temp);
     items.push(temp); sel = items.length - 1; temp = null; save();
     setTool(null); dirty = true;
   }
@@ -325,6 +373,7 @@ const Draw = (() => {
       const d = items[drag.i];
       if (drag.mode === "handle") {
         const pt = fromXY(x, y); if (pt) d.pts[drag.k] = pt;
+        if (d.type === "pos" && pt && drag.k > 0) d.pts[3 - drag.k].t = pt.t;   // 목표·손절은 같은 끝 시각
       } else {
         const now = fromXY(x, y, false), l = ts().coordinateToLogical(x);
         if (!now || l == null) return;
