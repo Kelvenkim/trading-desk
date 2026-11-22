@@ -68,7 +68,7 @@ const BTUI = (() => {
   function writeSettings(s) {
     if (s.mode) setMode(s.mode);
     if (s.symbol) { S.sym = s.symbol; S.csv = null; S.search.set(s.symbol); $("#bt-csv-name").textContent = ""; }
-    if (s.basket) { $("#bt-basket").value = s.basket; syncBasket(); }
+    if (s.basket) { $("#bt-basket").value = s.basket; if (!$("#bt-basket").value) $("#bt-basket").value = "coin3"; syncBasket(); }   // 예전 한국 묶음(top50 등) 저장값이면 코인 3개로
     if (s.basketList) { S.basketCustom = s.basketList; store.set(BASKET_KEY, S.basketCustom); renderTags(); }
     if (s.interval) $("#bt-interval").value = s.interval;
     if (s.start !== undefined) $("#bt-start").value = s.start || "";
@@ -109,7 +109,7 @@ const BTUI = (() => {
   function syncBasket() {
     const v = $("#bt-basket").value;
     $("#bt-basket-pick").hidden = v !== "custom";
-    const note = { watch: "watchlist.json 종목과 별표로 추가한 종목이에요.", top20: "현재 시가총액 기준이라 과거 성과가 실제보다 좋게 보일 수 있어요(살아남은 종목만 고른 효과).", top50: "현재 시가총액 기준이라 과거 성과가 실제보다 좋게 보일 수 있어요. 종목이 많아 처음엔 불러오는 데 시간이 걸려요." }[v] || "검색해서 종목을 추가하세요.";
+    const note = { watch: "사이트 기본 종목과 별표로 추가한 종목이에요.", coin3: "지금 모의 계좌(오더블록·AMD·10배 단타)가 매매하는 코인이에요.", coin13: "오더블록·AMD 2년 시험에 쓴 13개예요. 새로 넣은 10개는 규칙을 만들 때 안 본 코인이라 '진짜 실력' 확인용이에요.", coin20: "검색 목록의 코인 20개 전체예요.", top20: "지금 미국 시가총액 상위 20이라 과거 성과가 실제보다 좋게 보일 수 있어요(살아남은 종목만 고른 효과).", ndx: "나스닥100 전체(약 100종목)라 처음엔 불러오는 데 시간이 걸려요. 지금 구성 기준이라 생존 편향이 있어요." }[v] || "검색해서 종목을 추가하세요.";
     $("#bt-basket-note").textContent = note + (v !== "watch" && !Data.getProxy() ? " 관심종목 외 종목은 시세 중계 서버가 필요해요." : "");
   }
   function renderTags() {
@@ -119,16 +119,23 @@ const BTUI = (() => {
       S.basketCustom = S.basketCustom.filter((x) => x !== b.dataset.rm); store.set(BASKET_KEY, S.basketCustom); renderTags();
     }));
   }
+  // 11/22: 사이트가 미국·코인 중심이라 한국 시총 묶음(빈 목록) 대신 코인·미국 묶음
+  const BASKETS = {
+    coin3: ["BTC-USD", "ETH-USD", "SOL-USD"],
+    coin13: ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "BNB-USD", "DOGE-USD", "ADA-USD", "AVAX-USD", "LINK-USD", "LTC-USD", "DOT-USD", "BCH-USD", "TRX-USD"],
+    top20: ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "AVGO", "TSLA", "BRK-B", "JPM", "LLY", "V", "WMT", "ORCL", "MA", "XOM", "UNH", "COST", "NFLX", "JNJ"],
+  };
   async function basketSymbols() {
-    const v = $("#bt-basket").value;
+    const v = $("#bt-basket").value || "coin3";
     if (v === "custom") return [...S.basketCustom];
     if (v === "watch") {
       const base = Data.meta.symbols.map((s) => s.symbol);
       return [...base, ...store.get("tradingdesk.favs", []).filter((s) => !base.includes(s))];
     }
-    const list = await Data.loadSymbols();
-    const n = v === "top50" ? 50 : 20;
-    return list.filter((s) => (s.market === "KOSPI" || s.market === "KOSDAQ") && /0\.(KS|KQ)$/.test(s.symbol)).slice(0, n).map((s) => s.symbol);
+    if (BASKETS[v]) return BASKETS[v];
+    if (v === "coin20") return (await Data.loadSymbols()).filter((s) => s.market === "코인").map((s) => s.symbol);
+    if (v === "ndx") { try { const u = await (await fetch("data/us/universe.json")).json(); return u.stocks.filter((x) => (x.idx || []).includes("NDX")).map((x) => x.t); } catch (_) { return []; } }
+    return [];
   }
 
   // ================= 전략 화면 =================
@@ -1009,7 +1016,7 @@ const BTUI = (() => {
 - 수익을 장담하거나 특정 종목 매수·매도를 권하지 마. 연구용 도구라는 전제로 사실과 수치 중심으로 말해.
 
 봉 id: ${Data.INTERVALS.map((x) => `${x.id}(${x.label})`).join(", ")}. 분봉은 최근 60일(1시간봉 약 2년), 1분봉은 최근 5일 정도. 분봉이면 day_close를 보통 켜.
-여러 종목 묶음: watch(관심종목), top20/top50(현재 시총 상위, 생존 편향 있음).
+여러 종목 묶음: coin3(BTC·ETH·SOL), coin13(코인 13개), coin20(코인 20개), top20(미국 대형주 20, 생존 편향), ndx(나스닥100, 생존 편향), watch(관심종목).
 
 전략
 ${strategies}
@@ -1033,7 +1040,7 @@ ETF는 매도 시 증권거래세가 없어 매도 비용을 0.015% 정도로 �
       type: "object",
       properties: {
         mode: { type: "string", enum: ["single", "basket"] },
-        basket: { type: "string", enum: ["watch", "top20", "top50"] },
+        basket: { type: "string", enum: ["coin3", "coin13", "coin20", "top20", "ndx", "watch"] },
         symbol_query: { type: "string", description: "종목명, 코드, 티커" },
         interval: { type: "string", enum: Data.INTERVALS.map((x) => x.id) },
         start: { type: "string", description: "YYYY-MM-DD, 빈 문자열이면 처음부터" },
@@ -1172,7 +1179,8 @@ ETF는 매도 시 증권거래세가 없어 매도 비용을 0.015% 정도로 �
     if (yrs || mons) { const d = new Date(); d.setMonth(d.getMonth() - (yrs ? yrs * 12 : mons)); a.start = d.toISOString().slice(0, 10); a.end = new Date().toISOString().slice(0, 10); }
     if (/당일|장\s*마감|단타/.test(q)) a.day_close = true;
     if (/양방향/.test(q)) a.direction = "both"; else if (/숏/.test(q)) a.direction = "short";
-    if (/상위\s*50|50개/.test(q)) a.basket = "top50"; else if (/상위\s*20|20개|시총/.test(q)) a.basket = "top20"; else if (/관심종목\s*(전체|다|모두)/.test(q)) a.basket = "watch";
+    if (/코인\s*13|13개/.test(q)) a.basket = "coin13"; else if (/코인\s*20|코인\s*(전체|다|모두)/.test(q)) a.basket = "coin20"; else if (/코인\s*3|코인\s*묶음/.test(q)) a.basket = "coin3";
+    else if (/나스닥\s*100|나스닥100/.test(q)) a.basket = "ndx"; else if (/상위\s*20|20개|시총|대형주/.test(q)) a.basket = "top20"; else if (/관심종목\s*(전체|다|모두)/.test(q)) a.basket = "watch";
     if (!a.basket) for (const w of q.split(/[\s,.!?]+/).filter((x) => x.length >= 2 && !/봉|손절|익절|전략|해줘|돌려|테스트|백테스트|년|개월|숏|양방향|상위|시총/.test(x))) {
       const hit = (await Data.search(w.replace(/(으로|로|을|를|이|가|은|는|에서|의)$/, ""), 1))[0];
       if (hit) { a.symbol_query = hit.symbol; break; }
