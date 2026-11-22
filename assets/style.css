@@ -1247,3 +1247,10 @@ body.chart-full .center.full { left: calc(max(8px, env(safe-area-inset-left)) + 
 .pos-ed input { width: 58px; padding: 3px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; font-size: 16px; }
 .pos-ed button { padding: 3px 10px; border-radius: 999px; border: 0; background: var(--gold-soft, #3a2f55); color: var(--text); font-size: 12px; }
 @media (hover: hover) { .pos-ed input { font-size: 12px; } }
+
+/* 매매 공식 그림 보관함 */
+.fm-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.fm-item { display: grid; gap: 4px; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--raised); color: var(--text); text-decoration: none; font-size: 13px; }
+.fm-item:hover { border-color: var(--accent, #9a8cff); }
+.fm-item img { width: 100%; border-radius: 10px; display: block; }
+.fm-item .small { line-height: 1.5; }

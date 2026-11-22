@@ -40,8 +40,15 @@ const DeskUI = (() => {
       el.innerHTML = L.map((r) => `<a class="rp-item" href="reports/pdf/${encodeURIComponent(r.file)}" target="_blank" rel="noopener"><b>${esc(r.date)}</b><span>${esc(r.n)} · ${esc(r.kind)}</span><span class="rp-dl">PDF ↓</span></a>`).join("") || `<p class="muted">아직 없어요.</p>`;
     } catch (_) { el.innerHTML = `<p class="muted">목록을 못 불러왔어요.</p>`; }
   }
+  async function renderFormulas() {                    // 매매 공식 그림 보관함 (formulas/index.json, 11/22 형 요청)
+    const el = $("#fm-list"); if (!el) return;
+    try {
+      const L = await (await fetch("formulas/index.json?t=" + Date.now())).json();
+      el.innerHTML = L.slice().reverse().map((f) => `<a class="fm-item" href="${esc(f.img)}" target="_blank" rel="noopener"><img src="${esc(f.img)}" alt="${esc(f.title)}" loading="lazy"><b>${esc(f.title)}</b><span class="muted small">${esc(f.date)} · ${esc(f.status)}</span><span class="small">${esc(f.desc)}</span></a>`).join("") || `<p class="muted">아직 없어요.</p>`;
+    } catch (_) { el.innerHTML = `<p class="muted">목록을 못 불러왔어요.</p>`; }
+  }
   async function renderSummary() {
-    renderReports();
+    renderReports(); renderFormulas();
     const [A, D, C, L, Q0] = await Promise.all(["data/us/ai_paper.json", "data/us/day_desk.json", "data/us/crypto_paper.json", "data/us/crypto_lev.json", "data/us/trend10.json"].map(getj));
     const O = await getj("data/us/ob_paper.json");
     const Q = Q0;                                       // 10배 단타 (추세 눌림, 11/22 새로 시작 — 예전 평균 회귀 단타는 접음)
