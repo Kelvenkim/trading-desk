@@ -35,11 +35,17 @@ jobs:
         run: python scripts/amd_paper.py coin && python scripts/ob_paper.py coin
       - name: 10배 단타 (추세 눌림)
         run: python scripts/trend_paper.py
+      - name: 50일선 계좌·칸 평가 갱신 (11/22: 매시간 지금 가격 반영 — 매매 판단은 새 일봉 때만)
+        run: |
+          python scripts/crypto_paper.py || true
+          python scripts/crypto_lev.py || true
+          python scripts/crypto_paper.py coin3 || true
+          python scripts/crypto_lev.py lev3 || true
       - name: 저장
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/us/ob_paper.json data/us/trend10.json data/us/amd_paper.json data/us/lev10.json data/us/lev10_ob.json data/us/coin_amd.json data/us/coin_ob.json
+          git add data/us/crypto_*.json data/us/ob_paper.json data/us/trend10.json data/us/amd_paper.json data/us/lev10.json data/us/lev10_ob.json data/us/coin_amd.json data/us/coin_ob.json
           git diff --cached --quiet && exit 0
           git commit -m "오더블록·10배 단타 계좌 갱신"
           for i in 1 2 3; do git pull --rebase -X theirs origin main && git push && break; sleep 5; done
