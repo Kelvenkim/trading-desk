@@ -7,7 +7,8 @@
     ① 크기 = 변동성 맞춤: 계좌 대비 노출 = min(2.5배, 연 60% ÷ 최근 20일 변동성). 출렁이는 때일수록 작게.
        증거금은 그 노출의 1/5 (5배 격리 증거금) → 강제 청산선은 진입가 ±19.5% 그대로.
     ② 추적 손절 -8%: 들고 있는 동안 가장 좋았던 가격에서 8% 되돌리면 1시간 단위로 바로 정리.
-       정리 뒤엔 같은 방향 재진입 안 함 — 50일선 신호가 한 번 바뀌어야 다시 들어감.
+       정리 뒤 다음 일봉 마감에 신호가 같으면 같은 방향으로 바로 재진입 (11/22 형: '쉬는 건 사람 심리용 — 공식이면 쉬지 마'.
+       예전엔 50일선 신호가 바뀔 때까지 쉬었음. 시험(research/crypto/lev_block.py): 안 쉬면 2018~ 수익↑·최대 낙폭 −61%→−84%, 2022~는 수익도↓)
     ③ 노출이 목표와 25% 넘게 벌어지면 일봉 마감 때 크기 조정.
     시험(수익·최대 낙폭): 그대로 5배 롱+숏 2018~ -78%·-98% / 2022~ -84%·-97%
                          ①+② 2018~ +2,675%·-47% / 2022~ +657%·-41% / 24.11~ +224%·-41%
@@ -112,13 +113,12 @@ def run():
             adverse = lo_ if side > 0 else hi_
             if (side > 0 and adverse <= p["liq"]) or (side < 0 and adverse >= p["liq"]):
                 if not ((side > 0 and stop > p["liq"]) or (side < 0 and stop < p["liq"])):
-                    m_ = p["margin"]; close(S, p, p["liq"], today, "강제 청산", liq=True); S["liq"] += 1; S["block"] = side
+                    m_ = p["margin"]; close(S, p, p["liq"], today, "강제 청산", liq=True); S["liq"] += 1
                     cp.say(S, "risk", f"💥 강제 청산 — 비트코인 ${adverse:,.0f}, 청산가 ${p['liq']:,.0f}. 증거금 ${m_:,.0f} 전부 손실.")
                     p = None; break
             if (side > 0 and adverse <= stop) or (side < 0 and adverse >= stop):
                 pl_usd = close(S, p, stop, today, f"추적 손절 (최고점 ${p['ext']:,.0f}에서 {TRAIL:.0%} 되돌림)")
-                S["block"] = side
-                cp.say(S, "risk", f"✂️ 추적 손절 — {nm(side)} 정리 @ ${stop:,.0f} (가장 좋았던 ${p['ext']:,.0f}에서 {TRAIL:.0%} 되돌림) · {pl_usd:+,.0f}$. 50일선 신호가 바뀌기 전엔 같은 방향 재진입 안 함.")
+                cp.say(S, "risk", f"✂️ 추적 손절 — {nm(side)} 정리 @ ${stop:,.0f} (가장 좋았던 ${p['ext']:,.0f}에서 {TRAIL:.0%} 되돌림) · {pl_usd:+,.0f}$. 다음 일봉 마감에 신호가 같으면 바로 다시 들어가요.")
                 p = None; break
             p["ext"] = max(p["ext"], hi_) if side > 0 else min(p["ext"], lo_)
     S["last_chk"] = t.isoformat()
@@ -127,8 +127,7 @@ def run():
         S["last_bar"] = d[-1]
         m50 = cp.ma(c, 50, len(c) - 1)
         want = 0 if m50 is None else (1 if c[-1] > m50 else -1)
-        if S.get("block") and want != S["block"]:
-            S.pop("block")
+        S.pop("block", None)                                    # 11/22: 재진입 금지 규칙 없앰
         v = vol20(c); E = round(min(MAXE, VT / v), 2)
         pk = max([CASH0] + [x for _, x in S["eq"]]); eq_now_ = S["cash"] + (pval(p, px) if p else 0)
         if eq_now_ / pk - 1 <= DD_CUT:
@@ -141,9 +140,7 @@ def run():
             p = None
         eqv = S["cash"] + (pval(p, px) if p else 0)
         if want and not p:
-            if S.get("block") == want:
-                cp.say(S, "logger", f"{nm(want)} 신호지만 추적 손절 뒤라 대기 — 50일선 신호가 바뀐 뒤 다시 진입")
-            else:
+            if True:
                 p = open_(S, want, px, eqv, E, today, t)
                 cp.say(S, "executor", f"{nm(want)} 진입 @ ${px:,.0f} · 증거금 ${p['basis']:,.0f} × {LEV}배 = 포지션 ${p['basis'] * LEV:,.0f} (계좌의 {E:.2f}배) · 강제 청산 ${p['liq']:,.0f} · 추적 손절 ${px * (1 - want * TRAIL):,.0f}")
         elif p:
