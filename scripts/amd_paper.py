@@ -163,6 +163,11 @@ def reclaim(S, sym, m, a, tk):
     s = m["side"]; stop = m["ext"] - s * CFG["buf"] * a
     if (m["poc"] - stop) * s <= 0.05 * a:
         return
+    pre = FR.check("amd", dict(mvol=m.get("mvol", 1.0), boxw=m["width_atr"]), FC)   # 지금 알 수 있는 조건은 미리 검사 (시간대·추세 등은 체결 때)
+    if pre:
+        say(S, "scout", f"{NM[sym]} {'롱' if s > 0 else '숏'} 자리 — 박스 {f(m['blo'])}~{f(m['bhi'])} {'아래' if s > 0 else '위'}를 {f(m['ext'])}까지 깼다가 복귀했지만 "
+                        f"조작 봉 거래량 {m.get('mvol', 1):.1f}배 → 공식 점검 조건({' · '.join(pre)})에 안 맞아 대기 안 함")
+        return
     S["pend"][sym] = dict(m, stop=float(stop), left=CFG["W"], reclaim_at=tk)
     say(S, "scout", f"{NM[sym]} {'롱' if s > 0 else '숏'} 준비 — 박스 {f(m['blo'])}~{f(m['bhi'])}({m['width_atr']}ATR) {'아래' if s > 0 else '위'}를 {f(m['ext'])}까지 깼다가 복귀 → POC {f(m['poc'])} 지정가 대기 (손절 {f(stop)})")
 
