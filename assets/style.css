@@ -1232,13 +1232,3 @@ body { padding-bottom: 26px; }
 .ob-j.win { box-shadow: inset 3px 0 0 var(--up); padding-left: 8px; } .ob-j.loss { box-shadow: inset 3px 0 0 var(--down); padding-left: 8px; } .ob-j.open-pos { box-shadow: inset 3px 0 0 var(--accent); padding-left: 8px; }
 .ob-j-b { padding: 0 2px 12px; } .ob-j-b h5 { margin: 10px 0 4px; font-size: 12.5px; color: var(--accent); } .ob-j-b ul { margin: 0; padding-left: 16px; font-size: 13px; line-height: 1.6; }
 
-/* 볼륨 프로파일 · POC */
-.vp-layer { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 2; }
-.vp-info { position: absolute; left: 8px; bottom: 30px; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; max-width: calc(100% - 90px);
-  font-size: 12px; padding: 6px 10px; border-radius: 10px; border: 1px solid rgba(245,185,66,.35); background: rgba(10,10,11,.85); backdrop-filter: blur(6px); color: var(--text); }
-.vp-info .vp-k { color: var(--muted); }
-.vp-info .vp-poc { color: #f5b942; }
-.vp-info .vp-btns { display: inline-flex; gap: 6px; }
-.vp-info .float-btn { padding: 3px 9px; font-size: 11.5px; }
-.vp-info .vp-w { font-style: normal; }
-@media (max-width: 640px) { .vp-info { bottom: 26px; left: 6px; max-width: calc(100% - 76px); font-size: 11px; padding: 4px 8px; gap: 2px 8px; } .vp-info .vp-k, .vp-info .vp-w { display: none; } .vp-info.picked .vp-k { display: inline; } }

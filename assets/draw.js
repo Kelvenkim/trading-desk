@@ -13,10 +13,39 @@ const Draw = (() => {
     vline: { pts: 1, name: "수직선" },
     rect: { pts: 2, name: "박스" },
     fib: { pts: 2, name: "피보나치" },
+    vp: { pts: 2, name: "POC" },
     measure: { pts: 2, name: "측정" },
     text: { pts: 1, name: "텍스트" },
   };
   const FIB = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+  // POC: 고른 기간의 가격대별 거래량 (봉 거래량을 저가~고가에 고르게 나눈 근사) · POC = 최다 거래 가격 · VAH/VAL = 거래량 70% 구간
+  const VPROWS = 40, vpCache = new Map();
+  function vprof(t0, t1) {
+    const B = CV.bars; if (!B.length) return null;
+    let a = Math.round(CV.msToLogical(Math.min(t0, t1))), b = Math.round(CV.msToLogical(Math.max(t0, t1)));
+    a = Math.max(0, a); b = Math.min(B.length - 1, b); if (b - a < 1) return null;
+    const key = [a, b, B.length, B[b].ms, B[b].v, B[b].c].join("|"); if (vpCache.has(key)) return vpCache.get(key);
+    let lo = Infinity, hi = -Infinity, tot = 0;
+    for (let i = a; i <= b; i++) { lo = Math.min(lo, B[i].l); hi = Math.max(hi, B[i].h); }
+    if (!(hi > lo)) return null;
+    const st = (hi - lo) / VPROWS, v = new Array(VPROWS).fill(0), up = new Array(VPROWS).fill(0);
+    for (let i = a; i <= b; i++) {
+      const k = B[i], vol = k.v || 0; if (!vol) continue; tot += vol;
+      const r0 = Math.min(VPROWS - 1, Math.floor((k.l - lo) / st)), r1 = Math.min(VPROWS - 1, Math.floor((k.h - lo) / st)), span = k.h - k.l;
+      for (let r = r0; r <= r1; r++) {
+        const bl = lo + r * st, part = span > 0 ? vol * (Math.min(bl + st, k.h) - Math.max(bl, k.l)) / span : vol;
+        v[r] += part; if (k.c >= k.o) up[r] += part;
+      }
+    }
+    let P = null;
+    if (tot) {
+      let pr = 0; for (let r = 1; r < VPROWS; r++) if (v[r] > v[pr]) pr = r;
+      let L = pr, H = pr, acc = v[pr];
+      while (acc < 0.7 * tot && (L > 0 || H < VPROWS - 1)) { const d = L > 0 ? v[L - 1] : -1, u = H < VPROWS - 1 ? v[H + 1] : -1; if (u >= d) acc += v[++H]; else acc += v[--L]; }
+      P = { a, b, lo, hi, st, v, up, pr, L, H, poc: lo + (pr + 0.5) * st, vah: lo + (H + 1) * st, val: lo + L * st };
+    }
+    if (vpCache.size > 50) vpCache.clear(); vpCache.set(key, P); return P;
+  }
   const KEY = "tradingdesk.draw.";
   const HIT = 6;
 
@@ -128,6 +157,33 @@ const Draw = (() => {
         ctx.setLineDash([4, 4]); ctx.strokeStyle = alpha(c, 0.6); seg(P[0], P[1]); ctx.setLineDash([]);
         break;
       }
+      case "vp": {
+        const x1 = Math.min(P[0].x, P[1].x), x2 = Math.max(P[0].x, P[1].x), w = x2 - x1;
+        const V = vprof(d.pts[0].t, d.pts[1].t);
+        if (!V) { ctx.setLineDash([4, 4]); ctx.strokeStyle = alpha(c, 0.6); ctx.strokeRect(x1, Math.min(P[0].y, P[1].y), w, Math.abs(P[1].y - P[0].y)); ctx.setLineDash([]); break; }
+        const Y = (p) => CV.candle.priceToCoordinate(p), yT = Y(V.hi), yB = Y(V.lo);
+        if (yT == null || yB == null) break;
+        ctx.fillStyle = alpha(c, 0.05); ctx.fillRect(x1, yT, w, yB - yT);
+        ctx.setLineDash([3, 3]); ctx.strokeStyle = alpha(c, 0.35); ctx.lineWidth = 1; ctx.strokeRect(x1, yT, w, yB - yT); ctx.setLineDash([]);
+        const mx = Math.max(...V.v), maxW = Math.max(20, w * 0.7);
+        for (let r = 0; r < VPROWS; r++) {
+          if (!V.v[r]) continue;
+          const y1 = Y(V.lo + (r + 1) * V.st), y2 = Y(V.lo + r * V.st); if (y1 == null || y2 == null) continue;
+          const len = (V.v[r] / mx) * maxW, ul = len * V.up[r] / V.v[r], hh = Math.max(1, y2 - y1 - 1);
+          const al = r === V.pr ? 0.8 : r >= V.L && r <= V.H ? 0.45 : 0.2;
+          ctx.fillStyle = `rgba(255,95,107,${al})`; ctx.fillRect(x1, y1, ul, hh);
+          ctx.fillStyle = `rgba(78,163,255,${al})`; ctx.fillRect(x1 + ul, y1, len - ul, hh);
+        }
+        const yp = Y(V.poc);   // 글자표가 겹치지 않게 VAH는 위로, VAL은 아래로 밀기
+        const lineAt = (p, lb, dash, lw) => {
+          const y = Y(p); if (y == null) return;
+          const ly = yp == null || lb === "POC" ? y : lb === "VAH" ? Math.min(y, yp - 19) : Math.max(y, yp + 19);
+          ctx.setLineDash(dash); ctx.lineWidth = lw; ctx.strokeStyle = "#f5b942"; seg({ x: x1, y }, { x: x2, y }); ctx.setLineDash([]);
+          label(`${lb} ${CV.fmt(p)}`, x2 + 110 > W ? x2 - 4 : x2 + 4, ly, lb === "POC" ? "#f5b942" : "rgba(245,185,66,.75)", "#000000", x2 + 110 > W ? "right" : "left");
+        };
+        lineAt(V.vah, "VAH", [4, 3], 1); lineAt(V.val, "VAL", [4, 3], 1); lineAt(V.poc, "POC", [], 2);
+        break;
+      }
       case "measure": {
         const up = d.pts[1].p >= d.pts[0].p, mc = up ? "#f0525c" : "#3d8bfd";
         const x = Math.min(P[0].x, P[1].x), y = Math.min(P[0].y, P[1].y), w = Math.abs(P[1].x - P[0].x), h = Math.abs(P[1].y - P[0].y);
@@ -185,6 +241,11 @@ const Draw = (() => {
         case "rect": case "measure": {
           const x1 = Math.min(P[0].x, P[1].x), x2 = Math.max(P[0].x, P[1].x), y1 = Math.min(P[0].y, P[1].y), y2 = Math.max(P[0].y, P[1].y);
           hit = x >= x1 - HIT && x <= x2 + HIT && y >= y1 - HIT && y <= y2 + HIT; break;
+        }
+        case "vp": {
+          const V = vprof(d.pts[0].t, d.pts[1].t), x1 = Math.min(P[0].x, P[1].x), x2 = Math.max(P[0].x, P[1].x);
+          const ya = V ? CV.candle.priceToCoordinate(V.hi) : Math.min(P[0].y, P[1].y), yb = V ? CV.candle.priceToCoordinate(V.lo) : Math.max(P[0].y, P[1].y);
+          hit = x >= x1 - HIT && x <= x2 + HIT && y >= ya - HIT && y <= yb + HIT; break;
         }
         case "fib": {
           const x1 = Math.min(P[0].x, P[1].x), y1 = Math.min(P[0].y, P[1].y), y2 = Math.max(P[0].y, P[1].y);

@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="assets/style.css?v=4b4348dd" />
+  <link rel="stylesheet" href="assets/style.css?v=b6edec94" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -21,6 +21,7 @@
       <symbol id="i-vline" viewBox="0 0 20 20"><path d="M10 2v16" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="2" fill="currentColor"/></symbol>
       <symbol id="i-rect" viewBox="0 0 20 20"><rect x="3.5" y="5.5" width="13" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
       <symbol id="i-fib" viewBox="0 0 20 20"><path d="M3 4h14M3 8.5h14M3 11.5h14M3 16h14" stroke="currentColor" stroke-width="1.3"/></symbol>
+      <symbol id="i-vp" viewBox="0 0 20 20"><path d="M3 3v14" stroke="currentColor" stroke-width="1.3"/><path d="M3 5h5M3 8h9M3 11h13M3 14h7" stroke="currentColor" stroke-width="2"/></symbol>
       <symbol id="i-measure" viewBox="0 0 20 20"><path d="M10 3v14M6.5 6.5L10 3l3.5 3.5M6.5 13.5L10 17l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
       <symbol id="i-text" viewBox="0 0 20 20"><path d="M4.5 5h11M10 5v11" stroke="currentColor" stroke-width="1.7"/></symbol>
       <symbol id="i-magnet" viewBox="0 0 20 20"><path d="M5 3.5v6.5a5 5 0 0010 0V3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 6.5h3M12 6.5h3" stroke="currentColor" stroke-width="1.6"/></symbol>
@@ -94,6 +95,7 @@
           <button class="tool" data-tool="vline" title="수직선"><svg><use href="#i-vline"/></svg></button>
           <button class="tool" data-tool="rect" title="박스"><svg><use href="#i-rect"/></svg></button>
           <button class="tool" data-tool="fib" title="피보나치 되돌림"><svg><use href="#i-fib"/></svg></button>
+          <button class="tool" data-tool="vp" title="POC (고정 범위 볼륨 프로파일): 시작~끝을 끌거나 두 번 눌러 기간 지정"><svg><use href="#i-vp"/></svg></button>
           <button class="tool" data-tool="measure" title="가격·기간 측정"><svg><use href="#i-measure"/></svg></button>
           <button class="tool" data-tool="text" title="텍스트"><svg><use href="#i-text"/></svg></button>
           <span class="sep"></span>
@@ -135,7 +137,6 @@
               <button data-ind="rsi">RSI</button>
               <button data-ind="macd">MACD</button>
               <button data-ind="spo" title="Smooth Price Oscillator (SuperSmoother 10/40, ±1 기준선, 밴드)">SPO</button>
-              <button data-ind="vp" title="볼륨 프로파일: 가격대별 거래량 · POC(가장 많이 거래된 가격) · 가치 영역 70% · 기간을 찍어서 볼 수 있어요">POC</button>
               <button data-ind="plan" title="지지·저항·추세선, 매수 구간·손절·목표 (일봉)">매매 계획</button>
             </div>
             <div class="bar-right">
@@ -705,9 +706,8 @@
   <script src="assets/util.js?v=00849872"></script>
   <script src="assets/backtest.js?v=13e5f01b"></script>
   <script src="assets/data.js?v=4fb8ac5f"></script>
-  <script src="assets/chart.js?v=b7ab8662"></script>
-  <script src="assets/vp.js?v=c9f4fd83"></script>
-  <script src="assets/draw.js?v=f61bef61"></script>
+  <script src="assets/chart.js?v=82b74dff"></script>
+  <script src="assets/draw.js?v=d114cea5"></script>
   <script src="assets/bt.js?v=0254c648"></script>
   <script src="assets/levels.js?v=dfcb1e20"></script>
   <script src="assets/rank.js?v=b67267f1"></script>
@@ -719,6 +719,6 @@
   <script src="assets/invest.js?v=d55ba1ff"></script>
   <script src="assets/desk.js?v=7ba7381f"></script>
   <script src="assets/gloss.js?v=af1d950e"></script>
-  <script src="assets/app.js?v=60d4c518"></script>
+  <script src="assets/app.js?v=43f3944a"></script>
 </body>
 </html>
