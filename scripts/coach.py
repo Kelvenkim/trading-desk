@@ -302,7 +302,7 @@ FORM = {   # 공식: (이름, 시뮬레이터, 하루 최소 거래, 실제 계�
             [("코인 AMD 계좌", ["data/us/amd_paper.json"]), ("코인·코인 10배의 AMD 칸", ["data/us/coin_amd.json", "data/us/lev10.json"])]),
     "ob": ("오더블록 (완화판)", lambda d, F, P: ob(d, F, minrr=P.get("minrr", 0.0)), 3,
            [("코인 오더블록 계좌", ["data/us/ob_paper.json"]), ("코인·코인 10배의 오더블록 칸", ["data/us/coin_ob.json", "data/us/lev10_ob.json"])]),
-    "tr10": ("추세 눌림 (코인 10배 단타)", lambda d, F, P: trend(d, F, tr=P.get("tr", 5.0)), None,
+    "tr10": ("추세 눌림 (코인 10배 단타)", lambda d, F, P: trend(d, F, tr=P.get("tr", 5.0), sm=P.get("sm", 1.5)), None,
              [("코인 10배 단타 계좌", ["data/us/trend10.json"])]),
 }
 COOLDOWN_DAYS = 2      # 한 공식은 이틀에 한 번만 바뀜 (한 번에 하나씩, 효과 확인하며)

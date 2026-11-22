@@ -33,8 +33,9 @@ VARIANTS = {
     "rr": ("목표 손익비", "amd", "seykota", [1.5, 2.0, 2.5, 3.0]),
     "minrr": ("파동 고점까지 최소 손익비", "ob", "seykota", [0.0, 0.5, 1.0]),
     "tr": ("추적 손절 ATR 배수", "tr10", "seykota", [3.0, 4.0, 5.0, 6.0, 8.0]),
+    "sm": ("첫 손절 ATR 배수", "tr10", "minervini", [1.0, 1.5, 2.0, 2.5]),
 }
-DEFAULT_PARAMS = {"amd": {"rr": 2.0}, "ob": {"minrr": 0.0}, "tr10": {"tr": 5.0}}
+DEFAULT_PARAMS = {"amd": {"rr": 2.0}, "ob": {"minrr": 0.0}, "tr10": {"tr": 5.0, "sm": 1.5}}
 
 
 def load():
