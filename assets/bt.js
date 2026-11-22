@@ -238,6 +238,13 @@ const BTUI = (() => {
     const bars = dateFilter(await Data.getBars(sym, iv));
     return { sym, bars, title: Data.info(sym).name, intraday: !Data.IV[iv].daily };
   }
+  // 요청한 시작일보다 자료가 늦게 시작하면 이유를 알려줌 (야후: 1·5·15·30분봉은 최근 60일·1분봉 5일, 1시간봉 약 2년)
+  function dataNote(bars) {
+    const s = Date.parse($("#bt-start").value + "T00:00:00Z"); if (!bars || !bars.length || isNaN(s)) return "";
+    if (bars[0].ms - s < 5 * 86400000) return "";
+    const iv = Data.IV[$("#bt-interval").value], lim = iv.daily ? "" : iv.min < 5 ? "최근 5일" : iv.min < 60 ? "최근 60일" : "최근 약 2년";
+    return ` · ⚠ 시작일보다 늦게 시작해요${lim ? ` — ${iv.label}봉은 ${lim}치만 받을 수 있어요` : " — 그 전 자료가 없어요"}`;
+  }
   const labelFn = (bars, intraday) => (i) => intraday ? new Date(bars[i].ms + Data.KST * 1000).toISOString().slice(0, 16).replace("T", " ") : bars[i].day;
 
   function engineOpt(sym, bars, intraday, base) {
@@ -532,7 +539,7 @@ const BTUI = (() => {
     $("#bt-metrics").innerHTML = metricCards(st, bench ? [`<div class="stat"><div class="k">코스피200 (같은 기간)</div><div class="v ${cls(bench[bench.length - 1] - 1)}">${fmtPct((bench[bench.length - 1] - 1) * 100)}</div></div>`] : []);
     warnings(st, "single");
     $("#bt-basket-box").hidden = true; $("#bt-price-box").hidden = false;
-    $("#bt-range").textContent = `${run.title} · ${label(0)} ~ ${label(bars.length - 1)} · ${bars.length.toLocaleString()}개 봉`;
+    $("#bt-range").textContent = `${run.title} · ${label(0)} ~ ${label(bars.length - 1)} · ${bars.length.toLocaleString()}개 봉` + dataNote(bars);
     chartTime(run.intraday);
     const pf = krw(sym) ? { type: "price", precision: 0, minMove: 1 } : { type: "price", precision: 2, minMove: 0.01 };
     C.candles.applyOptions({ priceFormat: pf });
@@ -581,6 +588,7 @@ const BTUI = (() => {
     $("#bt-metrics").innerHTML = metricCards(st, extra);
     warnings(st, "basket");
     if (run.fails.length) { const w = $("#bt-warn"); w.hidden = false; w.innerHTML += (w.innerHTML ? "<br/>" : "") + `불러오지 못한 종목: ${esc(run.fails.slice(0, 10).join(", "))}${run.fails.length > 10 ? ` 외 ${run.fails.length - 10}개` : ""}`; }
+    { const late = run.list.filter((x) => dataNote(x.bars)); if (late.length) { const w = $("#bt-warn"); w.hidden = false; w.innerHTML += (w.innerHTML ? "<br/>" : "") + `${late.length}개 종목은 시작일보다 자료가 늦게 시작해요(예: ${esc(late.slice(0, 3).map((x) => x.title).join(", "))})${esc(dataNote(late[0].bars).replace(" · ⚠ 시작일보다 늦게 시작해요", ""))}. 월별 수익률도 그만큼 늦게 시작해요.`; } }
     $("#bt-basket-box").hidden = false; $("#bt-price-box").hidden = true;
     chartTime(run.intraday);
     S.basketRows = run.list.map((x) => {

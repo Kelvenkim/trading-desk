@@ -242,7 +242,8 @@ const Data = (() => {
   }
   async function intraday(sym, iv, fresh) {
     const loc = bySym[sym];
-    if (loc && loc.intraday && iv.min >= 5 && !fresh) {
+    // 저장본(5분봉)은 최근 석 달 정도뿐 → 1시간봉은 중계 서버가 있으면 원격 2년치로 (11/22: 백테스트가 8월부터만 나오던 문제)
+    if (loc && loc.intraday && iv.min >= 5 && !fresh && !(iv.min >= 60 && getProxy())) {
       const j = await getJSON(`data/intraday/${loc.file}`);
       const base = fromIntradayRows(j.bars, sym);
       return iv.min === 5 ? base : toMinutes(base, iv.min);
