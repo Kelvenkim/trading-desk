@@ -9,13 +9,18 @@
   비용: 한쪽 0.05%. 시험: 2년 1,567번 · 승률 46% · 평균 +0.18R · 코인 3개·앞뒤 1년 모두 플러스 (단, 비용 0.1%면 거의 본전)
 매매일지(진입·손절/익절 이유·자동 피드백) → data/us/amd_paper.json → 사이트 AI 데스크 '코인 AMD' 탭
 """
-import json
+import json, sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import yfinance as yf
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import formula_rules as FR
+FC = None
+CTX = {}
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data/us/amd_paper.json"
@@ -29,7 +34,7 @@ def now():
 
 
 def bars(sym):
-    d = yf.Ticker(sym).history(period="30d", interval="1h").dropna()
+    d = yf.Ticker(sym).history(period="180d", interval="1h").dropna()
     d.index = d.index.tz_convert("UTC"); d.columns = [c.lower() for c in d.columns]
     d = d[d.index + pd.Timedelta(hours=1) <= pd.Timestamp(now())]
     return d[["open", "high", "low", "close", "volume"]]
@@ -61,6 +66,8 @@ def say(S, who, text):
 
 
 def run():
+    global FC
+    FC = FR.load(); CFG.update(FR.params("amd"))                 # 코치(scripts/coach.py)가 바꾼 숫자·조건
     S = json.loads(OUT.read_text()) if OUT.exists() else None
     if not S:
         S = {"start": now().date().isoformat(), "cash": 10000.0, "pos": {}, "pend": {}, "manip": {}, "journal": [], "chat": [], "eq": [], "last": {},
@@ -76,6 +83,7 @@ def run():
         if len(d) < CFG["N"] + 30:
             continue
         A = atr(d); o, h, l, c, v = (d[k].values for k in ("open", "high", "low", "close", "volume")); t = d.index
+        CTX[sym] = FR.context(d)
         px[sym] = float(c[-1])
         last = pd.Timestamp(S["last"][sym]) if S["last"].get(sym) else t[-2]
         for j in range(CFG["N"] + 20, len(d)):
@@ -86,7 +94,7 @@ def run():
     eq = S["cash"] + sum(p["qty"] * (px.get(s, p["fill"]) - p["fill"]) * p["side"] for s, p in S["pos"].items())
     S["eq"].append([now().isoformat(timespec="minutes"), round(eq, 2)]); S["eq"] = S["eq"][-3000:]
     done = [j for j in S["journal"] if j.get("exit") is not None]
-    S.update(eq_now=round(eq, 2), px=px, made=now().isoformat(timespec="minutes"), n_trades=len(done))
+    S.update(eq_now=round(eq, 2), px=px, made=now().isoformat(timespec="minutes"), n_trades=len(done), coach=FR.active_text("amd", FC))
     OUT.write_text(json.dumps(S, ensure_ascii=False, separators=(",", ":")))
     print("AMD 계좌", round(eq, 2), "보유", list(S["pos"]), "대기", list(S["pend"]), "끝난 거래", len(done))
 
@@ -113,7 +121,13 @@ def step(S, sym, j, o, h, l, c, v, A, t):
             say(S, "risk", f"{nm} 대기 취소 — POC에 닿기 전에 손절가를 깸"); S["pend"].pop(sym); return
         if (s > 0 and l[j] <= q["poc"]) or (s < 0 and h[j] >= q["poc"]):
             e = float(min(o[j], q["poc"]) if s > 0 else max(o[j], q["poc"]))
-            S["pend"].pop(sym); open_pos(S, sym, q, e, tk)
+            S["pend"].pop(sym)
+            X = CTX[sym]
+            bad = FR.check("amd", dict(t=t[j], htf=X["htf"][j] == s, volhi=bool(X["volhi"][j]), risk=(e - q["stop"]) * s / e,
+                                       mvol=q.get("mvol", 1.0), boxw=q["width_atr"]), FC)
+            if bad:
+                say(S, "risk", f"{nm} POC 체결 자리지만 진입 안 함 — 코치가 붙인 조건 불통과: {' · '.join(bad)}"); return
+            open_pos(S, sym, q, e, tk)
             step_same_bar(S, sym, j, o, h, l, c, tk)
             return
         if q["left"] <= 0:
@@ -122,6 +136,7 @@ def step(S, sym, j, o, h, l, c, v, A, t):
     m = S["manip"].get(sym)
     if m:                                                          # 조작 진행 중: 박스 안으로 마감하나
         s = m["side"]; m["ext"] = float(min(m["ext"], l[j]) if s > 0 else max(m["ext"], h[j])); m["n"] += 1
+        m["mv"] = float(max(m.get("mv", 0.0), v[j])); m["mvol"] = round(m["mv"] / m["vb"], 2) if m.get("vb") else 1.0
         if (s > 0 and c[j] > m["blo"]) or (s < 0 and c[j] < m["bhi"]):
             reclaim(S, sym, m, A[j], tk); S["manip"].pop(sym)
         elif m["n"] >= CFG["reclaim"]:
@@ -134,7 +149,9 @@ def step(S, sym, j, o, h, l, c, v, A, t):
     if not s:
         return
     poc = poc_of(h[j - N:j], l[j - N:j], v[j - N:j], CFG["rows"])
-    m = dict(side=s, blo=blo, bhi=bhi, poc=poc, ext=float(l[j] if s > 0 else h[j]), n=1, at=tk, width_atr=round((bhi - blo) / A[j - 1], 1), box_from=t[j - N].isoformat())
+    vb = float(v[j - N:j].mean())
+    m = dict(side=s, blo=blo, bhi=bhi, poc=poc, ext=float(l[j] if s > 0 else h[j]), n=1, at=tk, width_atr=round((bhi - blo) / A[j - 1], 1), box_from=t[j - N].isoformat(),
+             vb=vb, mv=float(v[j]), mvol=round(float(v[j]) / vb, 2) if vb > 0 else 1.0)
     if (s > 0 and c[j] > blo) or (s < 0 and c[j] < bhi):          # 같은 봉에 바로 복귀 (긴 꼬리)
         reclaim(S, sym, m, A[j], tk)
     else:

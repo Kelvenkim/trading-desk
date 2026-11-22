@@ -5,7 +5,8 @@
   3) 스스로 발전: 매일 밤 (11/21 사용자 요청 "피드백 많이 하면서 바꿔 나가며 성장") — 최근 100건 기준 신호별·시간대별 성적 →
      표본 10건↑인 것만 가중치·기준점을 조금씩(±0.03) 조정. 범위 안에서만, 모든 변경은 history에 기록
   4) 손실 최소화 (11/21 사용자 원칙 "가장 중요한 건 손실 최소화"): 전날 −1%↓면 다음 날 위험 크기 20% 줄임,
-     3일 연속 손실이면 하루 최대 거래 수 −1, 5일 합계 +1%↑일 때만 조금씩 원래 크기로 되돌림(처음 값 넘지 않음)
+     5일 합계 +1%↑일 때만 조금씩 원래 크기로 되돌림(처음 값 넘지 않음)
+     (11/22: '3일 연속 손실이면 거래 수 −1'은 없앰 — 형 원칙 '공식은 쉬지 않음'. 크기 줄이기는 위험 장치라 유지)
      조정 내용은 params.history 와 대화방(Logger·Analyst)에 남김. Claude가 아침 보고 때 확인
 """
 import json, sys, urllib.request
@@ -79,8 +80,6 @@ def main(force=False):
         if r1 <= -0.01:
             old = P["risk_pct"]; P["risk_pct"] = max(0.002, round(old * 0.8, 4))
             if P["risk_pct"] != old: changes.append(f"손실 최소화: 어제 {r1:+.2%} → 한 번 거래 위험 {old:.2%}→{P['risk_pct']:.2%}")
-        if len(r3) == 3 and all(x < 0 for x in r3) and P["max_trades"] > 2:
-            P["max_trades"] -= 1; changes.append(f"손실 최소화: 3일 연속 손실 → 하루 최대 거래 {P['max_trades'] + 1}→{P['max_trades']}번")
         if r5 >= 0.01 and len(dr) >= 5:
             if P["risk_pct"] < RISK0:
                 old = P["risk_pct"]; P["risk_pct"] = min(RISK0, round(old * 1.1, 4)); changes.append(f"회복: 5일 합계 {r5:+.2%} → 위험 {old:.2%}→{P['risk_pct']:.2%}")

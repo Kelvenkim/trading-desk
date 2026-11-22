@@ -22,7 +22,7 @@ const DeskUI = (() => {
     coin: ["코인", "#9b6bd8", "BTC·ETH · AMD + 오더블록(완화판) · 레버리지 없음 · 한 번 손절 시 계좌 −1%/−0.25% (11/22부터, 그 전엔 50일선)", "", "coin"],
     lev: ["코인 10배", "#d86bb4", "BTC 1시간봉 AMD + 오더블록(완화판) · 한 번 손절 시 계좌 −2%/−0.5% · 노출 최대 10배 (11/22부터, 그 전엔 50일선)", "", "coin"],
     day: ["데이트레이딩", "#e5484d", "주식 · 그날 사서 그날 팔기", "more-day", "stock"],
-    tr10: ["코인 10배 단타", "#e07040", "BTC·ETH·SOL 1시간봉 추세 눌림 · 1회 손실 계좌 1% · 노출 최대 10배 (11/22 새로 시작)", "", "coin"],
+    tr10: ["코인 10배 단타", "#e07040", "BTC·ETH·SOL 1시간봉 추세 눌림 · 1회 손실 계좌 0.25% · 노출 최대 10배 (11/22 새로 시작)", "", "coin"],
     ob: ["코인 오더블록", "#3fb6c9", "BTC·ETH·SOL 1시간봉 오더블록 · 1회 손실 계좌 1% · 횟수 제한 없음", "", "coin"],
     amd: ["코인 AMD", "#f5b942", "BTC·ETH·SOL 1시간봉 매집→조작→분산 · POC 진입 · 1회 손실 계좌 0.5% (11/22 시작)", "", "coin"],
     c50: ["코인 50일선", "#7a8cff", "BTC·ETH 일봉 · 50일선 위면 롱, 아래면 숏 · 레버리지 없음 (11/14부터, 11/22 형 결정으로 계속)", "more-coin", "coin"],
@@ -38,11 +38,13 @@ const DeskUI = (() => {
     el.hidden = false;
     if (!rooms) { el.innerHTML = `<div class="tt-head"><h3>공식 피드백방</h3></div><p class="muted small">${SM.acct === "c50" || SM.acct === "l50" ? "50일선 방식은 일봉이라 코치 시험을 따로 붙일 예정이에요." : "주식 계좌 코치는 다음 단계 (지금은 코인 공식만)."}</p>`; return; }
     const tm = new Date(K.made).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
-    el.innerHTML = `<div class="tt-head"><h3>공식 피드백방 <span class="muted small">코치 봇들이 2년 시험으로 공식 고칠 거리를 찾아요 · 통과해도 형 확인 뒤에만 반영</span></h3><span class="muted small">${tm} 기준</span></div>
+    const logs = (K.log || []).filter((x) => rooms.includes(x.formula)).slice(-5).reverse();
+    el.innerHTML = `<div class="tt-head"><h3>공식 피드백방 <span class="muted small">코치 봇들이 2년 시험으로 공식 고칠 거리를 찾고, 통과한 건 스스로 반영해요</span></h3><span class="muted small">${tm} 기준 · 매일 아침</span></div>
+      ${logs.length ? `<ul class="coach-log">${logs.map((x) => `<li><b>${md(x.at.slice(0, 10))} ${x.kind === "remove" ? "뺌" : "반영"}</b> [${esc((K.rooms[x.formula] || {}).name || x.formula)}] ${esc((K.coach[x.who] || [x.who])[0])} '${esc(x.change)}' · 평균 ${x.R[0] >= 0 ? "+" : ""}${x.R[0].toFixed(2)}R → ${x.R[1] >= 0 ? "+" : ""}${x.R[1].toFixed(2)}R · 수익÷낙폭 ${x.ratio[0]} → ${x.ratio[1]}</li>`).join("")}</ul>` : ""}
       <div class="coach-who">${Object.entries(K.coach).map(([k, [nm, how]]) => `<span class="coach-chip" style="--c:${COACH_C[k] || "#888"}" title="${esc(how)}">${esc(nm)}</span>`).join("")}</div>
-      ${rooms.map((r) => { const R = K.rooms[r]; if (!R) return ""; return `<div class="coach-room"><div class="co-sub">${esc(R.name)}</div>
+      ${rooms.map((r) => { const R = K.rooms[r]; if (!R) return ""; return `<details class="coach-room"><summary><span class="co-sub">${esc(R.name)}</span> <span class="muted small">지금 붙은 조건: ${esc(R.active || "없음")} · 시험 평균 ${R.base >= 0 ? "+" : ""}${R.base.toFixed(2)}R · 눌러서 코치 대화 보기</span></summary>
         <ul class="coach-chat">${R.msgs.map((m) => `<li class="${m.ok ? "ok" : m.ok === false ? "no" : "info"}" style="--c:${COACH_C[m.who] || "#888"}"><b>${esc((K.coach[m.who] || [m.who])[0])}</b> ${esc(m.text)}</li>`).join("")}
-        ${(R.live || []).map((x) => `<li class="info live" style="--c:#f5c26b"><b>실제 계좌</b> ${esc(x)}</li>`).join("")}</ul></div>`; }).join("")}
+        ${(R.live || []).map((x) => `<li class="info live" style="--c:#f5c26b"><b>실제 계좌</b> ${esc(x)}</li>`).join("")}</ul></details>`; }).join("")}
       <p class="muted small">${esc(K.rule)} · 코치 이름은 그 사람들의 공개된 매매 원칙을 빌린 것뿐이고, 실제 인물의 의견이 아니에요.</p>`;
   }
   let SM = { log: [], acct: (() => { try { return localStorage.getItem("tradingdesk.acct") || "ai"; } catch (_) { return "ai"; } })() };

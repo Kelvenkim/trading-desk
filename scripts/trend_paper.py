@@ -8,7 +8,7 @@
   크기: 한 번 손절 시 계좌 손실 1% (손실 최소화) · 노출은 계좌의 최대 10배 (10배 레버리지 = 증거금 한도)
   비용: 한쪽 0.05%. 시험 성적: 거래당 평균 +0.16R(수수료 0.05%) — 과거 결과라 앞으로는 더 나쁠 수 있음
 """
-import json
+import json, sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -16,10 +16,16 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import formula_rules as FR
+FC = None
+CTX = {}
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data/us/trend10.json"
 SYMS = ["BTC-USD", "ETH-USD", "SOL-USD"]
-CFG = dict(sm=1.5, tr=5.0, mx=96, rsi=50, risk=0.01, maxE=10.0, fee=0.0005)
+# 11/22 저녁: 1회 손실 1% → 0.25% (Claude 결정 — 2년 시험 최대 낙폭 −63% → 약 −20%, 형 원칙 '손실 최소화 먼저')
+CFG = dict(sm=1.5, tr=5.0, mx=96, rsi=50, risk=0.0025, maxE=10.0, fee=0.0005)
 NM = {"BTC-USD": "BTC", "ETH-USD": "ETH", "SOL-USD": "SOL"}
 
 
@@ -28,7 +34,7 @@ def now():
 
 
 def bars(sym):
-    d = yf.Ticker(sym).history(period="60d", interval="1h").dropna()
+    d = yf.Ticker(sym).history(period="180d", interval="1h").dropna()
     d.index = d.index.tz_convert("UTC"); d.columns = [c.lower() for c in d.columns]
     d = d[d.index + pd.Timedelta(hours=1) <= pd.Timestamp(now())]
     return d[["open", "high", "low", "close"]]
@@ -54,6 +60,7 @@ def equity(S, px):
 
 
 def run():
+    FC = FR.load(); CFG.update(FR.params("tr10"))                # 코치(scripts/coach.py)가 바꾼 숫자·조건
     S = json.loads(OUT.read_text()) if OUT.exists() else None
     if not S:
         S = {"start": now().date().isoformat(), "cash": 10000.0, "pos": {}, "trades": [], "chat": [], "eq": [], "last": {}, "lev": 10,
@@ -68,6 +75,7 @@ def run():
         if len(d) < 220:
             continue
         I = ind(d); o, h, l, c = d.open.values, d.high.values, d.low.values, d.close.values; t = d.index
+        X = FR.context(d)
         px[sym] = float(c[-1])
         last = pd.Timestamp(S["last"].get(sym)) if S["last"].get(sym) else t[-2]
         for k in range(210, len(d)):
@@ -101,6 +109,10 @@ def run():
             if not s:
                 continue
             e = float(o[k]); risk = CFG["sm"] * A[j]; stop = e - s * risk
+            bad = FR.check("tr10", dict(t=t[k], htf=X["htf"][j] == s, volhi=bool(X["volhi"][j]), risk=risk / e), FC)
+            if bad:
+                S.setdefault("skips", []).append({"at": tk, "sym": sym, "side": s, "why": " · ".join(bad)}); S["skips"] = S["skips"][-200:]
+                continue
             eq = equity(S, {}); qty = min(eq * CFG["risk"] / risk, eq * CFG["maxE"] / e)
             fee = qty * e * CFG["fee"]; S["cash"] -= fee
             why = (f"{'상승' if s > 0 else '하락'} 추세(EMA50 {f(I['e50'][j])} {'>' if s > 0 else '<'} EMA200 {f(I['e200'][j])}) 안에서 "
@@ -111,7 +123,7 @@ def run():
         S["last"][sym] = t[-1].isoformat()
     eq = equity(S, px)
     S["eq"].append([now().isoformat(timespec="minutes"), round(eq, 2)]); S["eq"] = S["eq"][-3000:]
-    S.update(eq_now=round(eq, 2), px=px, made=now().isoformat(timespec="minutes"), n_trades=len(S["trades"]))
+    S.update(eq_now=round(eq, 2), px=px, made=now().isoformat(timespec="minutes"), n_trades=len(S["trades"]), coach=FR.active_text("tr10", FC))
     OUT.write_text(json.dumps(S, ensure_ascii=False, separators=(",", ":")))
     print("추세 눌림 계좌", round(eq, 2), "보유", list(S["pos"]), "거래", len(S["trades"]))
 

@@ -10,7 +10,7 @@
 하루 거래 횟수 제한 없음 (형 요청). 비용: 한쪽 0.05% (수수료+체결 차이)
 매매일지: 진입 이유 · 손절/익절 이유 · 자동 피드백 → data/us/ob_paper.json → 사이트 AI 데스크 '오더블록' 탭
 """
-import json, math
+import json, math, sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -18,14 +18,19 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import formula_rules as FR
+FC = None
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data/us/ob_paper.json"
 SYMS = ["BTC-USD", "ETH-USD", "SOL-USD"]
 # 11/22 형: '기준 너무 빡빡하게 말고 하루 최소 3번은 거래하면서 고쳐가자' → 필터는 유동성 흡수만, 파동 고점 손익비 조건 끔
 #   시험(research/orderblock/freq.py, 1시간봉 2년 3개 코인): 하루 4.1번 · 평균 −0.10R(손실 쪽) → 1회 손실을 1%→0.25%로 줄여 고치는 동안 손실을 작게
 #   (예전: 갭+흡수+FVG·손익비 1 → 2년 101번, 하루 0.14번, +0.14R)
+#   11/22 저녁: 2캔들만으로는 BTC·ETH 하루 2.6번 → 3캔들(양→음→양)도 넣어 하루 3.5번 (2년 시험 평균 −0.09R로 2캔들만(−0.10R)과 같음)
 CFG = dict(iv="1h", K=2.0, dmin=0.15, L=20, need=("sweep",), W=48, hold=72, minrr=0.0,
-           risk=0.0025, maxE=5.0, fee=0.0005, k2=False)
+           risk=0.0025, maxE=5.0, fee=0.0005, k2=False, c3=True)
 IVMIN = {"5m": 5, "15m": 15, "1h": 60}
 
 
@@ -38,7 +43,7 @@ def bars(sym, iv, period):
     d.index = d.index.tz_convert("UTC"); d.columns = [c.lower() for c in d.columns]
     m = IVMIN[iv]
     d = d[d.index + pd.Timedelta(minutes=m) <= pd.Timestamp(now())]          # 닫힌 봉만
-    return d[["open", "high", "low", "close"]]
+    return d[["open", "high", "low", "close", "volume"]]
 
 
 def atr(d, n=14):
@@ -59,24 +64,26 @@ def ob_at(d, i, A):
         if not (up and dn):
             continue
         k = 3 if ((c[i - 2] > o[i - 2]) if s > 0 else (c[i - 2] < o[i - 2])) else 2
-        if k == 3:
-            return None                                         # 3캔들은 백테스트 성적이 나빠 제외
+        if k == 3 and not CFG.get("c3"):
+            return None                                         # (예전) 3캔들 제외
         b0, b1 = abs(c[i - 1] - o[i - 1]), abs(c[i] - o[i])
         doji = b0 < CFG["dmin"] * A[i] or b0 < 0.2 * (h[i - 1] - l[i - 1])
         ratio = b1 / b0 if b0 else 0
         gap = (not doji) and ratio >= K
         if s > 0:
-            stop = min(l[i - 1], l[i]); entry = h[i - 1]
-            prev = l[i - 1 - L:i - 1].min(); sweep = stop < prev; fvg = l[i + 1] > h[i - 1]
+            stop = min(l[i - k + 1:i + 1]); entry = h[i - 1]
+            prev = l[i - k + 1 - L:i - k + 1].min(); sweep = stop < prev; fvg = l[i + 1] > h[i - 1]
             fvg_sz = l[i + 1] - h[i - 1]
         else:
-            stop = max(h[i - 1], h[i]); entry = l[i - 1]
-            prev = h[i - 1 - L:i - 1].max(); sweep = stop > prev; fvg = h[i + 1] < l[i - 1]
+            stop = max(h[i - k + 1:i + 1]); entry = l[i - 1]
+            prev = h[i - k + 1 - L:i - k + 1].max(); sweep = stop > prev; fvg = h[i + 1] < l[i - 1]
             fvg_sz = l[i - 1] - h[i + 1]
         if abs(entry - stop) < 0.05 * A[i]:
             return None
         disp = c[i] > h[i - 1] if s > 0 else c[i] < l[i - 1]
-        return dict(i=i, t=d.index[i].isoformat(), side=s, entry=float(entry), stop=float(stop), gap=bool(gap), sweep=bool(sweep), fvg=bool(fvg), disp=bool(disp),
+        vv = d["volume"].values if "volume" in d else None
+        vhi = bool(vv is not None and i >= 20 and vv[i] > 1.5 * vv[i - 20:i].mean())
+        return dict(i=i, k=k, t=d.index[i].isoformat(), side=s, entry=float(entry), stop=float(stop), gap=bool(gap), sweep=bool(sweep), fvg=bool(fvg), disp=bool(disp), vhi=vhi,
                     ratio=round(float(ratio), 2), prev=float(prev), fvg_sz=float(fvg_sz), atr=float(A[i]))
     return None
 
@@ -112,6 +119,8 @@ def fmt(x):
 
 
 def run():
+    global FC
+    FC = FR.load(); CFG.update(FR.params("ob"))                  # 코치(scripts/coach.py)가 바꾼 숫자·조건
     S = json.loads(OUT.read_text()) if OUT.exists() else None
     if not S:
         S = {"start": now().date().isoformat(), "cash": 10000.0, "pos": {}, "pend": {}, "journal": [], "chat": [], "eq": [], "last": {}, "cfg": {**CFG, "need": list(CFG["need"])},
@@ -120,13 +129,14 @@ def run():
     iv = CFG["iv"]; px = {}
     for sym in SYMS:
         try:
-            d = bars(sym, iv, "60d" if iv == "1h" else "5d")
+            d = bars(sym, iv, "180d" if iv == "1h" else "5d")     # 180일: 상위 추세·변동성 수준 계산용 (formula_rules.context)
         except Exception as e:
             print(sym, "시세 실패", e); continue
         if len(d) < 60:
             continue
         Z = htf(sym, d if iv == "1h" else None)
         A = atr(d); o, h, l, c = d.open.values, d.high.values, d.low.values, d.close.values; t = d.index
+        X = FR.context(d)
         px[sym] = float(c[-1])
         last = pd.Timestamp(S["last"].get(sym)) if S["last"].get(sym) else t[-2]   # 처음엔 마지막 봉부터
         pend = S["pend"].setdefault(sym, [])
@@ -166,6 +176,10 @@ def run():
                     if abs(q["wave"] - q["entry"]) < CFG["minrr"] * abs(q["entry"] - q["stop"]):
                         log_skip(S, sym, q, "파동 고점까지 거리가 손절 거리보다 짧아 손익비 부족 — 진입 안 함"); continue
                     fill = min(o[k], q["entry"]) if s > 0 else max(o[k], q["entry"])
+                    bad = FR.check("ob", dict(t=t[k], htf=X["htf"][k] == s, volhi=bool(X["volhi"][k]), risk=abs(fill - q["stop"]) / fill,
+                                              fvg=q["fvg"], gap=q["gap"], vhi=q.get("vhi", False)), FC)
+                    if bad:
+                        log_skip(S, sym, q, "코치가 붙인 조건 불통과 — " + " · ".join(bad)); continue
                     open_pos(S, sym, q, float(fill), tk, Z); continue
                 q["wave"] = max(q["wave"], float(h[k])) if s > 0 else min(q["wave"], float(l[k])); q["age"] += 1
                 if (s > 0 and c[k] < q["stop"]) or (s < 0 and c[k] > q["stop"]):
@@ -186,7 +200,7 @@ def run():
         S["last"][sym] = t[-1].isoformat()
     eq = equity(S, px)
     S["eq"].append([now().isoformat(timespec="minutes"), round(eq, 2)]); S["eq"] = S["eq"][-3000:]
-    S.update(eq_now=round(eq, 2), px=px, made=now().isoformat(timespec="minutes"), n_trades=sum(1 for j in S["journal"] if j.get("exit")))
+    S.update(eq_now=round(eq, 2), px=px, made=now().isoformat(timespec="minutes"), n_trades=sum(1 for j in S["journal"] if j.get("exit")), coach=FR.active_text("ob", FC))
     OUT.write_text(json.dumps(S, ensure_ascii=False, separators=(",", ":")))
     print("오더블록 계좌", round(eq, 2), "보유", list(S["pos"]), "대기", {k: len(v) for k, v in S["pend"].items()}, "일지", len(S["journal"]))
 

@@ -1301,3 +1301,9 @@ body.chart-full .center.full { left: calc(max(8px, env(safe-area-inset-left)) + 
 .coach-chat li b { color: var(--c); margin-right: 4px; }
 .coach-chat li.no { opacity: .62; }
 .coach-chat li.ok { box-shadow: inset 0 0 0 1px rgba(47,163,107,.55); }
+.coach-log { list-style: none; margin: 0 0 8px; padding: 8px 12px; background: rgba(47,163,107,.08); border-radius: 10px; font-size: 12.5px; }
+.coach-log li { margin: 3px 0; }
+.coach-room > summary { cursor: pointer; list-style: none; padding: 6px 0; }
+.coach-room > summary::-webkit-details-marker { display: none; }
+.coach-room > summary::before { content: "▸ "; color: var(--accent); }
+.coach-room[open] > summary::before { content: "▾ "; }
