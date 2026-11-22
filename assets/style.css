@@ -1272,3 +1272,13 @@ body.chart-full .center.full { left: calc(max(8px, env(safe-area-inset-left)) + 
 .fm-verdict.good { background: rgba(38,166,91,.15); color: #4fd18a; }
 .fm-verdict.mid { background: rgba(245,185,66,.14); color: #f5b942; }
 .fm-verdict.bad { background: rgba(240,82,92,.15); color: #ff7a83; }
+
+/* 공식 그림 크게 보기 */
+.fm-view { width: min(1280px, 98vw); max-width: none; max-height: 96vh; padding: 0; overflow: hidden; }
+.fm-view::backdrop { background: rgba(0,0,0,.75); }
+.fm-view-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
+.fm-view-bar b { flex: 1; font-size: 14px; }
+.fm-view-body { overflow: auto; max-height: calc(96vh - 52px); }
+.fm-view-body img { display: block; width: 100%; cursor: zoom-in; }
+.fm-view-body img.zoom { width: 220%; max-width: none; cursor: zoom-out; }
+@media (max-width: 640px) { .fm-view-bar .muted { display: none; } .fm-view-body img.zoom { width: 300%; } }

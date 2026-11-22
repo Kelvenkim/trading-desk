@@ -41,7 +41,25 @@ const DeskUI = (() => {
       el.innerHTML = L.map((r) => `<a class="rp-item" href="reports/pdf/${encodeURIComponent(r.file)}" target="_blank" rel="noopener"><b>${esc(r.date)}</b><span>${esc(r.n)} · ${esc(r.kind)}</span><span class="rp-dl">PDF ↓</span></a>`).join("") || `<p class="muted">아직 없어요.</p>`;
     } catch (_) { el.innerHTML = `<p class="muted">목록을 못 불러왔어요.</p>`; }
   }
-  async function renderFormulas() {                    // 매매 공식 그림 보관함 (formulas/index.json, 11/22 형 요청) + 성적 바 (쓸모없으면 폐기·수정 판단용)
+  // 공식 그림 크게 보기 — 새 창 대신 화면 안 창 (앱·폰에서 새 창으로 열면 돌아올 버튼이 없어서, 11/22)
+  function fmView() {
+    const dlg = $("#fm-view"); if (!dlg || dlg._init) return dlg; dlg._init = 1;
+    const img = $("#fm-view-img");
+    const close = () => { if (dlg.open) dlg.close(); };
+    $("#fm-back").addEventListener("click", () => { if (history.state && history.state.fm) history.back(); else close(); });
+    img.addEventListener("click", () => img.classList.toggle("zoom"));
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) $("#fm-back").click(); });
+    dlg.addEventListener("cancel", (e) => { e.preventDefault(); $("#fm-back").click(); });       // Esc
+    window.addEventListener("popstate", close);                                                    // 폰 뒤로 가기
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest && e.target.closest("[data-fm-view]"); if (!a) return;
+      e.preventDefault(); img.src = a.dataset.fmView; img.classList.remove("zoom"); $("#fm-view-title").textContent = a.dataset.fmTitle || "";
+      dlg.showModal(); try { history.pushState({ fm: 1 }, ""); } catch (_) {}
+    });
+    return dlg;
+  }
+  async function renderFormulas() {
+    fmView();                    // 매매 공식 그림 보관함 (formulas/index.json, 11/22 형 요청) + 성적 바 (쓸모없으면 폐기·수정 판단용)
     const el = $("#fm-list"); if (!el) return;
     let L; try { L = await (await fetch("formulas/index.json?t=" + Date.now())).json(); } catch (_) { el.innerHTML = `<p class="muted">목록을 못 불러왔어요.</p>`; return; }
     const NEED = 30;                                    // 평가에 필요한 끝난 거래 수
@@ -72,7 +90,7 @@ const DeskUI = (() => {
           <div class="fm-key muted small">${be != null ? `흰 선 = 본전 승률 ${pctW(be)} (이보다 높아야 이익)` : ""}${bt ? ` · 점선 = 과거 시험 승률` : ""} · ${esc(f.live.acct)} 계좌 기준</div>
           <div class="fm-verdict ${v[0]}">${v[1]}</div></div>`;
       }
-      return `<div class="fm-item"><a href="${esc(f.img)}" target="_blank" rel="noopener"><img src="${esc(f.img)}" alt="${esc(f.title)}" loading="lazy"></a>
+      return `<div class="fm-item"><a href="${esc(f.img)}" data-fm-view="${esc(f.img)}" data-fm-title="${esc(f.title)}"><img src="${esc(f.img)}" alt="${esc(f.title)}" loading="lazy"></a>
         <b>${esc(f.title)}</b><span class="muted small">${esc(f.date)} · ${esc(f.status)}</span><span class="small">${esc(f.desc)}</span>${body}</div>`;
     };
     el.innerHTML = L.map((f, i) => [f, stat(f, live[i])]).reverse().map(([f, S]) => card(f, S)).join("") || `<p class="muted">아직 없어요.</p>`;
