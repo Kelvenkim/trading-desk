@@ -21,8 +21,11 @@ import yfinance as yf
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data/us/ob_paper.json"
 SYMS = ["BTC-USD", "ETH-USD", "SOL-USD"]
-CFG = dict(iv="1h", K=2.0, dmin=0.15, L=20, need=("gap", "sweep", "fvg"), W=48, hold=72, minrr=1.0,
-           risk=0.01, maxE=5.0, fee=0.0005, k2=False)
+# 11/22 형: '기준 너무 빡빡하게 말고 하루 최소 3번은 거래하면서 고쳐가자' → 필터는 유동성 흡수만, 파동 고점 손익비 조건 끔
+#   시험(research/orderblock/freq.py, 1시간봉 2년 3개 코인): 하루 4.1번 · 평균 −0.10R(손실 쪽) → 1회 손실을 1%→0.25%로 줄여 고치는 동안 손실을 작게
+#   (예전: 갭+흡수+FVG·손익비 1 → 2년 101번, 하루 0.14번, +0.14R)
+CFG = dict(iv="1h", K=2.0, dmin=0.15, L=20, need=("sweep",), W=48, hold=72, minrr=0.0,
+           risk=0.0025, maxE=5.0, fee=0.0005, k2=False)
 IVMIN = {"5m": 5, "15m": 15, "1h": 60}
 
 
