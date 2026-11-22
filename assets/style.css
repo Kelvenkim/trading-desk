@@ -1240,3 +1240,10 @@ body.chart-full .center.full { left: calc(max(8px, env(safe-area-inset-left)) + 
   body.chart-full .toolbar { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 46px; border-radius: 0; padding: 4px 8px max(4px, env(safe-area-inset-bottom)); box-sizing: content-box; }
   body.chart-full .center.full { left: 0; right: 0; width: 100vw; padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 }
+
+/* 손절·익절 박스 손익비 입력 */
+.pos-ed { position: absolute; z-index: 7; display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: rgba(10,10,11,.92); backdrop-filter: blur(6px); font-size: 12px; color: var(--text); }
+.pos-ed label { color: var(--muted); white-space: nowrap; }
+.pos-ed input { width: 58px; padding: 3px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; font-size: 16px; }
+.pos-ed button { padding: 3px 10px; border-radius: 999px; border: 0; background: var(--gold-soft, #3a2f55); color: var(--text); font-size: 12px; }
+@media (hover: hover) { .pos-ed input { font-size: 12px; } }

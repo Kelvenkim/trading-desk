@@ -192,7 +192,7 @@ const Draw = (() => {
           const xr = ts().logicalToCoordinate(res.i);
           if (xr != null) { ctx.setLineDash([3, 3]); ctx.strokeStyle = res.k === "tgt" ? G : R; seg({ x: xr, y: ye }, { x: xr, y: res.k === "tgt" ? yt : ys }); ctx.setLineDash([]); }
         }
-        const pc = (p) => ((p / e - 1) * 100 * (L ? 1 : -1)),   // 포지션 손익 기준: 숏은 내려가면 + rr = Math.abs(tg - e) / Math.max(1e-12, Math.abs(e - sl));
+        const pc = (p) => ((p / e - 1) * 100 * (L ? 1 : -1)), rr = Math.abs(tg - e) / Math.max(1e-12, Math.abs(e - sl));   // %는 포지션 손익 기준: 숏은 내려가면 +
         const mid = x1 + w / 2;
         label(`목표 ${CV.fmt(tg)} (${pc(tg) >= 0 ? "+" : ""}${pc(tg).toFixed(2)}%)`, mid, yt + (L ? -11 : 11), G, "#fff", "center");
         label(`손절 ${CV.fmt(sl)} (${pc(sl) >= 0 ? "+" : ""}${pc(sl).toFixed(2)}%)`, mid, ys + (L ? 11 : -11), R, "#fff", "center");
@@ -259,6 +259,36 @@ const Draw = (() => {
     items.forEach((d, i) => drawItem(d, i === sel || i === hover));
     if (temp) drawItem(temp, true);
     ctx.restore();
+    posEditor();
+  }
+  // 손절·익절 박스를 고르면 손익비 입력칸이 뜸 → 진입가·손절가는 그대로 두고 목표가를 다시 계산 (손절은 구조물 기준으로 먼저 정하는 게 보통이라)
+  let pe = null;
+  function posEditor() {
+    const d = sel >= 0 ? items[sel] : null;
+    if (!d || d.type !== "pos" || !d.pts[2] || tool) { if (pe) pe.hidden = true; return; }
+    if (!pe) {
+      pe = document.createElement("div"); pe.className = "pos-ed";
+      pe.innerHTML = `<label>손익비 1 :</label><input type="number" min="0.1" max="50" step="0.1" inputmode="decimal"><button type="button">적용</button>`;
+      host.appendChild(pe);
+      const inp = pe.querySelector("input");
+      const apply = () => {
+        const x = items[sel]; const v = parseFloat(inp.value);
+        if (!x || x.type !== "pos" || !(v > 0)) return;
+        const e = x.pts[0].p, sl = x.pts[2].p, s = sl < e ? 1 : -1;   // 손절이 아래면 롱
+        x.pts[1].p = e + s * Math.abs(e - sl) * v; save(); dirty = true; inp.blur();
+      };
+      pe.querySelector("button").addEventListener("click", apply);
+      inp.addEventListener("keydown", (ev) => { ev.stopPropagation(); if (ev.key === "Enter") apply(); });
+    }
+    const inp = pe.querySelector("input"), e = d.pts[0].p;
+    if (document.activeElement !== inp) inp.value = (Math.abs(d.pts[1].p - e) / Math.max(1e-12, Math.abs(e - d.pts[2].p))).toFixed(2);
+    const P = toXY(d.pts[0]), Q = toXY(d.pts[1]);
+    if (isNaN(P.x) || isNaN(P.y)) { pe.hidden = true; return; }
+    pe.hidden = false;
+    const x = Math.min(Math.max(4, (P.x + Q.x) / 2 - pe.offsetWidth / 2), plotW() - pe.offsetWidth - 4);
+    const yS = toXY(d.pts[2]).y, below = yS > P.y;                // 손절 박스 바깥쪽에 붙임
+    const y = below ? Math.min(yS + 22, plotH() - pe.offsetHeight - 4) : Math.max(4, yS - 22 - pe.offsetHeight);
+    pe.style.left = x + "px"; pe.style.top = y + "px";
   }
 
   // ---------- 선택 판정 ----------
@@ -333,6 +363,7 @@ const Draw = (() => {
 
   function onDown(e) {
     if (e.button !== undefined && e.button !== 0) return;
+    if (e.target.closest && e.target.closest(".pos-ed")) return;   // 손익비 입력칸
     const { x, y } = pos(e);
     if (!inPlot(x, y)) return;
     if (tool) {
