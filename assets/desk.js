@@ -53,7 +53,7 @@ const DeskUI = (() => {
     if (C) card("coin", C.eq_now, 10000, C.start, `같은 기간 비트코인 ${pct(C.btc_ret, 1)}`);
     if (L) card("lev", L.eq_now, 10000, L.start, `강제 청산 ${L.liq_n}번 · 11/21 5배→10배`);
     if (D && D.eq && D.eq.length) card("day", D.eq[D.eq.length - 1][1], 10000, D.start, `매매 ${(D.trades || []).length}번`); else cards.day = { k: "day", off: "시작 전", extra: "월요일(11/23) 미국장부터 시작" };
-    if (Q && Q.eq) card("scalp10", Q.eq_now, 10000, Q.start, `매매 ${(Q.trades || []).length}번 · 수수료 포함 · 하루 −10%면 멈춤`); else cards.scalp10 = { k: "scalp10", off: "시작 전", extra: "Worker 새 코드·매일 실행 뒤 시작" };
+    if (Q && Q.eq) card("scalp10", Q.eq_now, 10000, Q.start, Q.stopped ? `⏹ ${Q.stopped} 중단 · 매매 ${(Q.trades || []).length}번 · 수수료 포함` : `매매 ${(Q.trades || []).length}번 · 수수료 포함 · 하루 −5%면 멈춤`); else cards.scalp10 = { k: "scalp10", off: "시작 전", extra: "Worker 새 코드·매일 실행 뒤 시작" };
     if (O && O.eq) card("ob", O.eq_now, 10000, O.start, `끝난 매매 ${O.n_trades || 0}번 · 대기 ${Object.values(O.pend || {}).reduce((a, x) => a + x.length, 0)}개 · 수수료 포함`); else cards.ob = { k: "ob", off: "시작 전", extra: "1시간마다 자동 실행" };
     if (!ACC[SM.acct]) SM.acct = "ai";
     $("#sm-accts").innerHTML = Object.keys(ACC).map((k) => { const c = cards[k] || { off: "—" };

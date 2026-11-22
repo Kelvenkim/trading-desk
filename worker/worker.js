@@ -310,7 +310,7 @@ async function runDay(env) {
 const SC = { syms: ["BTC-USD", "ETH-USD"], n: 20, k: 2.5, atrN: 14, stopAtr: 3, maxBars: 12, risk: 0.005, capW: 0.5, fee: 0.0005, dayHalt: -0.02 };
 // 레버리지(11/21 사용자 요청 → 10배로, 1배 단타는 지움): 같은 신호, 코인마다 계좌의 5배어치(둘 다 잡으면 10배). 손절·수수료 같음.
 // 과거 60일: 수수료 없으면 +478%, 왕복 0.10%면 −86%(낙폭 −90%) — 레버리지는 수수료 손실도 같이 키워요.
-const SC10 = { ...SC, key: "scalp10", lev: 10, notionalW: 5, dayHalt: -0.05, ddStop: -0.25 };
+const SC10 = { ...SC, key: "scalp10", lev: 10, notionalW: 5, dayHalt: -0.05, ddStop: -0.25, stopped: "2026-11-22" };   // 11/22 중단: 4번 매매에 −9.7%, 과거 시험에서도 수수료를 못 이김 — 보유분만 규칙대로 정리하고 신규 진입 없음
 // 손실 최소화(11/21 사용자 원칙): 하루 −5%면 그날 멈춤, 최고점 대비 −25%면 완전히 멈추고 사용자 확인 기다림
 SC.key = "scalp";
 
@@ -392,6 +392,7 @@ async function runScalp(env, C = SC, pre = null) {
     S.peak = Math.max(S.peak || 10000, eq);
     if (C.ddStop && eq / S.peak - 1 <= C.ddStop) { if (!S.paused) { S.paused = true; S.chat.push({ at: now.toISOString(), who: "risk", text: `🛑 최고점 대비 ${((eq / S.peak - 1) * 100).toFixed(1)}% — 손실 최소화 규칙으로 신규 진입을 완전히 멈춰요. 다시 시작은 형 확인 뒤.` }); } continue; }
     if (S.paused) continue;
+    if (C.stopped) { if (!S.stopped) { S.stopped = C.stopped; S.chat.push({ at: now.toISOString(), who: "risk", text: `⏹ ${C.stopped} 계좌 중단 — 4번 매매에 −9.7%, 한 번 손절에 계좌 −3~4%로 '손실 최소화' 원칙 위반. 과거 시험(수수료 포함)에서도 손실이었어요. 신규 진입은 하지 않아요.` }); } continue; }
     if (S.day.e0 && eq / S.day.e0 - 1 <= C.dayHalt) { if (!S.day.halt) { S.day.halt = true; S.chat.push({ at: now.toISOString(), who: "risk", text: `오늘(UTC) 손실 ${((eq / S.day.e0 - 1) * 100).toFixed(1)}% — 하루 ${(C.dayHalt * 100).toFixed(0)}% 한도라 신규 진입 멈춰요.` }); } continue; }
     const side = I.c < I.mean - SC.k * I.sd ? 1 : I.c > I.mean + SC.k * I.sd ? -1 : 0;
     if (!side || !I.atr) continue;
