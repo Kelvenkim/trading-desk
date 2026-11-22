@@ -135,6 +135,8 @@ const BTUI = (() => {
   function renderParams() {
     const sid = $("#bt-strategy").value, St = BT.STRATEGIES[sid];
     $("#bt-desc").textContent = St.desc;
+    if (St.preset && S.lastSid !== sid && S.lastSid !== undefined) writeOpt(St.preset);   // 오더블록·AMD: 롱·숏 둘 다 + 위험 기준 크기로
+    S.lastSid = sid;
     $("#bt-params").innerHTML = St.params.map((p) => p.type === "select"
       ? `<label>${p.label}<select data-p="${p.key}">${p.options.map((o) => `<option ${o === p.def ? "selected" : ""}>${o}</option>`).join("")}</select></label>`
       : `<label>${p.label}<input type="number" data-p="${p.key}" value="${p.def}" min="${p.min ?? ""}" max="${p.max ?? ""}" step="${p.step ?? 1}"></label>`).join("");

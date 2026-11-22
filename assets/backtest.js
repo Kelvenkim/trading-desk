@@ -381,7 +381,206 @@ const BT = (() => {
   // ================= 전략 =================
   // signals(bars, p) → { entry: bool[], exit: bool[], lines: [{name, data, color}] }
   // 롱 기준으로 entry=매수 신호, exit=매도 신호. 숏 방향에서는 exit 신호로 숏 진입, entry 신호로 청산.
+  // ================= 오더블록 · AMD (형 규칙, 11/22) — research/orderblock/ob.py · research/amd/amd.py 를 그대로 옮김 =================
+  // 자체 체결기: 지정가 진입·거래마다 다른 손절/목표·절반 익절이 필요해서 일반 엔진 대신 직접 계산
+  function obFind(b, P) {
+    const n = b.length, A = atr(b, 14), L = P.L, out = [];
+    const body = b.map((x) => Math.abs(x.c - x.o)), rng = b.map((x) => x.h - x.l);
+    for (let i = L + 3; i < n - 2; i++) {
+      for (const s of [1, -1]) {
+        const up = (k) => (s > 0 ? b[k].c > b[k].o : b[k].c < b[k].o), dn = (k) => (s > 0 ? b[k].c < b[k].o : b[k].c > b[k].o);
+        if (!(up(i) && dn(i - 1))) continue;
+        const k = up(i - 2) ? 3 : 2, first = i - 1, a = A[i];
+        if (!isFinite(a)) continue;
+        const gap = body[first] < P.dmin * a || body[first] < 0.2 * rng[first] ? false : body[i] >= P.K * body[first];
+        const disp = s > 0 ? b[i].c > b[first].h : b[i].c < b[first].l;
+        let stop, entry, sweep, fvg;
+        if (s > 0) {
+          stop = Math.min(...b.slice(i - k + 1, i + 1).map((x) => x.l)); entry = b[first].h;
+          sweep = stop < Math.min(...b.slice(i - k + 1 - L, i - k + 1).map((x) => x.l)); fvg = b[i + 1].l > b[i - 1].h;
+        } else {
+          stop = Math.max(...b.slice(i - k + 1, i + 1).map((x) => x.h)); entry = b[first].l;
+          sweep = stop > Math.max(...b.slice(i - k + 1 - L, i - k + 1).map((x) => x.h)); fvg = b[i + 1].h < b[i - 1].l;
+        }
+        if (Math.abs(entry - stop) < 0.05 * a) continue;
+        out.push({ i, side: s, entry, stop, k, gap, disp, sweep, fvg });
+      }
+    }
+    return out;
+  }
+  // 거래 목록(legs) → 계좌 곡선·거래 내역 (1회 손실 = 계좌의 riskPct% 또는 고정 비중)
+  function bookTrades(b, plans, opt, lines) {
+    const n = b.length, c1 = ((opt.buyFee + opt.sellFee) / 2 + opt.slip) / 100, cap = opt.capital;
+    const lev = 5, eqArr = new Array(n), trades = [], fills = [];
+    let eq = cap, pi = 0, cur = null;
+    for (let i = 0; i < n; i++) {
+      if (!cur && pi < plans.length && plans[pi].ei === i) {
+        const p = plans[pi++], rp = Math.abs(p.e - p.stop) / p.e;
+        let notional = opt.sizing === "risk" ? Math.min(eq * opt.riskPct / 100 / rp, eq * lev) : opt.sizing === "fixed" ? eq * opt.sizePct / 100 : eq;
+        cur = { p, notional, eq0: eq, fee: notional * c1, rem: 1, real: 0 };
+        fills.push({ i, buy: p.side > 0, px: p.e, q: notional / p.e, kind: "open" });
+      }
+      if (cur) {
+        const p = cur.p;
+        for (const lg of p.legs.filter((x) => x.i === i)) {
+          cur.real += cur.notional * lg.w * (p.side * (lg.px / p.e - 1) - c1); cur.rem -= lg.w;
+          fills.push({ i, buy: p.side < 0, px: lg.px, q: cur.notional * lg.w / p.e, kind: lg.w < 1 && cur.rem > 1e-9 ? "tp1" : "close" });
+        }
+        if (cur.rem <= 1e-9) {
+          const pnl = cur.real - cur.fee; eq += pnl;
+          trades.push({ side: p.side, entryIdx: p.ei, exitIdx: i, bars: i - p.ei, entryPx: p.e, exitPx: p.legs[p.legs.length - 1].px, pnl, ret: pnl / cur.notional * 100,
+            reason: p.why, adds: 0, partial: p.legs.length > 1, r: pnl / (cur.notional * Math.abs(p.e - p.stop) / p.e), stopPx: p.stop, targetPx: p.target, tag: p.tag });
+          cur = null; eqArr[i] = eq;
+          if (pi < plans.length && plans[pi].ei === i) { i--; continue; }   // 같은 봉에 다음 거래 시작
+        } else eqArr[i] = eq + cur.real - cur.fee + cur.notional * cur.rem * p.side * (b[i].c / p.e - 1);
+      } else eqArr[i] = eq;
+      while (pi < plans.length && plans[pi].ei < i) pi++;                     // 겹치는 계획은 건너뜀
+    }
+    let open = null;
+    if (cur) { const p = cur.p; open = { side: p.side, entryIdx: p.ei, entryPx: p.e, lastPx: b[n - 1].c, qty: p.side * cur.notional / p.e, stopPx: p.stop, targetPx: p.target, ret: p.side * (b[n - 1].c / p.e - 1) * 100 }; }
+    for (let i = 0; i < n; i++) if (eqArr[i] == null) eqArr[i] = i ? eqArr[i - 1] : cap;
+    const st = stats(b, eqArr, trades, opt, open);
+    const rs = trades.map((t) => t.r).filter(isFinite); st.avgR = rs.length ? rs.reduce((a, v) => a + v, 0) / rs.length : null;
+    st.blocked = st.capped = st.skippedGap = 0;
+    return { equity: eqArr, trades, open, lines, fills, stats: st };
+  }
+  const yes = (v) => v === "켬" || v === "허용";
+  function obPlans(b, p, opt) {
+    const n = b.length, P = { K: p.K, L: p.L, dmin: 0.15 };
+    const dirOK = (s) => opt.direction === "both" || (s > 0 ? opt.direction === "long" : opt.direction === "short");
+    let obs = obFind(b, P); if (!yes(p.k3)) obs = obs.filter((o) => o.k === 2);
+    const opp = new Map(); obs.forEach((o) => { if (o.disp) { if (!opp.has(o.i)) opp.set(o.i, new Set()); opp.get(o.i).add(o.side); } });
+    const need = ["gap", "sweep", "fvg"].filter((k) => yes(p[k])), plans = [];
+    const zt = new Array(n).fill(NaN), zb = new Array(n).fill(NaN);
+    let busy = -1;
+    for (const ob of obs) {
+      const { i, side: s, entry: e, stop: st } = ob;
+      if (i <= busy || !dirOK(s) || need.some((f) => !ob[f])) continue;
+      let j = null, wave = s > 0 ? b[i].h : b[i].l;
+      for (let k = i + 1; k < Math.min(n, i + 1 + p.W); k++) {
+        if ((s > 0 && b[k].l <= e) || (s < 0 && b[k].h >= e)) { j = k; break; }
+        wave = s > 0 ? Math.max(wave, b[k].h) : Math.min(wave, b[k].l);
+        if ((s > 0 && b[k].c < st) || (s < 0 && b[k].c > st)) break;
+      }
+      if (j == null) continue;
+      const risk = Math.abs(e - st);
+      if (Math.abs(wave - e) < p.minrr * risk) continue;
+      const fill = s > 0 ? Math.min(b[j].o, e) : Math.max(b[j].o, e);
+      const legs = []; let rem = 1, be = false, stop = st, why = "보유 시간 끝", k = j;
+      const rule2 = p.stopRule === "종가 이탈";
+      for (k = j; k < Math.min(n, j + p.hold); k++) {
+        let hit = s > 0 ? b[k].l <= stop : b[k].h >= stop;
+        if (rule2 && !be) hit = s > 0 ? b[k].c < stop : b[k].c > stop;
+        if (hit) { const px = rule2 && !be ? b[k].c : k > j ? (s > 0 ? Math.min(b[k].o, stop) : Math.max(b[k].o, stop)) : stop; legs.push({ i: k, w: rem, px }); rem = 0; why = be ? "본전 손절" : "손절 (꼬리 끝)"; break; }
+        if (!be && ((s > 0 && b[k].h >= wave) || (s < 0 && b[k].l <= wave))) {
+          const part = p.tp === "전부 익절" ? 1 : 0.5; legs.push({ i: k, w: part, px: wave }); rem -= part; be = true; stop = fill;
+          if (rem <= 1e-9) { why = "파동 고점 익절"; break; }
+          continue;
+        }
+        if (k > j && be && opp.has(k) && opp.get(k).has(-s)) { legs.push({ i: k, w: rem, px: b[k].c }); rem = 0; why = "반대 오더블록"; break; }
+      }
+      if (rem > 1e-9) { k = Math.min(n - 1, j + p.hold - 1); legs.push({ i: k, w: rem, px: b[k].c }); }
+      for (let x = i + 1; x <= k; x++) { zt[x] = Math.max(e, st); zb[x] = Math.min(e, st); }
+      plans.push({ ei: j, side: s, e: fill, stop: st, target: wave, legs, why: (legs.length > 1 && legs[0].w < 1 ? "절반 익절 → " : "") + why });
+      busy = k;
+    }
+    return { plans, lines: [{ name: "OB 구간 위", data: zt, color: "#3fb6c9" }, { name: "OB 구간 아래", data: zb, color: "#3fb6c9" }] };
+  }
+  function pocOf(b, a, z, rows = 24) {
+    let lo = Infinity, hi = -Infinity; for (let i = a; i < z; i++) { lo = Math.min(lo, b[i].l); hi = Math.max(hi, b[i].h); }
+    const st = (hi - lo) / rows, pr = new Array(rows).fill(0);
+    for (let i = a; i < z; i++) {
+      const { h, l, v } = b[i]; if (!(v > 0) || !(h > l)) continue;
+      const r0 = Math.min(rows - 1, Math.floor((l - lo) / st)), r1 = Math.min(rows - 1, Math.floor((h - lo) / st));
+      for (let r = r0; r <= r1; r++) { const bl = lo + r * st; pr[r] += v * (Math.min(bl + st, h) - Math.max(bl, l)) / (h - l); }
+    }
+    let m = 0; for (let r = 1; r < rows; r++) if (pr[r] > pr[m]) m = r;
+    return lo + (m + 0.5) * st;
+  }
+  function amdPlans(b, p, opt) {
+    const n = b.length, A = atr(b, 14), N = p.N, plans = [];
+    const dirOK = (s) => opt.direction === "both" || (s > 0 ? opt.direction === "long" : opt.direction === "short");
+    const lp = new Array(n).fill(NaN), lh = new Array(n).fill(NaN), ll = new Array(n).fill(NaN);
+    let obi = null;
+    if (p.conf === "오더블록 겹침만") { obi = { 1: [], "-1": [] }; obFind(b, { K: 2, L: 20, dmin: 0.15 }).filter((o) => o.k === 2 && o.gap && o.sweep).forEach((o) => obi[o.side].push(o.i)); }
+    let i = N + 20;
+    while (i < n - 2) {
+      let blo = Infinity, bhi = -Infinity; for (let q = i - N; q < i; q++) { blo = Math.min(blo, b[q].l); bhi = Math.max(bhi, b[q].h); }
+      if (!isFinite(A[i - 1]) || bhi - blo > p.m * A[i - 1]) { i++; continue; }
+      const s = b[i].l < blo ? 1 : b[i].h > bhi ? -1 : 0;
+      if (!s) { i++; continue; }
+      let ext = s > 0 ? b[i].l : b[i].h, k = null;
+      for (let j = i; j < Math.min(n - 1, i + p.reclaim); j++) {
+        ext = s > 0 ? Math.min(ext, b[j].l) : Math.max(ext, b[j].h);
+        if ((s > 0 && b[j].c > blo) || (s < 0 && b[j].c < bhi)) { k = j; break; }
+      }
+      if (k == null) { i += p.reclaim; continue; }
+      if (!dirOK(s) || (obi && !obi[s].some((x) => x >= i - 1 && x <= k + 1))) { i = k + 1; continue; }
+      const poc = pocOf(b, i - N, i), stop = ext - s * 0.1 * A[k];
+      let e, j0 = null;
+      if (p.entry === "복귀 즉시") { e = b[k + 1].o; j0 = k + 1; }
+      else {
+        for (let j = k + 1; j < Math.min(n, k + 1 + p.W); j++) {
+          if ((s > 0 && b[j].l <= stop) || (s < 0 && b[j].h >= stop)) break;
+          if ((s > 0 && b[j].l <= poc) || (s < 0 && b[j].h >= poc)) { j0 = j; e = s > 0 ? Math.min(b[j].o, poc) : Math.max(b[j].o, poc); break; }
+        }
+        if (j0 == null) { i = k + 1; continue; }
+      }
+      const risk = (e - stop) * s;
+      if (risk <= 0.05 * A[k]) { i = k + 1; continue; }
+      const tgt = p.tgt === "박스 반대쪽" ? (s > 0 ? bhi : blo) : e + s * (p.tgt === "손익비 3" ? 3 : 2) * risk;
+      if ((tgt - e) * s < risk) { i = k + 1; continue; }
+      let x = null, j = j0, why = "보유 시간 끝";
+      for (; j < Math.min(n, j0 + p.hold); j++) {
+        if ((s > 0 && b[j].l <= stop) || (s < 0 && b[j].h >= stop)) { x = j > j0 ? (s > 0 ? Math.min(b[j].o, stop) : Math.max(b[j].o, stop)) : stop; why = "손절 (조작 꼬리 끝)"; break; }
+        if ((s > 0 && b[j].h >= tgt) || (s < 0 && b[j].l <= tgt)) { x = tgt; why = "목표 도달 (분산)"; break; }
+      }
+      if (x == null) { j = Math.min(n - 1, j); x = b[j].c; }
+      for (let q = i - N; q <= j; q++) { lp[q] = poc; if (q < i) { lh[q] = bhi; ll[q] = blo; } }
+      plans.push({ ei: j0, side: s, e, stop, target: tgt, legs: [{ i: j, w: 1, px: x }], why });
+      i = j + 1;
+    }
+    return { plans, lines: [{ name: "POC", data: lp, color: "#f5b942" }, { name: "매집 박스 위", data: lh, color: "#9a8cff" }, { name: "매집 박스 아래", data: ll, color: "#9a8cff" }] };
+  }
+
   const STRATEGIES = {
+    ob_hyung: {
+      name: "오더블록 (형 규칙)",
+      desc: "음→양(롱)·양→음(숏) 오더블록이 생기면 그 구간(반대 캔들 고가~꼬리 끝)에 다시 닿을 때만 진입(지정가). 손절은 캔들 꼬리 끝, 파동 고점에서 절반 익절 + 나머지 본전 손절, 반대 오더블록에서 나머지 정리. 추천: 방향 '롱·숏 둘 다', 크기 '위험 기준'(1회 손실 %). 매매 공식 그림 참고.",
+      preset: { direction: "both", sizing: "risk", riskPct: 1, buyFee: 0.05, sellFee: 0.05, slip: 0, dayClose: false, stopLoss: 0, takeProfit: 0, trailing: 0, maxHold: 0, pyrN: 1, tp1Pct: 0 },
+      params: [
+        { key: "K", label: "갭: 양봉 몸통 ≥ 음봉 몸통 × (배)", def: 2, min: 0.5, max: 6, step: 0.5 },
+        { key: "gap", label: "필터 ① 갭(몸통 배수·도지 제외)", type: "select", options: ["켬", "끔"], def: "켬" },
+        { key: "sweep", label: "필터 ② 유동성 흡수", type: "select", options: ["켬", "끔"], def: "켬" },
+        { key: "fvg", label: "필터 ③ 구조물(FVG)", type: "select", options: ["켬", "끔"], def: "켬" },
+        { key: "L", label: "유동성 흡수: 직전 몇 봉 저점(고점)을 깨나", def: 20, min: 3, max: 200 },
+        { key: "k3", label: "3캔들(양→음→양)", type: "select", options: ["2캔들만", "허용"], def: "2캔들만" },
+        { key: "minrr", label: "파동 고점까지 최소 손익비", def: 1, min: 0, max: 5, step: 0.5 },
+        { key: "W", label: "구간 터치 기다리는 봉 수", def: 48, min: 1, max: 500 },
+        { key: "hold", label: "최대 보유 봉 수", def: 72, min: 1, max: 1000 },
+        { key: "stopRule", label: "손절 기준", type: "select", options: ["꼬리 터치", "종가 이탈"], def: "꼬리 터치" },
+        { key: "tp", label: "파동 고점에서", type: "select", options: ["절반 익절", "전부 익절"], def: "절반 익절" },
+      ],
+      simulate(b, p, opt) { const r = obPlans(b, p, opt); return bookTrades(b, r.plans, opt, r.lines); },
+      signals(b) { return { entry: b.map(() => false), exit: b.map(() => false), lines: [] }; },
+    },
+    amd: {
+      name: "AMD (매집 → 조작 → 분산)",
+      desc: "최근 N봉 박스가 좁으면(매집) POC를 구하고, 박스 한쪽을 깼다가 몇 봉 안에 다시 박스 안으로 마감하면(조작 = 가짜 이탈) POC에서 반대 방향으로 진입. 손절은 조작 꼬리 끝 밖, 목표는 손익비 또는 박스 반대쪽(분산). '오더블록 겹침만'은 조작 구간에 같은 방향 오더블록이 생긴 자리만. 추천: 방향 '롱·숏 둘 다', 크기 '위험 기준'.",
+      preset: { direction: "both", sizing: "risk", riskPct: 0.5, buyFee: 0.05, sellFee: 0.05, slip: 0, dayClose: false, stopLoss: 0, takeProfit: 0, trailing: 0, maxHold: 0, pyrN: 1, tp1Pct: 0 },
+      params: [
+        { key: "N", label: "매집 박스 길이 (봉)", def: 24, min: 5, max: 500 },
+        { key: "m", label: "박스 폭 ≤ ATR × (좁을수록 엄격)", def: 6, min: 1, max: 20, step: 0.5 },
+        { key: "reclaim", label: "조작: 몇 봉 안에 박스 안으로 복귀", def: 3, min: 1, max: 20 },
+        { key: "entry", label: "진입", type: "select", options: ["POC 지정가", "복귀 즉시"], def: "POC 지정가" },
+        { key: "W", label: "POC 기다리는 봉 수", def: 12, min: 1, max: 200 },
+        { key: "tgt", label: "목표", type: "select", options: ["손익비 2", "손익비 3", "박스 반대쪽"], def: "손익비 2" },
+        { key: "hold", label: "최대 보유 봉 수", def: 48, min: 1, max: 1000 },
+        { key: "conf", label: "자리", type: "select", options: ["전체", "오더블록 겹침만"], def: "전체" },
+      ],
+      simulate(b, p, opt) { const r = amdPlans(b, p, opt); return bookTrades(b, r.plans, opt, r.lines); },
+      signals(b) { return { entry: b.map(() => false), exit: b.map(() => false), lines: [] }; },
+    },
     ma_cross: {
       name: "이동평균 크로스",
       desc: "단기선이 장기선을 위로 뚫으면 매수, 아래로 뚫으면 매도. 추세 추종의 기본형.",
@@ -631,6 +830,7 @@ const BT = (() => {
   function run(bars, strategyId, p, o) {
     const opt = { ...DEFAULTS, ...o };
     const S = STRATEGIES[strategyId];
+    if (S.simulate) return S.simulate(bars, p, opt);      // 오더블록·AMD: 자체 체결기
     const sig = S.signals(bars, p);
     const n = bars.length;
     const A = opt.sizing === "risk" ? atr(bars, 20) : null;
@@ -935,6 +1135,7 @@ const BT = (() => {
   }
 
   function pine(strategyId, p, o, title) {
+    if (STRATEGIES[strategyId] && STRATEGIES[strategyId].simulate) return `// ${title}\n// 오더블록·AMD는 지정가 진입·거래별 손절/목표·절반 익절을 쓰는 자체 계산이라 Pine Script로 옮기지 않았어요.`;
     const opt = { ...DEFAULTS, ...o };
     const perSide = ((opt.buyFee + opt.sellFee) / 2 + opt.slip).toFixed(4);
     const qtyPct = opt.sizing === "fixed" ? opt.sizePct : 100;
