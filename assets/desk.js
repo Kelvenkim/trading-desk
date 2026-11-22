@@ -40,12 +40,41 @@ const DeskUI = (() => {
       el.innerHTML = L.map((r) => `<a class="rp-item" href="reports/pdf/${encodeURIComponent(r.file)}" target="_blank" rel="noopener"><b>${esc(r.date)}</b><span>${esc(r.n)} · ${esc(r.kind)}</span><span class="rp-dl">PDF ↓</span></a>`).join("") || `<p class="muted">아직 없어요.</p>`;
     } catch (_) { el.innerHTML = `<p class="muted">목록을 못 불러왔어요.</p>`; }
   }
-  async function renderFormulas() {                    // 매매 공식 그림 보관함 (formulas/index.json, 11/22 형 요청)
+  async function renderFormulas() {                    // 매매 공식 그림 보관함 (formulas/index.json, 11/22 형 요청) + 성적 바 (쓸모없으면 폐기·수정 판단용)
     const el = $("#fm-list"); if (!el) return;
-    try {
-      const L = await (await fetch("formulas/index.json?t=" + Date.now())).json();
-      el.innerHTML = L.slice().reverse().map((f) => `<a class="fm-item" href="${esc(f.img)}" target="_blank" rel="noopener"><img src="${esc(f.img)}" alt="${esc(f.title)}" loading="lazy"><b>${esc(f.title)}</b><span class="muted small">${esc(f.date)} · ${esc(f.status)}</span><span class="small">${esc(f.desc)}</span></a>`).join("") || `<p class="muted">아직 없어요.</p>`;
-    } catch (_) { el.innerHTML = `<p class="muted">목록을 못 불러왔어요.</p>`; }
+    let L; try { L = await (await fetch("formulas/index.json?t=" + Date.now())).json(); } catch (_) { el.innerHTML = `<p class="muted">목록을 못 불러왔어요.</p>`; return; }
+    const NEED = 30;                                    // 평가에 필요한 끝난 거래 수
+    const live = await Promise.all(L.map((f) => f.live ? getj(f.live.file) : null));
+    const stat = (f, J) => {
+      if (!f.live) return null;
+      if (!J) return { n: 0, R: [], ret: null };
+      const R = f.live.type === "ob" ? (J.journal || []).filter((j) => j.exit != null).map((j) => j.R) : (J.trades || []).map((t) => t.R);
+      return { n: R.length, R, ret: J.eq_now != null ? J.eq_now / 10000 - 1 : null };
+    };
+    const card = (f, S) => {
+      const bt = f.bt;
+      let body;
+      if (!S) body = `<div class="fm-verdict wait">시험 전 — 규칙 확정 뒤 과거 데이터 시험 · 모의 계좌 시작</div>`;
+      else {
+        const n = S.n, win = n ? S.R.filter((r) => r > 0).length / n : null, avgR = n ? S.R.reduce((a, r) => a + r, 0) / n : null;
+        const aw = S.R.filter((r) => r > 0), al = S.R.filter((r) => r <= 0);
+        // 본전 승률 = 평균 손실 / (평균 이익 + 평균 손실) — 이 승률보다 높아야 돈을 범. 표본 적으면 시험 값으로
+        const mW = aw.length >= 5 ? aw.reduce((a, r) => a + r, 0) / aw.length : bt && bt.aw, mL = al.length >= 5 ? -al.reduce((a, r) => a + r, 0) / al.length : bt && -bt.al;
+        const be = mW && mL ? mL / (mW + mL) : null;
+        const v = n < NEED ? ["wait", `표본 부족 (${n}/${NEED}) — 계속 관찰`] : avgR > 0.1 ? ["good", "유지 — 기대값 플러스"] : avgR > 0 ? ["mid", "고치기 검토 — 남는 게 너무 적음"] : ["bad", "폐기 검토 — 기대값 마이너스"];
+        const pctW = (x) => x == null ? "—" : (x * 100).toFixed(0) + "%";
+        const sR = (x) => x == null ? "—" : (x >= 0 ? "+" : "") + x.toFixed(2) + "R";
+        body = `<div class="fm-stats">
+          <div class="fm-row"><span>평가까지</span><div class="fm-bar"><i style="width:${Math.min(100, n / NEED * 100)}%"></i></div><b>${n}/${NEED}번</b></div>
+          <div class="fm-row"><span>승률</span><div class="fm-bar win"><i class="${win != null && be != null && win < be ? "lo" : ""}" style="width:${win == null ? 0 : win * 100}%"></i>${be != null ? `<em style="left:${be * 100}%" title="본전 승률"></em>` : ""}${bt ? `<u style="left:${bt.win * 100}%" title="과거 시험 승률"></u>` : ""}</div><b>${pctW(win)}</b></div>
+          <div class="fm-nums"><span>수익률 <b class="${cls(S.ret)}">${S.ret == null ? "—" : pct(S.ret, 2)}</b></span><span>평균 <b class="${cls(avgR)}">${sR(avgR)}</b></span>${bt ? `<span class="muted">과거 시험 ${bt.n}번 · 승률 ${pctW(bt.win)} · ${sR(bt.avgR)}</span>` : ""}</div>
+          <div class="fm-key muted small">${be != null ? `흰 선 = 본전 승률 ${pctW(be)} (이보다 높아야 이익)` : ""}${bt ? ` · 점선 = 과거 시험 승률` : ""} · ${esc(f.live.acct)} 계좌 기준</div>
+          <div class="fm-verdict ${v[0]}">${v[1]}</div></div>`;
+      }
+      return `<div class="fm-item"><a href="${esc(f.img)}" target="_blank" rel="noopener"><img src="${esc(f.img)}" alt="${esc(f.title)}" loading="lazy"></a>
+        <b>${esc(f.title)}</b><span class="muted small">${esc(f.date)} · ${esc(f.status)}</span><span class="small">${esc(f.desc)}</span>${body}</div>`;
+    };
+    el.innerHTML = L.map((f, i) => [f, stat(f, live[i])]).reverse().map(([f, S]) => card(f, S)).join("") || `<p class="muted">아직 없어요.</p>`;
   }
   async function renderSummary() {
     renderReports(); renderFormulas();
