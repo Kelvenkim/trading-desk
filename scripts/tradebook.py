@@ -144,7 +144,8 @@ def events(S, f, tag, a, b):
                                px=p.get("entry", p.get("avg")), why=pre + (p.get("why") or ("50일선 " + ("아래 → 숏" if p.get("side", 1) < 0 else "위 → 롱"))), fb=[]))
     for s in (S.get("skips") or []):
         if inwin(s.get("at"), a, b):
-            skips.append(dict(t=s["at"], sym=NM.get(s.get("sym"), s.get("sym")), side=s.get("side"), why=pre + (s.get("why") or "")))
+            sd = s.get("side"); sd = {1: "롱", -1: "숏"}.get(sd, sd)
+            skips.append(dict(t=s["at"], sym=NM.get(s.get("sym"), s.get("sym")), side=sd, why=pre + (s.get("why") or "") + (" 조건 불통과" if f == "trend10.json" else "")))
     for m in (S.get("chat") or []):                                       # 대화방에서 '진입 안 함·대기 취소'
         if inwin(m.get("at"), a, b) and any(k in m.get("text", "") for k in ("진입 안 함", "대기 취소", "대기 안 함", "취소 —")):
             skips.append(dict(t=m["at"], sym="", side="", why=pre + m["text"]))
