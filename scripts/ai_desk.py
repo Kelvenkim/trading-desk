@@ -9,11 +9,6 @@ AI 트레이딩 데스크 — 6명의 에이전트가 순서대로 일하고, �
             장중엔 ai_paper.py fill에서 손절·+15% 추적 손절·S&P500 -3% 신규 매수 중단을 감시
   · Executor 지정가 주문(2일 유효), 중복 주문 방지
   · Logger  승률·손익비·최대 낙폭·누적 수익·후보 출처별 성적
-11/22 형 규칙 추가 (research/oneil/rules.py 2015~2026 518종목 9,310번 신고점 돌파로 시험):
-  · 상대강도(RS, IBD 방식 3개월 40%·6·9·12개월 20%씩, 전체 종목 중 백분위) 80 미만은 신규 매수 안 함 · RS 70 아래 + 50일선 이탈이면 매도
-  · 52주 신고점 돌파는 거래량이 50일 평균의 1.5배 이상일 때만 (아래면 평균 +0.89%, 이상이면 +1.97%) — 이런 돌파는 '이미 많이 오름' 필터 예외
-  · 바닥(2년 최저가) 대비 2~3배 오른 주도주에 가점 · 업종 RS·기관 보유 비율 표시 (기관 1~20%는 형 기준, 지금 종목 대부분 60~90%라 표시만)
-  · 다우 vs 등락주선 불일치 경고 (매일 확인, 대화방에 알림)
 us_daily.py 끝에서 run(P)로 불러요 (장 마감 뒤 하루 한 번). 체결은 update-data.yml이 30분마다.
 """
 import json, math
@@ -88,52 +83,6 @@ def score(t, x, pf, srcs, spy_r20):
             "src": " + ".join(sorted(srcs)), "held": "보유 중" in srcs}
 
 
-def market_strength(P, ko):
-    """전체 종목 상대강도(RS 0~99)·업종 RS 순위·바닥 대비 배수·신고점 돌파 거래량 (11/22 형 규칙)"""
-    uni = {s["t"]: s.get("sector") for s in (j("universe.json", {}) or {}).get("stocks", [])}
-    raw, M = {}, {}
-    for t in ko:
-        rows = P.get(t)
-        if not rows or len(rows) < 253:
-            continue
-        c = np.array([r[4] for r in rows], float); h = np.array([r[2] for r in rows], float); l = np.array([r[3] for r in rows], float); v = np.array([r[5] for r in rows], float)
-        raw[t] = 0.4 * c[-1] / c[-64] + 0.2 * c[-1] / c[-127] + 0.2 * c[-1] / c[-190] + 0.2 * c[-1] / c[-253]
-        hi = h[-253:-1].max(); first = c[-1] > hi and not any(c[-k] > h[-253 - k:-k].max() for k in range(2, 21))
-        M[t] = {"brk": bool(first), "vx": float(v[-1] / max(1, v[-51:-1].mean())), "base": float(c[-1] / l[-504:].min()), "sec": uni.get(t)}
-    if not raw:
-        return {}, {}
-    order = sorted(raw, key=raw.get); n = len(order)
-    for k, t in enumerate(order):
-        M[t]["rs"] = round(k / max(1, n - 1) * 99)
-    secs = {}
-    for t, m in M.items():
-        if m.get("sec") and "rs" in m:
-            secs.setdefault(m["sec"], []).append(m["rs"])
-    srank = sorted(secs, key=lambda k: -np.mean(secs[k]))
-    return M, {k: (i + 1, len(srank), round(float(np.mean(secs[k])))) for i, k in enumerate(srank)}
-
-
-def ad_divergence(P, ko):
-    """다우가 6개월 고점 근처(−2% 안)인데 등락주선은 6개월 고점에서 그 기간 폭의 25% 넘게 밀렸나 (형: 등락주선은 다우보다 몇 달 먼저 천장)"""
-    dj = P.get("^DJI")
-    if not dj or len(dj) < 130:
-        return None
-    days = [r[0] for r in dj][-127:]; dset = set(days)
-    adv = {d: 0 for d in days}
-    for t in ko:
-        rows = P.get(t)
-        if not rows or len(rows) < 130:
-            continue
-        for a, b in zip(rows[-128:-1], rows[-127:]):
-            if b[0] in dset:
-                adv[b[0]] += (b[4] > a[4]) - (b[4] < a[4])
-    line = np.cumsum([adv[d] for d in days]); djc = np.array([r[4] for r in dj][-127:], float)
-    rg = line.max() - line.min()
-    near = djc[-1] >= 0.98 * djc.max(); weak = rg > 0 and line[-1] <= line.max() - 0.25 * rg
-    return {"div": bool(near and weak), "dj_gap": float(djc[-1] / djc.max() - 1), "ad_off": float((line.max() - line[-1]) / rg) if rg else 0.0,
-            "ad_top": days[int(line.argmax())], "dj_top": days[int(djc.argmax())]}
-
-
 def run(P, day=None):
     S = AP.load()
     rank, tt, mk = j("rank.json", {}), j("turtle.json", {}), j("market.json", {})
@@ -179,10 +128,6 @@ def run(P, day=None):
             surge.append(t)
     for t in surge[:8]:
         C.setdefault(t, set()).add("거래량 급증")
-    RSM, SECR = market_strength(P, ko)
-    for t, m in sorted(RSM.items(), key=lambda kv: -kv[1].get("rs", 0)):
-        if m["brk"] and m["vx"] >= 1.5 and m.get("rs", 0) >= 80 and len([1 for v in C.values() if "신고점 돌파" in v]) < 8:
-            C.setdefault(t, set()).add("신고점 돌파")
     for t in S["pos"]:
         C.setdefault(t, set()).add("보유 중")
     src_cnt = {}
@@ -216,17 +161,8 @@ def run(P, day=None):
             kill[t] = "주가 $5 미만"; continue
         if x["range"] > 0.10 and "보유 중" not in C[t]:
             kill[t] = f"하루 변동 {x['range']:.0%} 과열"; continue
-        m = RSM.get(t, {}); held = "보유 중" in C[t]
-        # 11/22 형 규칙 ③: 상대강도 80 미만은 신규 매수 안 함 (시험: RS 80~90 +1.20%, 90+ +2.18%, 50 미만 +0.34%)
-        if not held and m.get("rs") is not None and m["rs"] < 80:
-            kill[t] = f"상대강도 낮음(RS {m['rs']})"; continue
-        # 11/22 형 규칙 ①: 신고점 돌파인데 거래량이 50일 평균 ×1.5 미만이면 무의미 (시험: +0.89% vs +1.97%)
-        if not held and m.get("brk") and m["vx"] < 1.5:
-            kill[t] = f"신고점인데 거래량 부족({m['vx']:.1f}배)"; continue
-        vol_brk = m.get("brk") and m.get("vx", 0) >= 1.5 and m.get("rs", 0) >= 80
         # 11/16 검증(2015~2026 5만 건): 50일선보다 8%↑ 떠 있고 RSI 65↑인 '이미 많이 오른' 자리는 평균 +0.07R (전체 +0.15R), 두 기간 모두 최하위
-        # 단, 11/22 시험: 거래량 1.5배 + RS 80↑ 신고점 돌파는 이 필터에 걸린 쪽이 오히려 +2.74%(안 걸린 쪽 +2.19%) → 예외
-        if x["ma50"] and x["c"] / x["ma50"] - 1 > 0.08 and x["rsi"] > 65 and not held and not vol_brk:
+        if x["ma50"] and x["c"] / x["ma50"] - 1 > 0.08 and x["rsi"] > 65 and "보유 중" not in C[t]:
             kill[t] = f"이미 많이 오름(50일선 +{x['c'] / x['ma50'] - 1:.0%}, RSI {x['rsi']:.0f})"; continue
         keep.append(t)
     if abnormal:
@@ -245,17 +181,6 @@ def run(P, day=None):
     scored = []
     for t in keep:
         z = score(t, I[t], prof(t) or {}, C[t], spy_r20)
-        m = RSM.get(t, {}); extra = []
-        if m.get("rs") is not None:
-            extra.append(f"RS {m['rs']}")
-            if m.get("sec") in SECR: extra.append(f"업종 RS {SECR[m['sec']][0]}/{SECR[m['sec']][1]}위")
-        if m.get("brk") and m.get("vx", 0) >= 1.5:
-            z["score"] = round(z["score"] + 0.05, 2); extra.append(f"신고점 돌파·거래량 {m['vx']:.1f}배")
-        if 2 <= m.get("base", 0) < 3:
-            z["score"] = round(z["score"] + 0.05, 2); extra.append(f"바닥 대비 {m['base']:.1f}배(주도주 구간)")
-        inst = ((prof(t) or {}).get("own") or {}).get("inst")
-        if inst is not None: extra.append(f"기관 {inst:.0%}" + (" ✓형 기준" if 0.01 <= inst <= 0.20 else ""))
-        if extra: z["why"] += ", " + ", ".join(extra)
         b = sum(S.get("src_adj", {}).get(k, 0) for k in C[t] if k != "보유 중")
         if b:
             z["score"] = round(z["score"] + max(-0.15, min(0.15, b)), 2); z["why"] += f", 성적 보정 {b:+.2f}"
@@ -282,24 +207,6 @@ def run(P, day=None):
     say("analyst", (f"점수 매겼어요(0~1, 0.6 넘어야 통과). 통과 {len(passed)}개: " + "; ".join(f"{nm(z['t'])} {z['score']:.2f} — {z['why']}" for z in passed[:5])
                     if passed else f"오늘은 0.6 넘는 후보가 없어요. 가장 높은 건 " + "; ".join(f"{nm(z['t'])} {z['score']:.2f}({z['why']})" for z in top[:3]) + ". 억지로 사지 않을게요.") +
         (" @Risk 검토 부탁해요." if passed else ""))
-    # 11/22 형 규칙 ③: 상대강도가 70 아래로 꺾이고 50일선 아래로 마감(추세 꺾임)하면 매도
-    for t, p in list(S["pos"].items()):
-        m = RSM.get(t, {}); x = I.get(t)
-        if not x or m.get("rs") is None or any(o["sym"] == t and o["side"] == "sell" for o in S["orders"]):
-            continue
-        if m["rs"] < 70 and x["ma50"] and x["c"] < x["ma50"]:
-            o, bad = AP.place(S, t, "sell", typ="market", pct=100, days=2, why=f"상대강도 꺾임(RS {m['rs']}) + 50일선 아래 마감 — 형 규칙", src="Risk")
-            if not bad:
-                say("risk", f"{nm(t)} 상대강도가 {m['rs']}로 떨어지고 50일선({x['ma50']:.2f}) 아래로 마감했어요. 형 규칙대로 내일 시가에 팔게요.")
-    try:
-        dv = ad_divergence(P, ko)
-        if dv:
-            S["ad_div"] = dict(dv, day=day)
-            if dv["div"]:
-                say("risk", f"⚠️ 다우는 6개월 고점 근처({dv['dj_gap']:+.1%})인데 등락주선은 {dv['ad_top']} 고점에서 밀렸어요(그 기간 폭의 {dv['ad_off']:.0%}). "
-                            "오르는 종목 수가 줄어드는 '불일치' 신호라 신규 매수는 조심할게요. (2015~2026 시험에선 이 신호 뒤 하락이 뚜렷하진 않았어요 — 참고용)")
-    except Exception as e:
-        print("등락주선 계산 실패:", e)
     if held_low:
         say("analyst", "보유 중인데 점수가 많이 떨어진 종목: " + ", ".join(f"{nm(z['t'])} {z['score']:.2f}" for z in held_low) + " — 손절선은 그대로 두고 지켜볼게요.")
     S["cands"] = [{"t": z["t"], "name": ko.get(z["t"], z["t"]), "score": z["score"], "why": z["why"], "src": z["src"], "entry": z["entry"], "stop": z["stop"], "target": z["target"]} for z in top]

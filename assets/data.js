@@ -269,7 +269,8 @@ const Data = (() => {
       bars = await intraday(sym, iv, opts.fresh);
     }
     // 차트 라이브러리는 시간이 겹치면 안 되므로 정리
-    { let last = -Infinity; bars = bars.filter((b) => { if (!(b.t > last)) return false; last = b.t; return true; }); }   // 시간이 겹치거나 거꾸로 가면 버림
+    // 시간이 겹치거나 거꾸로 가면 버림 — ms로 비교 (일봉은 t가 '2026-11-20' 같은 글자라 숫자와 비교하면 전부 버려지던 버그, 11/22 수정)
+    { let last = -Infinity; bars = bars.filter((b) => { const k = isFinite(b.ms) ? b.ms : typeof b.t === "number" ? b.t * 1000 : Date.parse(b.t); if (!(k > last)) return false; last = k; return true; }); }
     cache.set(key, { bars, at: Date.now(), remote });
     return bars;
   }

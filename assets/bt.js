@@ -235,7 +235,11 @@ const BTUI = (() => {
   }
   async function loadSeries(sym) {
     const iv = $("#bt-interval").value;
-    const bars = dateFilter(await Data.getBars(sym, iv));
+    let raw;
+    for (let k = 0; k < 3; k++) {                                   // 중계 서버·야후가 가끔 실패 → 잠깐 쉬고 두 번 더 (11/22)
+      try { raw = await Data.getBars(sym, iv); break; } catch (e) { if (k === 2 || e.needProxy) throw e; await new Promise((r) => setTimeout(r, 700 * (k + 1))); }
+    }
+    const bars = dateFilter(raw);
     return { sym, bars, title: Data.info(sym).name, intraday: !Data.IV[iv].daily };
   }
   // 요청한 시작일보다 자료가 늦게 시작하면 이유를 알려줌 (야후: 1·5·15·30분봉은 최근 60일·1분봉 5일, 1시간봉 약 2년)
@@ -598,7 +602,10 @@ const BTUI = (() => {
     $("#bt-metrics").innerHTML = metricCards(st, extra);
     warnings(st, "basket");
     if (run.fails.length) { const w = $("#bt-warn"); w.hidden = false; w.innerHTML += (w.innerHTML ? "<br/>" : "") + `불러오지 못한 종목: ${esc(run.fails.slice(0, 10).join(", "))}${run.fails.length > 10 ? ` 외 ${run.fails.length - 10}개` : ""}`; }
-    { const late = run.list.filter((x) => dataNote(x.bars)); if (late.length) { const w = $("#bt-warn"); w.hidden = false; w.innerHTML += (w.innerHTML ? "<br/>" : "") + `${late.length}개 종목은 시작일보다 자료가 늦게 시작해요(예: ${esc(late.slice(0, 3).map((x) => x.title).join(", "))})${esc(dataNote(late[0].bars).replace(" · ⚠ 시작일보다 늦게 시작해요", ""))}. 월별 수익률도 그만큼 늦게 시작해요.`; } }
+    { const late = run.list.filter((x) => dataNote(x.bars)); if (late.length) { const w = $("#bt-warn"); w.hidden = false;
+      const iv = Data.IV[$("#bt-interval").value], lim = !iv.daily && iv.min < 60;   // 분봉 제한이면 공통 이유, 아니면 종목마다 첫 거래일(상장·코인 출시가 늦은 것)
+      w.innerHTML += (w.innerHTML ? "<br/>" : "") + (lim || (!iv.daily && iv.min >= 60) ? `${late.length}개 종목이 시작일보다 늦게 시작해요${esc(dataNote(late[0].bars).replace(" · ⚠ 시작일보다 늦게 시작해요", ""))} — 오류가 아니라 받을 수 있는 기간 한도예요.`
+        : `시작일 뒤에 상장(출시)돼서 그날부터 계산한 종목 ${late.length}개: ${esc(late.map((x) => `${x.title} ${x.bars[0].day}부터`).join(", "))} — 자료 오류가 아니라 그 전엔 거래가 없었어요.`); } }
     $("#bt-basket-box").hidden = false; $("#bt-price-box").hidden = true;
     chartTime(run.intraday);
     S.basketRows = run.list.map((x) => {
