@@ -9,6 +9,10 @@ from datetime import date, timedelta
 from pathlib import Path
 import markdown
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import pdf_style as PS
+import tradebook as TB
+
 ROOT = Path(__file__).resolve().parent.parent
 D = ROOT / "data/us"
 OUT = ROOT / "reports/pdf"
@@ -108,7 +112,7 @@ def desk_block():
       <div><span>최대 낙폭</span><b>{pct(m.get('mdd'))}</b><em>현금 ${A['cash']:,.0f}</em></div></div>
       <table class='t'><thead><tr><th>보유</th><th class='num'>매수가</th><th class='num'>현재가</th><th class='num'>손익</th><th class='num'>손절</th><th class='num'>목표</th></tr></thead><tbody>{pos or "<tr><td colspan=6 class='muted'>없음</td></tr>"}</tbody></table>
       <div class='two'><div><div class='cap'>대기 주문</div><ul class='small'>{orders}</ul></div><div><div class='cap'>최근 끝난 거래</div><ul class='small'>{tr}</ul></div></div>
-      <div style='break-inside:avoid'><div class='cap'>계좌 곡선 ($)</div>{curve_svg([("AI 데스크", "#3b6fd8", eqs)], h=130)}</div>
+      <div style='break-inside:avoid'><div class='cap'>계좌 곡선 ($)</div>{curve_svg([("AI 데스크", "#7c83ff", eqs)], h=130)}</div>
       <h3>보유 종목별 — 어디서 샀고, 어디서 팔 계획인지</h3>
       {''.join(pos_card(p) for p in A.get("pos", []))}
       {''.join(sold_card(t) for t in A.get("trades", [])[:3])}"""
@@ -145,7 +149,7 @@ def paper_block():
     P = j("paper.json")
     if not P:
         return ""
-    lab = {"basket": ("바구니", "#3b6fd8"), "spy": ("S&P500", "#8a8f98")}
+    lab = {"basket": ("바구니", "#7c83ff"), "spy": ("S&P500", "#8a8f98")}
     rows = ""
     for k, (n_, _) in lab.items():
         e = P["acct"][k]["eq"]; v = e[-1][1]; d1 = v / e[-2][1] - 1 if len(e) > 1 else None
@@ -154,11 +158,11 @@ def paper_block():
     series = [(n_, c, P["acct"][k]["eq"]) for k, (n_, c) in lab.items()]
     if A.get("eq"):
         v = A["eq_now"]; rows += f"<tr><td>AI 데스크 (스윙)</td><td class='num'>${v:,.0f}</td><td class='num {cls(v / 10000 - 1)}'>{pct(v / 10000 - 1, 2)}</td><td class='num'>—</td><td class='num'>{len(A.get('pos', []))}</td></tr>"
-        series.append(("AI 데스크", "#2fa36b", A["eq"]))
+        series.append(("AI 데스크", "#3ecf8e", A["eq"]))
     if Dd.get("eq"):
         v = Dd["eq"][-1][1]; trs = Dd.get("trades", []); w_ = sum(t["pl"] > 0 for t in trs)
         rows += f"<tr><td>데이트레이딩 (당일 청산)</td><td class='num'>${v:,.0f}</td><td class='num {cls(v / 10000 - 1)}'>{pct(v / 10000 - 1, 2)}</td><td class='num'>{len(trs)}번 · 승률 {w_ / len(trs) * 100 if trs else 0:.0f}%</td><td class='num'>{len(Dd.get('pos', {}))}</td></tr>"
-        series.append(("데이", "#e5484d", Dd["eq"]))
+        series.append(("데이", "#ff5f6b", Dd["eq"]))
     Cx = j("crypto_paper.json") or {}
     if Cx.get("eq"):
         v = Cx["eq_now"]; trs = Cx.get("trades", [])
@@ -203,9 +207,9 @@ def pos_chart(sym, buy_day, buy_px, stop=None, target=None, sell_day=None, sell_
     out = []
     # 위험·보상 구간 (매수 시점부터)
     if stop and stop < buy_px:
-        out.append(f"<rect x='{X(bi):.1f}' y='{Y(buy_px):.1f}' width='{X(ei) - X(bi) + 4:.1f}' height='{Y(stop) - Y(buy_px):.1f}' fill='#e5484d' opacity='.10'/>")
+        out.append(f"<rect x='{X(bi):.1f}' y='{Y(buy_px):.1f}' width='{X(ei) - X(bi) + 4:.1f}' height='{Y(stop) - Y(buy_px):.1f}' fill='#ff5f6b' opacity='.10'/>")
     if target:
-        out.append(f"<rect x='{X(bi):.1f}' y='{Y(target):.1f}' width='{X(ei) - X(bi) + 4:.1f}' height='{Y(buy_px) - Y(target):.1f}' fill='#2fa36b' opacity='.10'/>")
+        out.append(f"<rect x='{X(bi):.1f}' y='{Y(target):.1f}' width='{X(ei) - X(bi) + 4:.1f}' height='{Y(buy_px) - Y(target):.1f}' fill='#3ecf8e' opacity='.10'/>")
     # 격자
     for k in range(1, 4):
         v = lo + (hi - lo) * k / 4
@@ -214,23 +218,23 @@ def pos_chart(sym, buy_day, buy_px, stop=None, target=None, sell_day=None, sell_
         out.append(f"<text x='{X(i):.1f}' y='{h - 6}' class='ax' text-anchor='middle'>{days[i][5:]}</text>")
     pl = lambda arr, col, wd: "<polyline points='" + " ".join(f"{X(i):.1f},{Y(v):.1f}" for i, v in enumerate(arr) if v) + f"' fill='none' stroke='{col}' stroke-width='{wd}' stroke-linejoin='round'/>"
     xy = " ".join(f"{X(i):.1f},{Y(v):.1f}" for i, v in enumerate(c))
-    out.append(f"<polygon points='{X(0):.1f},{h - B} {xy} {X(len(c) - 1):.1f},{h - B}' fill='#3b6fd8' opacity='.07'/>")
-    out += [pl(m50, "#f0a43a", 1.3), pl(m20, "#8e6cf0", 1.3), pl(c, "#1b2a4a", 2)]
+    out.append(f"<polygon points='{X(0):.1f},{h - B} {xy} {X(len(c) - 1):.1f},{h - B}' fill='#7c83ff' opacity='.07'/>")
+    out += [pl(m50, "#f0a43a", 1.3), pl(m20, "#b79bff", 1.3), pl(c, "#eceef2", 2)]
     def hl(v, col, lab):
         return (f"<line x1='{L}' x2='{w - R}' y1='{Y(v):.1f}' y2='{Y(v):.1f}' stroke='{col}' stroke-dasharray='5 3' stroke-width='1.3'/>"
                 f"<rect x='{w - R + 4}' y='{Y(v) - 8:.1f}' width='{R - 6}' height='15' rx='3' fill='{col}'/><text x='{w - R + 8}' y='{Y(v) + 3:.1f}' class='pill'>{lab} {v:,.2f}</text>")
-    if stop: out.append(hl(stop, "#e5484d", "손절"))
-    if target: out.append(hl(target, "#2fa36b", "목표"))
-    out.append(f"<rect x='{w - R + 4}' y='{Y(c[-1]) - 8:.1f}' width='{R - 6}' height='15' rx='3' fill='#1b2a4a'/><text x='{w - R + 8}' y='{Y(c[-1]) + 3:.1f}' class='pill'>지금 {c[-1]:,.2f}</text>")
+    if stop: out.append(hl(stop, "#ff5f6b", "손절"))
+    if target: out.append(hl(target, "#3ecf8e", "목표"))
+    out.append(f"<rect x='{w - R + 4}' y='{Y(c[-1]) - 8:.1f}' width='{R - 6}' height='15' rx='3' fill='#7c83ff'/><text x='{w - R + 8}' y='{Y(c[-1]) + 3:.1f}' class='pill'>지금 {c[-1]:,.2f}</text>")
     def mk(i, px, up, lab):
-        x, y = X(i), Y(px); col = "#3b6fd8" if up else "#e5484d"
+        x, y = X(i), Y(px); col = "#7c83ff" if up else "#ff5f6b"
         tri = f"{x - 6},{y + 13} {x + 6},{y + 13} {x},{y + 4}" if up else f"{x - 6},{y - 13} {x + 6},{y - 13} {x},{y - 4}"
         return (f"<line x1='{x:.1f}' x2='{x:.1f}' y1='{T}' y2='{h - B}' stroke='{col}' stroke-width='.8' stroke-dasharray='2 3'/><polygon points='{tri}' fill='{col}'/>"
                 f"<circle cx='{x:.1f}' cy='{y:.1f}' r='3' fill='#fff' stroke='{col}' stroke-width='2'/><text x='{x - 9:.1f}' y='{y + (24 if up else -18):.1f}' class='lb' fill='{col}' text-anchor='end'>{lab} {px:,.2f} · {days[i][5:]}</text>")
     out.append(mk(bi, buy_px, True, "매수"))
     if sell_day and sell_px: out.append(mk(ei, sell_px, False, "매도"))
-    leg = (f"<text x='{L}' y='{T - 2}' class='lg'><tspan fill='#1b2a4a'>━ 종가</tspan>   <tspan fill='#8e6cf0'>━ 20일선</tspan>   <tspan fill='#f0a43a'>━ 50일선</tspan>"
-           f"   <tspan fill='#e5484d'>■ 손실 구간</tspan>   <tspan fill='#2fa36b'>■ 이익 구간</tspan></text>")
+    leg = (f"<text x='{L}' y='{T - 2}' class='lg'><tspan fill='#eceef2'>━ 종가</tspan>   <tspan fill='#b79bff'>━ 20일선</tspan>   <tspan fill='#f0a43a'>━ 50일선</tspan>"
+           f"   <tspan fill='#ff5f6b'>■ 손실 구간</tspan>   <tspan fill='#3ecf8e'>■ 이익 구간</tspan></text>")
     return f"<svg viewBox='0 0 {w} {h}' class='curve'>{leg}{''.join(out)}</svg>"
 
 
@@ -287,58 +291,32 @@ def plan_text(p):
 AUTO = [("시장", market_block), ("AI 데스크", desk_block), ("순위", rank_block), ("모의 투자", paper_block)]
 
 CSS = """
-@page { size: A4; margin: 16mm 15mm 16mm 15mm; }
-@page :first { margin: 0; }
-* { box-sizing: border-box; }
-body { font-family: 'Noto Sans CJK KR', 'Noto Sans KR', sans-serif; color: #111; font-size: 10.5pt; line-height: 1.65; margin: 0; }
-.cover { height: 296mm; background: #000; color: #fff; margin: 0; padding: 38mm 22mm 20mm; display: flex; flex-direction: column; page-break-after: always; }
-.brand { font-size: 12pt; font-weight: 800; letter-spacing: .3em; color: #888; border-bottom: 1px solid #333; padding-bottom: 5mm; }
-.cover h1 { font-size: 40pt; line-height: 1.15; margin: 60mm 0 4mm; font-weight: 900; }
-.cover .dayn { font-size: 15pt; color: #bbb; }
-.cover .meta { margin-top: auto; color: #999; font-size: 9.5pt; border-top: 1px solid #333; padding-top: 6mm; display: flex; justify-content: space-between; }
-.cover .hl { margin-top: 14mm; font-size: 12pt; color: #ddd; max-width: 150mm; }
-.hdr { display: flex; align-items: center; gap: 8px; font-size: 8.5pt; color: #888; border-bottom: 1px solid #eee; padding-bottom: 6px; margin-bottom: 10px; }
-.hdr svg { width: 14px; height: 14px; } .hdr rect:first-child { fill: #000; } .hdr rect:not(:first-child), .hdr path { fill: #fff; stroke: #fff; }
-h2 { font-size: 14.5pt; margin: 20px 0 8px; padding: 6px 0 0; border-top: 3px solid #1b2a4a; color: #1b2a4a; break-after: avoid; }
-h3 { font-size: 11pt; margin: 12px 0 4px; break-after: avoid; }
-p { margin: 4px 0 8px; } ul { margin: 4px 0 8px; padding-left: 18px; } li { margin: 2px 0; }
-a { color: #1d4fd6; text-decoration: none; }
-.t { width: 100%; border-collapse: collapse; font-size: 9pt; margin: 6px 0 10px; break-inside: avoid; }
-.t th { text-align: left; font-weight: 600; color: #666; border-bottom: 1px solid #ccc; padding: 4px 6px; }
-.t td { padding: 4px 6px; border-bottom: 1px solid #f0f0f0; }
-.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.up { color: #d9363e; } .down { color: #1d5fd6; } .muted { color: #999; } .small { font-size: 9pt; }
-.two { display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; break-inside: avoid; }
-.cap { font-size: 8.5pt; font-weight: 700; color: #666; margin: 4px 0; }
+.cover { height: 276mm; margin: 0 -11mm; border-radius: 0 0 18px 18px; background: linear-gradient(160deg, #23264a 0%, #0f1013 55%); color: #fff; padding: 28mm 22mm 14mm; display: flex; flex-direction: column; page-break-after: always; }
+.brand { font-size: 12pt; font-weight: 800; letter-spacing: .3em; color: #a3a7b1; border-bottom: 1px solid #2b2d33; padding-bottom: 5mm; }
+.cover h1 { font-size: 40pt; line-height: 1.15; margin: 55mm 0 4mm; font-weight: 900; color: #fff; }
+.cover .dayn { font-size: 15pt; color: #c9ccff; }
+.cover .meta { margin-top: auto; color: #a3a7b1; font-size: 9.5pt; border-top: 1px solid #2b2d33; padding-top: 6mm; display: flex; justify-content: space-between; }
+.cover .hl { margin-top: 14mm; font-size: 12pt; color: #eceef2; max-width: 150mm; }
+.hdr { display: flex; align-items: center; gap: 8px; font-size: 8.5pt; color: #6f7480; border-bottom: 1px solid #2b2d33; padding-bottom: 6px; margin-bottom: 6px; }
+.t { width: 100%; font-size: 9pt; margin: 6px 0 10px; break-inside: avoid; }
 .sb { display: grid; grid-template-columns: 62px 1fr 48px; gap: 6px; align-items: center; font-size: 8.5pt; margin: 2px 0; }
-.st { height: 8px; background: #f2f2f2; border-radius: 2px; overflow: hidden; } .st i { display: block; height: 100%; }
-.st i.pos { background: #d9363e; } .st i.neg { background: #1d5fd6; }
-.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 10px; break-inside: avoid; }
-.kpis div { border: 1px solid #e5e5e5; border-radius: 6px; padding: 7px 10px; display: grid; }
-.kpis span { font-size: 8pt; color: #888; } .kpis b { font-size: 13pt; } .kpis em { font-style: normal; font-size: 8.5pt; color: #666; }
-.curve { width: 100%; height: auto; margin: 4px 0 8px; } .curve .lg { font-size: 9px; fill: #555; } .curve .ax { font-size: 8px; fill: #999; }
-blockquote { margin: 6px 0; padding: 6px 12px; border-left: 3px solid #000; background: #f7f7f7; }
-.pcard { border: 1px solid #e5e5e5; border-radius: 8px; padding: 8px 12px; margin: 10px 0; break-inside: avoid; }
-.ph { font-size: 10.5pt; margin-bottom: 2px; }
-.curve .lb { font-size: 8.5px; font-weight: 700; }
-.box { border: 1px solid #ddd; background: #fafafa; border-radius: 6px; padding: 8px 12px; margin: 8px 0; break-inside: avoid; }
-.gd { stroke: #edf0f4; stroke-width: 1; }
-.curve .pill { font-size: 8.5px; font-weight: 700; fill: #fff; }
-.curve .ax { font-size: 8.5px; fill: #8a8f98; }
-.curve .lg { font-size: 8.5px; font-weight: 600; }
+.st { height: 8px; background: #2b2d33; border-radius: 4px; overflow: hidden; } .st i { display: block; height: 100%; }
+.st i.pos { background: #ff5f6b; } .st i.neg { background: #4ea3ff; }
+.curve { width: 100%; height: auto; margin: 4px 0 8px; } .curve .lb { font-size: 8.5px; font-weight: 700; }
+.gd { stroke: #2b2d33; stroke-width: 1; }
+.curve .pill { font-size: 8.5px; font-weight: 700; fill: #0f1013; }
+.curve .ax { font-size: 8.5px; fill: #6f7480; } .curve .lg { font-size: 8.5px; font-weight: 600; fill: #a3a7b1; }
+.pcard { background: #202227; border-radius: 14px; padding: 9px 12px 10px; margin: 10px 0; break-inside: avoid; }
 .pcard .two { grid-template-columns: 1.25fr 1fr; gap: 12px; } .pcard p.small { margin: 2px 0 6px; line-height: 1.5; }
-.pcard { border: 1px solid #e3e7ee; border-radius: 10px; padding: 8px 12px 10px; margin: 10px 0; break-inside: avoid; box-shadow: 0 1px 0 #f2f4f7; }
 .ph { display: flex; align-items: baseline; gap: 8px; font-size: 11pt; margin-bottom: 4px; }
 .ph .big { margin-left: auto; font-size: 13pt; }
-.tag { font-size: 7.5pt; background: #eef2fb; color: #3b6fd8; border-radius: 99px; padding: 1px 7px; font-weight: 700; }
-.ck td { padding: 1px 5px; font-size: 8pt; line-height: 1.35; } .ck td:first-child { white-space: nowrap; } .ck td:last-child { font-size: 7.5pt; } .ok { color: #2fa36b; } .no { color: #e5484d; }
-.risk { margin-top: 6px; background: #fff3f3; border: 1px solid #f6d3d4; color: #8f2a2e; border-radius: 6px; padding: 5px 9px; font-size: 8.8pt; }
+.ck td { padding: 1px 5px; font-size: 8pt; line-height: 1.35; border: 0; } .ck td:first-child { white-space: nowrap; } .ck td:last-child { font-size: 7.5pt; }
+.risk { margin-top: 6px; background: rgba(255,95,107,.10); border: 1px solid rgba(255,95,107,.35); color: #ffb3b9; border-radius: 10px; padding: 5px 9px; font-size: 8.8pt; }
 .rules ol { margin: 4px 0 0; padding-left: 18px; } .rules li { margin: 3px 0; }
-.foot { margin-top: 18px; font-size: 8pt; color: #999; border-top: 1px solid #eee; padding-top: 6px; }
 """
 
 
-def build(note_path):
+def build(note_path, tradebook=True):
     note = Path(note_path).read_text()
     m = re.match(r"^---\n(.*?)\n---\n", note, re.S)
     meta = dict(re.findall(r"^(\w+):\s*(.+)$", m.group(1), re.M)) if m else {}
@@ -357,16 +335,19 @@ def build(note_path):
         for key, fn in AUTO:
             if key in title:
                 html += fn()
-        secs.append(f"<h2>{title.strip()}</h2>{html}")
+        secs.append(PS.sec("", title.strip(), html, "long"))
     hdr = f"<div class='hdr'>K Trading Desk · {n}일차 {kind} 보고서 · {mday}</div>"
-    html = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>{CSS}</style></head><body>
-      <section class="cover"><div class="brand">K TRADING DESK</div>
+    # 11/22 형: 하루에 일어난 모든 매매·매매일지·피드백을 보고서에서 보게 → 매매 기록지 자동으로 붙임
+    if tradebook:                                       # 예전 보고서를 새 모양으로 다시 만들 땐 끔 (python scripts/report_pdf.py <note> --no-book)
+        wa, wb = TB.window(save=True)
+        secs.append(PS.sec("", "매매 기록지 — 이번 기간에 일어난 모든 매매", TB.build_html(wa, wb), "long"))
+    body = f"""<section class="cover"><div class="brand">K TRADING DESK</div>
         <h1>{kind} 보고서</h1><div class="dayn">{n}일차 · 미국장 {mday.strftime('%Y년 %m월 %d일')} ({'월화수목금'[mday.weekday()]})</div>
         <div class="hl">{meta.get('headline', '')}</div>
-        <div class="meta"><span>작성 Claude (AI 데스크 총괄)</span><span>참고용 · 투자 권유 아님</span></div></section>
+        <div class="meta"><span>작성 Claude (총괄)</span><span>참고용 · 투자 권유 아님</span></div></section>
       {hdr}{''.join(secs)}
-      <div class="foot">자료: Yahoo Finance, Google 뉴스, 사이트 자체 계산 · 가상 계좌(모의 투자·AI 데스크)는 실제 돈이 아니에요 · 숫자는 참고용이며 투자 권유가 아니에요.</div>
-    </body></html>"""
+      <div class="foot">자료: Yahoo Finance, Google 뉴스, 사이트 자체 계산 · 모든 계좌는 가상 돈이에요 · 숫자는 참고용이며 투자 권유가 아니에요.</div>"""
+    html = PS.wrap(f"{kind} 보고서 {mday}", body, CSS + TB.CSS)
     OUT.mkdir(parents=True, exist_ok=True)
     hp = OUT / f"{mday}_{n}일차.html"; pp = OUT / f"{mday}_{n}일차_{kind}보고서.pdf"
     hp.write_text(html)
@@ -374,9 +355,7 @@ def build(note_path):
     with sync_playwright() as pw:
         b = pw.chromium.launch(); pg = b.new_page()
         pg.goto(hp.resolve().as_uri()); pg.wait_for_timeout(300)
-        pg.pdf(path=str(pp), format="A4", print_background=True, prefer_css_page_size=True,
-               display_header_footer=True, header_template="<span></span>",
-               footer_template="<div style='font-size:7px;color:#999;width:100%;text-align:center'><span class='pageNumber'></span> / <span class='totalPages'></span></div>")
+        pg.pdf(path=str(pp), format="A4", print_background=True, prefer_css_page_size=True)
         b.close()
     hp.unlink()
     write_index()
@@ -395,4 +374,4 @@ def write_index():
 
 
 if __name__ == "__main__":
-    build(sys.argv[1])
+    build(sys.argv[1], tradebook="--no-book" not in sys.argv)

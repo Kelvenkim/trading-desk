@@ -9,9 +9,10 @@ ROOT = Path(__file__).resolve().parent.parent
 D = ROOT / "data/us/longterm"
 OUT = ROOT / "reports/longterm"
 e = lambda x: html.escape(str(x if x is not None else ""))
-KC = {"사실": "#1a7f45", "추정": "#b26a00", "모름": "#777"}
-tag = lambda k: f'<span class="k" style="color:{KC.get(k, "#333")};border-color:{KC.get(k, "#333")}">{e(k)}</span>'
+tag = lambda k: f"<span class='k {'f' if k == '사실' else 'e' if k == '추정' else 'u'}'>{e(k)}</span>"
 item = lambda x: f"<li>{tag(x[1])} {e(x[0])}</li>"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import pdf_style as PS
 
 
 def big(v, cur="USD"):
@@ -21,50 +22,35 @@ def big(v, cur="USD"):
     return f"{s}{v / 1e12:.2f}조" if v >= 1e12 else f"{s}{v / 1e8:.1f}억" if v >= 1e8 else f"{s}{v / 1e4:,.0f}만" if v >= 1e4 else f"{s}{v:,.0f}"
 
 
-CSS = """
-@page { size: A4; margin: 14mm 13mm; }
-body { font-family: 'Noto Sans CJK KR','Noto Sans KR','Pretendard',sans-serif; font-size: 10.5px; color: #111; line-height: 1.5; }
-h1 { font-size: 19px; margin: 0 0 2px; } h2 { font-size: 13.5px; margin: 16px 0 6px; border-bottom: 2px solid #111; padding-bottom: 2px; }
-h3 { font-size: 11.5px; margin: 8px 0 3px; color: #444; }
-.sub { color: #666; font-size: 10px; } .box { background: #f4f4f4; padding: 8px 10px; margin: 8px 0; }
-table { width: 100%; border-collapse: collapse; margin: 4px 0; } th, td { border-bottom: 1px solid #ddd; padding: 4px 5px; text-align: left; vertical-align: top; }
-th { background: #eee; font-size: 9.5px; } td.n { text-align: right; white-space: nowrap; }
-ul { margin: 2px 0; padding-left: 15px; } li { margin: 2px 0; }
-.k { display: inline-block; font-size: 8.5px; border: 1px solid; padding: 0 3px; }
-.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; } .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-.sc { border: 1px solid #ccc; padding: 6px 8px; } .sc p { margin: 3px 0; }
-.foot { margin-top: 14px; color: #777; font-size: 9px; border-top: 1px solid #ccc; padding-top: 5px; }
-.avoid { break-inside: avoid; }
-"""
-
-
 def page(title, body):
-    return f"<!doctype html><html><head><meta charset='utf-8'><title>{e(title)}</title><style>{CSS}</style></head><body>{body}" \
-           f"<div class='foot'>투자 권유가 아니라 판단 재료예요. 사실 = 공시·보도로 확인 / 추정 = 판단·가정 / 모름 = 확인 못 함. 과거 검증이 미래를 보장하지 않아요.</div></body></html>"
+    """11/22: 산업 리서치도 사이트 톤(pdf_style)으로 통일"""
+    return PS.wrap(e(title), body + "<div class='foot'>투자 권유가 아니라 판단 재료예요. 사실 = 공시·보도로 확인 / 추정 = 판단·가정 / 모름 = 확인 못 함. 과거 검증이 미래를 보장하지 않아요.</div>")
 
 
 def industry(R):
-    M, N = R["macro"], R["narrative"]
-    b = f"<h1>{e(R['name'])} 산업 리서치</h1><div class='sub'>{e(R['asof'])} 기준 · 숫자 {e((R.get('metrics_at') or '')[:10])} · 순서: 매크로 → 산업 → 공급망 → 상장사 → 회사 검증 → 시나리오 → 분류</div>"
-    b += f"<div class='box'>{e(R['summary'])}</div>"
-    b += f"<h2>1단계 · 매크로 환경 — {e(M['verdict'])}</h2><p>{e(M['verdict_why'])}</p><div class='two'>"
-    for n, k in (("우호 요인", "good"), ("비우호 요인", "bad"), ("유동성", "liquidity"), ("지정학", "geo")):
-        b += f"<div><h3>{n}</h3><ul>{''.join(item(x) for x in M[k])}</ul></div>"
-    b += "</div>"
-    b += f"<h2>2단계 · 산업 내러티브</h2><p><b>{e(N['mega'])}</b></p><table><tr><th>축</th><th>뒷받침</th><th>근거</th></tr>"
-    b += "".join(f"<tr><td>{e(a)}</td><td>{e(s)}</td><td>{e(t)}</td></tr>" for a, s, t, *_ in N["axes"]) + "</table>"
-    b += f"<p>시장 선반영: <b>{N['priced']}%</b> (0 / 50 / 75 중) — {tag(N['priced_why'][1])} {e(N['priced_why'][0])}</p>"
-    b += f"<div class='two'><div><h3>강화 시나리오</h3><ul>{''.join(f'<li>{e(x)}</li>' for x in N['up'])}</ul></div><div><h3>약화 시나리오</h3><ul>{''.join(f'<li>{e(x)}</li>' for x in N['down'])}</ul></div></div>"
-    b += "<h2>3단계 · 공급망 병목</h2><table><tr><th>레이어</th><th>강도</th><th>발생</th><th>유지</th><th>근거</th></tr>"
-    b += "".join(f"<tr class='avoid'><td><b>{e(c['layer'])}</b><br><span class='sub'>{e(c['desc'])}</span></td><td>{e(c['neck'])}</td><td>{e(c['when'])}</td><td>{e(c['dur'])}</td><td>{tag(c['why'][1])} {e(c['why'][0])}{'<br>※ ' + e(c['note']) if c.get('note') else ''}</td></tr>" for c in R["chain"]) + "</table>"
-    b += "<h2>4단계 · 글로벌 상장 공급사</h2><table><tr><th>회사</th><th>레이어</th><th>시총</th><th>20일 거래대금</th><th>PS</th><th>등급</th><th>최근 성장</th><th>분류</th></tr>"
+    M, N = R["macro"], R["narrative"]; S = PS.sec
+    b = (f"<div class='hero'><div class='tk'>산업 리서치 · {e(R['asof'])} 기준 · 숫자 {e((R.get('metrics_at') or '')[:10])}</div><h1>{e(R['name'])}</h1>"
+         f"<span class='chip'>매크로 → 산업 → 공급망 → 상장사 → 회사 검증 → 시나리오 → 분류</span><div class='box' style='margin-top:10px'>{e(R['summary'])}</div></div>")
+    s1 = f"<p>{e(M['verdict_why'])}</p><div class='two'>" + "".join(f"<div><h3>{n}</h3><ul>{''.join(item(x) for x in M[k])}</ul></div>"
+                                                              for n, k in (("우호 요인", "good"), ("비우호 요인", "bad"), ("유동성", "liquidity"), ("지정학", "geo"))) + "</div>"
+    b += S("1단계", f"매크로 환경 — {e(M['verdict'])}", s1)
+    s2 = f"<p><b>{e(N['mega'])}</b></p><table><tr><th>축</th><th>뒷받침</th><th>근거</th></tr>"
+    s2 += "".join(f"<tr><td>{e(a)}</td><td>{e(s_)}</td><td>{e(t)}</td></tr>" for a, s_, t, *_ in N["axes"]) + "</table>"
+    s2 += f"<p>시장 선반영: <b>{N['priced']}%</b> (0 / 50 / 75 중) — {tag(N['priced_why'][1])} {e(N['priced_why'][0])}</p>"
+    s2 += f"<div class='two'><div><h3>강화 시나리오</h3><ul>{''.join(f'<li>{e(x)}</li>' for x in N['up'])}</ul></div><div><h3>약화 시나리오</h3><ul>{''.join(f'<li>{e(x)}</li>' for x in N['down'])}</ul></div></div>"
+    b += S("2단계", "산업 내러티브", s2)
+    s3 = "<table><tr><th>레이어</th><th>강도</th><th>발생</th><th>유지</th><th>근거</th></tr>"
+    s3 += "".join(f"<tr class='avoid'><td><b>{e(c['layer'])}</b><br><span class='sm'>{e(c['desc'])}</span></td><td>{e(c['neck'])}</td><td>{e(c['when'])}</td><td>{e(c['dur'])}</td><td>{tag(c['why'][1])} {e(c['why'][0])}{'<br>※ ' + e(c['note']) if c.get('note') else ''}</td></tr>" for c in R["chain"]) + "</table>"
+    b += S("3단계", "공급망 병목", s3, "long")
+    s4 = "<table><tr><th>회사</th><th>레이어</th><th class='n'>시총</th><th class='n'>20일 거래대금</th><th class='n'>PS</th><th>등급</th><th>최근 성장</th><th>분류</th></tr>"
     for c in R["companies"]:
         m = c.get("m") or {}
-        b += f"<tr class='avoid'><td><b>{e(c['name'])}</b><br><span class='sub'>{e(c['t'])} · {e(c['exch'])}</span></td><td>{e(c['layer'])}</td><td class='n'>{big(m.get('mcap'), m.get('cur'))}</td><td class='n'>{big(m.get('adv'), m.get('cur'))}</td><td class='n'>{f'{m['ps']:.0f}배' if m.get('ps') else '—'}</td><td>{e(c['v']['grade'])}</td><td>{tag(c['growth'][1])} {e(c['growth'][0])}</td><td>{e(c['cls'])}</td></tr>"
-    b += "</table><h3>제외한 곳</h3><ul>" + "".join(f"<li>{tag(k)} <b>{e(n)}</b> — {e(w)}</li>" for n, w, k, *_ in R["excluded"]) + "</ul>"
-    b += "<h2>7단계 · 최종 분류</h2><table>" + "".join(
-        f"<tr><td><b>{e(n)}</b></td><td>{', '.join(e(next((c['name'] for c in R['companies'] if c['t'] == t), t)) for t in ts)}</td><td>{e(w)}</td></tr>" for n, ts, w in R["final"]) + "</table>"
-    b += "<h2>출처</h2><ul class='sub'>" + "".join(f"<li>{e(s)}</li>" for s in R["sources"]) + "</ul>"
+        s4 += f"<tr class='avoid'><td><b>{e(c['name'])}</b><br><span class='sm'>{e(c['t'])} · {e(c['exch'])}</span></td><td>{e(c['layer'])}</td><td class='n'>{big(m.get('mcap'), m.get('cur'))}</td><td class='n'>{big(m.get('adv'), m.get('cur'))}</td><td class='n'>{f'{m['ps']:.0f}배' if m.get('ps') else '—'}</td><td>{e(c['v']['grade'])}</td><td>{tag(c['growth'][1])} {e(c['growth'][0])}</td><td>{e(c['cls'])}</td></tr>"
+    s4 += "</table><h3>제외한 곳</h3><ul>" + "".join(f"<li>{tag(k)} <b>{e(n)}</b> — {e(w)}</li>" for n, w, k, *_ in R["excluded"]) + "</ul>"
+    b += S("4단계", "글로벌 상장 공급사", s4, "long")
+    s7 = "<table>" + "".join(f"<tr><td><b>{e(n)}</b></td><td>{', '.join(e(next((c['name'] for c in R['companies'] if c['t'] == t), t)) for t in ts)}</td><td>{e(w)}</td></tr>" for n, ts, w in R["final"]) + "</table>"
+    b += S("7단계", "최종 분류", s7)
+    b += S("", "출처", "<ul class='sm'>" + "".join(f"<li>{e(x)}</li>" for x in R["sources"]) + "</ul>", "long")
     return page(R["name"] + " 산업 리서치", b)
 
 
