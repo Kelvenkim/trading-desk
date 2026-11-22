@@ -12,6 +12,7 @@
 
   function initChartTab() {
     ChartView.create($("#chart"), $("#legend"));
+    VP.init($("#chart-wrap"), ChartView); VP.set(ChartView.ind.vp);
     Draw.init($("#chart-wrap"), ChartView, (tool) => {
       $$("#toolbar .tool[data-tool]").forEach((b) => b.classList.toggle("on", (b.dataset.tool || null) === tool));
     });

@@ -12,7 +12,7 @@ const ChartView = (() => {
   };
   const MA = [[5, "#8a8a92"], [20, "#ffffff"], [60, "#7aa2ff"], [120, "#c792ea"]];
   const IND_KEY = "tradingdesk.indicators";
-  const DEFAULT_IND = { ma: true, bb: false, vol: true, rsi: false, macd: false, spo: false, vwap: false, plan: true, turtle: false };
+  const DEFAULT_IND = { ma: true, bb: false, vol: true, rsi: false, macd: false, spo: false, vwap: false, plan: true, turtle: false, vp: false };
 
   let chart, candle, vol, legendEl, markersApi;
   let bars = [], idxByTime = new Map(), sym = "", ivId = "1d", fmt = (v) => String(v);
@@ -221,6 +221,7 @@ const ChartView = (() => {
     axisFormat(isKRW, ["1d", "1w", "1M"].includes(ivId));
     candle.setData(bars.map((b) => ({ time: b.t, open: b.o, high: b.h, low: b.l, close: b.c })));
     markersApi.setMarkers([]);
+    if (typeof VP !== "undefined") VP.reset();
     renderIndicators();
     const show = { "1m": 240, "5m": 300, "15m": 260, "30m": 220, "1h": 200, "1d": 180, "1w": 156, "1M": 120 }[ivId] || 200;
     chart.timeScale().setVisibleLogicalRange({ from: Math.max(-2, bars.length - show), to: bars.length + 8 });
@@ -243,6 +244,7 @@ const ChartView = (() => {
 
   function setIndicator(key, on) {
     ind[key] = on;
+    if (key === "vp" && typeof VP !== "undefined") VP.set(on);
     try { localStorage.setItem(IND_KEY, JSON.stringify(ind)); } catch (_) {}
     renderIndicators();
     updateLegend(bars.length - 1);
