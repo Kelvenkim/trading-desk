@@ -18,7 +18,7 @@ const DeskUI = (() => {
 
   // ---------- 한눈에 보기: 계좌 성적 · 지금 보유 · 사고 판 기록 ----------
   const ACC = {                                        // 이름, 색, 설명, 펼칠 상세, 종류 — 탭 순서도 이 순서 (11/21 사용자 지정)
-    ai: ["AI 데스크", "#2fa36b", "주식 · 며칠~몇 주 보유", "more-ai", "stock"],
+    ai: ["주식", "#2fa36b", "주식 · 며칠~몇 주 보유", "more-ai", "stock"],
     coin: ["코인", "#9b6bd8", "BTC·ETH · AMD + 오더블록(완화판) · 레버리지 없음 · 한 번 손절 시 계좌 −1%/−0.25% (11/22부터, 그 전엔 50일선)", "", "coin"],
     lev: ["코인 10배", "#d86bb4", "BTC 1시간봉 AMD + 오더블록(완화판) · 한 번 손절 시 계좌 −2%/−0.5% · 노출 최대 10배 (11/22부터, 그 전엔 50일선)", "", "coin"],
     day: ["데이트레이딩", "#e5484d", "주식 · 그날 사서 그날 팔기", "more-day", "stock"],
@@ -31,21 +31,30 @@ const DeskUI = (() => {
   // 공식 피드백방: 계좌 → 그 계좌가 쓰는 공식 (scripts/coach.py → data/us/coach.json)
   const ROOMS = { coin: ["amd", "ob"], lev: ["amd", "ob"], ob: ["ob"], amd: ["amd"], tr10: ["tr10"] };
   const COACH_C = { wyckoff: "#8bc34a", ict: "#3fb6c9", livermore: "#f5b942", minervini: "#e07040", seykota: "#9b6bd8", ptj: "#d86bb4", judge: "#f5c26b" };
-  function renderCoach(K) {
+  function renderCoach(K) {                            // 공식 점검표 (11/22 형: 캐릭터·채팅 대신 보기 쉬운 표)
     const el = $("#coach-room"); if (!el) return;
     const rooms = ROOMS[SM.acct];
-    if (!K || !K.rooms) { el.hidden = true; return; }
+    if (!K || !K.rooms || !rooms) { el.hidden = true; return; }
     el.hidden = false;
-    if (!rooms) { el.innerHTML = `<div class="tt-head"><h3>공식 피드백방</h3></div><p class="muted small">${SM.acct === "c50" || SM.acct === "l50" ? "50일선 방식은 일봉이라 코치 시험을 따로 붙일 예정이에요." : "주식 계좌 코치는 다음 단계 (지금은 코인 공식만)."}</p>`; return; }
     const tm = new Date(K.made).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+    const R2 = (x) => (x >= 0 ? "+" : "") + x.toFixed(2) + "R";
     const logs = (K.log || []).filter((x) => rooms.includes(x.formula)).slice(-5).reverse();
-    el.innerHTML = `<div class="tt-head"><h3>공식 피드백방 <span class="muted small">코치 봇들이 2년 시험으로 공식 고칠 거리를 찾고, 통과한 건 스스로 반영해요</span></h3><span class="muted small">${tm} 기준 · 매일 아침</span></div>
-      ${logs.length ? `<ul class="coach-log">${logs.map((x) => `<li><b>${md(x.at.slice(0, 10))} ${x.kind === "remove" ? "뺌" : "반영"}</b> [${esc((K.rooms[x.formula] || {}).name || x.formula)}] ${esc((K.coach[x.who] || [x.who])[0])} '${esc(x.change)}' · 평균 ${x.R[0] >= 0 ? "+" : ""}${x.R[0].toFixed(2)}R → ${x.R[1] >= 0 ? "+" : ""}${x.R[1].toFixed(2)}R · 수익÷낙폭 ${x.ratio[0]} → ${x.ratio[1]}</li>`).join("")}</ul>` : ""}
-      <div class="coach-who">${Object.entries(K.coach).map(([k, [nm, how]]) => `<span class="coach-chip" style="--c:${COACH_C[k] || "#888"}" title="${esc(how)}">${esc(nm)}</span>`).join("")}</div>
-      ${rooms.map((r) => { const R = K.rooms[r]; if (!R) return ""; return `<details class="coach-room"><summary><span class="co-sub">${esc(R.name)}</span> <span class="muted small">지금 붙은 조건: ${esc(R.active || "없음")} · 시험 평균 ${R.base >= 0 ? "+" : ""}${R.base.toFixed(2)}R · 눌러서 코치 대화 보기</span></summary>
-        <ul class="coach-chat">${R.msgs.map((m) => `<li class="${m.ok ? "ok" : m.ok === false ? "no" : "info"}" style="--c:${COACH_C[m.who] || "#888"}"><b>${esc((K.coach[m.who] || [m.who])[0])}</b> ${esc(m.text)}</li>`).join("")}
-        ${(R.live || []).map((x) => `<li class="info live" style="--c:#f5c26b"><b>실제 계좌</b> ${esc(x)}</li>`).join("")}</ul></details>`; }).join("")}
-      <p class="muted small">${esc(K.rule)} · 코치 이름은 그 사람들의 공개된 매매 원칙을 빌린 것뿐이고, 실제 인물의 의견이 아니에요.</p>`;
+    const short = (why) => (why || "").split(" · ")[0].replace("좋아진 폭 0.05R 미만", "좋아진 폭이 너무 작음").replace("계좌 기준(수익÷낙폭)은 안 좋아짐", "계좌 전체로는 안 좋아짐");
+    el.innerHTML = `<div class="tt-head"><h3>공식 점검 <span class="muted small">매일 아침 2년치로 시험 → 좋아지는 것만 자동 반영</span></h3><span class="muted small">${tm}</span></div>
+      ${logs.length ? `<div class="ck-log"><b>최근 바뀐 것</b>${logs.map((x) => `<div>${md(x.at.slice(0, 10))} · ${esc((K.rooms[x.formula] || {}).name || x.formula)} · ${x.kind === "remove" ? "뺌" : x.kind === "param" ? "숫자 바꿈" : "추가"}: <b>${esc(x.change)}</b> <span class="muted">(${R2(x.R[0])} → ${R2(x.R[1])})</span></div>`).join("")}</div>` : ""}
+      ${rooms.map((r) => { const R = K.rooms[r]; if (!R) return "";
+        const rows = R.msgs.filter((m) => m.res && m.res.ac0).sort((a, b) => (b.ok ? 1 : 0) - (a.ok ? 1 : 0) || b.res.dR - a.res.dR);
+        return `<div class="ck-card"><div class="ck-head"><b>${esc(R.name)}</b>
+          <span class="muted small">2년 시험 ${R.n ?? "—"}번 · 승률 ${R.win != null ? Math.round(R.win * 100) + "%" : "—"} · 거래당 ${R2(R.base)}${R.perday != null ? ` · BTC·ETH 하루 ${R.perday}번` : ""}</span></div>
+          <div class="ck-now">지금 붙은 조건: <b>${esc(R.active || "없음 (기본 규칙)")}</b></div>
+          <details><summary>시험한 것 ${rows.length}개 보기 (통과 ${rows.filter((m) => m.ok).length}개)</summary>
+          <div class="tbl-wrap"><table class="tt-tbl ck-tbl"><thead><tr><th>시험한 것</th><th class="hide-sm">분야</th><th class="num">거래당</th><th class="num hide-sm">수익÷낙폭</th><th>결과</th></tr></thead><tbody>
+          ${rows.map((m) => `<tr class="${m.ok ? "ok" : ""}"><td>${esc(m.idea)}<span class="s">거래 ${m.res.n0} → ${m.res.n}번${m.ok ? "" : " · " + esc(short(m.res.why))}</span></td><td class="hide-sm muted">${esc((K.coach[m.who] || [m.who])[0])}</td>
+            <td class="num">${R2(m.res.R0)} → <b class="${m.res.dR > 0 ? "up" : "down"}">${R2(m.res.R)}</b></td><td class="num hide-sm">${m.res.ac0[2].toFixed(1)} → ${m.res.ac[2].toFixed(1)}</td>
+            <td class="ck-res">${m.ok ? "✅" : `<span class="muted">✗</span>`}</td></tr>`).join("")}
+          </tbody></table></div></details>
+          <div class="muted small ck-live">${(R.live || []).map(esc).join("<br>")}</div></div>`; }).join("")}
+      <p class="muted small">통과 기준: 거래 60번↑ · 거래당 +0.05R↑ · 앞 1년·뒤 1년 둘 다 좋아짐 · 코인 3개 중 2개↑ · 계좌 전체(수익÷낙폭)도 좋아짐. 공식마다 이틀에 한 번, 조건은 최대 3개까지.</p>`;
   }
   let SM = { log: [], acct: (() => { try { return localStorage.getItem("tradingdesk.acct") || "ai"; } catch (_) { return "ai"; } })() };
   const getj = async (u) => { try { const r = await fetch(u + "?t=" + Date.now()); return r.ok ? await r.json() : null; } catch (_) { return null; } };

@@ -1307,3 +1307,12 @@ body.chart-full .center.full { left: calc(max(8px, env(safe-area-inset-left)) + 
 .coach-room > summary::-webkit-details-marker { display: none; }
 .coach-room > summary::before { content: "▸ "; color: var(--accent); }
 .coach-room[open] > summary::before { content: "▾ "; }
+.ck-log { background: rgba(47,163,107,.08); border-radius: 10px; padding: 8px 12px; margin: 4px 0 10px; font-size: 12.5px; line-height: 1.7; }
+.ck-card { background: #08090b; border-radius: 12px; padding: 12px 14px; margin-top: 10px; }
+.ck-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.ck-now { font-size: 13px; margin: 6px 0; }
+.ck-card details > summary { cursor: pointer; font-size: 12.5px; color: var(--accent); margin: 4px 0; }
+.ck-tbl td .s { display: block; font-size: 11px; color: var(--muted, #888); }
+.ck-tbl tr.ok td { background: rgba(47,163,107,.10); }
+.ck-live { margin-top: 6px; }
+.ck-tbl .ck-res { text-align: center; white-space: nowrap; }

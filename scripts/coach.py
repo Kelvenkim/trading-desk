@@ -27,14 +27,14 @@ SYMS = ["BTC-USD", "ETH-USD", "SOL-USD"]
 NM = {"BTC-USD": "BTC", "ETH-USD": "ETH", "SOL-USD": "SOL"}
 FEE = 0.0005
 
-COACH = {   # 키: (이름, 맡은 원칙 — 공개적으로 알려진 매매 철학을 요약한 것)
-    "wyckoff": ("와이코프식 코치", "매집·분산은 거래량으로 확인한다 — 가짜 이탈(스프링)에 거래량이 실려야 진짜"),
-    "ict": ("ICT식 코치", "오더블록·FVG·시간대(런던·뉴욕 장 시작 '킬존')를 본다"),
-    "livermore": ("리버모어식 코치", "큰 흐름(상위 추세) 쪽으로만 매매한다"),
-    "minervini": ("미너비니식 코치", "손절 폭이 좁은 자리만 고른다 — 위험이 작은 곳에서 크게"),
-    "seykota": ("시코타식 코치", "손실은 짧게, 수익은 길게 — 청산 규칙을 바꿔 본다"),
-    "ptj": ("튜더 존스식 코치", "방어가 먼저 — 변동성이 너무 클 때·주말 같은 얇은 장은 피한다"),
-    "judge": ("Claude (정리)", "코치들 제안을 형 원칙(효과 없으면 안 넣음·손실 최소화)으로 걸러서 정리"),
+COACH = {   # 시험 분야 (11/22 형: 캐릭터 이름 빼고 보기 쉽게 — 무엇을 시험하는지로)
+    "wyckoff": ("거래량", "거래량이 실린 자리 vs 약한 자리"),
+    "ict": ("시간대·패턴", "FVG·갭 같은 캔들 모양, 런던·뉴욕 장 시작 시간대"),
+    "livermore": ("큰 추세", "50일선 방향과 같은 쪽으로만"),
+    "minervini": ("손절 폭", "손절 폭이 좁은 자리만"),
+    "seykota": ("청산 방법", "목표·추적 손절 숫자 바꾸기"),
+    "ptj": ("변동성·주말", "변동성 큰 때·주말 피하기"),
+    "judge": ("결론", "통과 기준으로 걸러서 반영할 것 고르기"),
 }
 
 
@@ -382,12 +382,13 @@ def run():
             L.append(dict(who="judge", ok=None, text="오늘은 기준을 다 넘은 변경 없음 → 지금 공식 그대로 (효과 없는 규칙은 안 넣어요)"))
         if worse:
             L.append(dict(who="judge", ok=None, text="⚠️ 실제 계좌가 시험보다 확실히 나빠요 — Claude가 아침 보고서 때 원인(체결·규칙 차이)을 확인해요"))
-        rooms[key] = dict(name=name, base=round(float(base.r.mean()), 3), msgs=L, live=live, active=FR.active_text(key, C))
+        rooms[key] = dict(name=name, base=round(float(base.r.mean()), 3), n=int(len(base)), win=round(float((base.r > 0).mean()), 3),
+                          perday=round((len(D0["BTC-USD"]) + len(D0.get("ETH-USD", []))) / days, 2), msgs=L, live=live, active=FR.active_text(key, C))
     FR.save(C)
     made = now().isoformat(timespec="minutes")
     S["runs"] = (S.get("runs", []) + [dict(at=made, applied=[x for x in C["log"] if x["at"] == made])])[-30:]
     S.update(made=made, coach={k: list(v) for k, v in COACH.items()}, rooms=rooms, days=days, log=C["log"][-30:],
-             rule=f"코치 = 공개된 매매 원칙을 맡은 봇(실제 인물 아님). 2년 1시간봉 BTC·ETH·SOL 시험. 통과: 거래 60번↑ · +0.05R↑ · 앞·뒤 1년 둘 다 · 코인 2/3↑ · 계좌 기준(수익÷낙폭)도 좋아짐 (오더블록은 하루 3번↑도). "
+             rule=f"2년 1시간봉 BTC·ETH·SOL 시험. 통과: 거래 60번↑ · +0.05R↑ · 앞·뒤 1년 둘 다 · 코인 2/3↑ · 계좌 기준(수익÷낙폭)도 좋아짐 (오더블록은 하루 3번↑도). "
                   f"통과한 것 중 가장 좋은 하나를 스스로 반영 · 공식마다 {COOLDOWN_DAYS}일에 한 번 · 조건 최대 {MAX_FILTERS}개 · 효과 없어지면 스스로 뺌")
     OUT.write_text(json.dumps(S, ensure_ascii=False, separators=(",", ":"), default=lambda o: o.item() if hasattr(o, "item") else str(o)))
     for k, R in rooms.items():
