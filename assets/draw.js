@@ -192,7 +192,7 @@ const Draw = (() => {
           const xr = ts().logicalToCoordinate(res.i);
           if (xr != null) { ctx.setLineDash([3, 3]); ctx.strokeStyle = res.k === "tgt" ? G : R; seg({ x: xr, y: ye }, { x: xr, y: res.k === "tgt" ? yt : ys }); ctx.setLineDash([]); }
         }
-        const pc = (p) => ((p / e - 1) * 100), rr = Math.abs(tg - e) / Math.max(1e-12, Math.abs(e - sl));
+        const pc = (p) => ((p / e - 1) * 100 * (L ? 1 : -1)),   // 포지션 손익 기준: 숏은 내려가면 + rr = Math.abs(tg - e) / Math.max(1e-12, Math.abs(e - sl));
         const mid = x1 + w / 2;
         label(`목표 ${CV.fmt(tg)} (${pc(tg) >= 0 ? "+" : ""}${pc(tg).toFixed(2)}%)`, mid, yt + (L ? -11 : 11), G, "#fff", "center");
         label(`손절 ${CV.fmt(sl)} (${pc(sl) >= 0 ? "+" : ""}${pc(sl).toFixed(2)}%)`, mid, ys + (L ? 11 : -11), R, "#fff", "center");
