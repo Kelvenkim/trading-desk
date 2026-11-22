@@ -182,6 +182,8 @@ def pval(p, px):
 
 def run():
     S = json.loads(SF.read_text()) if SF.exists() else {}
+    if S.get("retired"):                                         # 11/22 형 결정: 코인 계좌는 AMD + 오더블록으로 (coin_amd.json + coin_ob.json)
+        print("코인(50일선) 계좌는", S["retired"], "에 AMD+오더블록으로 옮겨서 더 안 돌림"); return
     B = load_bars()
     t = now(); today = t.strftime("%Y-%m-%d")
     if not S:

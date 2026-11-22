@@ -27,15 +27,17 @@ jobs:
         run: python scripts/ob_paper.py
       - name: AMD (매집→조작→분산)
         run: python scripts/amd_paper.py
-      - name: 코인 10배 (AMD · 1회 손실 2%)
-        run: python scripts/amd_paper.py lev10
+      - name: 코인 10배 (AMD 칸 + 오더블록 칸)
+        run: python scripts/amd_paper.py lev10 && python scripts/ob_paper.py lev10
+      - name: 코인 1배 (AMD 칸 + 오더블록 칸)
+        run: python scripts/amd_paper.py coin && python scripts/ob_paper.py coin
       - name: 10배 단타 (추세 눌림)
         run: python scripts/trend_paper.py
       - name: 저장
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/us/ob_paper.json data/us/trend10.json data/us/amd_paper.json data/us/lev10.json
+          git add data/us/ob_paper.json data/us/trend10.json data/us/amd_paper.json data/us/lev10.json data/us/lev10_ob.json data/us/coin_amd.json data/us/coin_ob.json
           git diff --cached --quiet && exit 0
           git commit -m "오더블록·10배 단타 계좌 갱신"
           for i in 1 2 3; do git pull --rebase -X theirs origin main && git push && break; sleep 5; done

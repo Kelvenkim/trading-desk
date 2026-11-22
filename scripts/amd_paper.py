@@ -204,8 +204,11 @@ def feedback(p, R, why):
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "lev10":
-        # 코인 10배 계좌 (11/22 형: '10배는 2%로') — 같은 AMD 규칙을 비트코인만, 한 번 손절 시 계좌 −2%, 노출 최대 10배
-        # 시험(research/amd, BTC 1시간봉 2년 550번): 평균 노출 4.6배 · 2년 +84% · 최대 낙폭 −34% · 최악 한 번 −3.5%(갭)
-        OUT = ROOT / "data/us/lev10.json"; SYMS = ["BTC-USD"]; CFG.update(risk=0.02, maxE=10.0)
+    # 11/22 형: 코인·코인 10배 계좌는 AMD + 오더블록을 같이 씀 → 계좌 돈을 반씩 나눈 두 칸(AMD 칸·오더블록 칸)으로 굴리고 사이트에서 합쳐 보여줌
+    #   위험은 '전체 계좌' 기준으로 맞춤: 칸 안 위험 % = 전체 기준 × 2
+    prof = sys.argv[1] if len(sys.argv) > 1 else ""
+    if prof == "lev10":      # 코인 10배 AMD 칸: 비트코인 · 한 번 손절 시 전체 계좌 −2% · 노출 최대 10배 (시험 BTC 2년 550번: 평균 노출 4.6배·+84%·최대 낙폭 −34%)
+        OUT = ROOT / "data/us/lev10.json"; SYMS = ["BTC-USD"]; CFG.update(risk=0.04, maxE=10.0)
+    elif prof == "coin":     # 코인(1배) AMD 칸: BTC·ETH · 한 번 손절 시 전체 계좌 −1% · 레버리지 없음(노출 최대 1배)
+        OUT = ROOT / "data/us/coin_amd.json"; SYMS = ["BTC-USD", "ETH-USD"]; CFG.update(risk=0.02, maxE=1.0)
     run()
