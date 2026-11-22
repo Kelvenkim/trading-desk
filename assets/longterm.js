@@ -46,7 +46,7 @@ const LongUI = (() => {
       ? `<button class="lt-ind" data-ind="${esc(x.key)}"><i class="lt-vd ${VC[x.verdict] || ""}"></i>${esc(x.name)}</button>`
       : `<button class="lt-ind todo" disabled>${esc(x.name)} · 예정</button>`).join("");
     $("#lt-formulas").innerHTML = FORMULAS.map(([n, f, w, s]) => `<li><b>${esc(n)}</b> <code>${esc(f)}</code> <span class="lt-k ${s.startsWith("검증") ? "lt-f" : "lt-e"}">${esc(s)}</span><span class="muted small">${esc(w)}</span></li>`).join("");
-    if (!R && I.industries[0]) load((I.industries.find((x) => x.key === "defense") || I.industries[0]).key);   // 처음엔 형 보유 종목(레드와이어·스페이스X)이 있는 방산·우주
+    if (!R && I.industries[0]) load((I.industries.find((x) => x.key === "defense") || I.industries[0]).key);   // 처음엔 방산·우주
   }
 
   async function load(key) {
