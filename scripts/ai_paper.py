@@ -35,6 +35,74 @@ CONV_RISK = {1: 0.005, 2: 0.0075, 3: 0.01, 4: 0.0125, 5: 0.015}
 # 11/23 형: "에이전트가 하는 건 투자가 아니라 트레이딩" → 매수마다 익절가(최소 1.5R)와 보유 기한(0=당일 청산 ~ 최대 5거래일) 필수,
 #   기한 날 뉴욕 15:50 봉에서 자동 청산
 MAX_HOLD, MIN_RR, EXIT_HM = 5, 1.5, (15, 50)
+# 11/23 형: "너가 직접 하는 매매니까 매매 횟수·손절·익절·비중·리스크 관리 다 너가 관리해"
+#   → 에이전트 계좌 규칙은 상태 파일의 rules(에이전트가 `rules --set` 으로 이유와 함께 바꿈). 코드는 안전 바닥만 지킴(HARD)
+AGENT_DEF = {"conv_risk": [0.005, 0.0075, 0.01, 0.0125, 0.015], "max_stop": 0.07, "min_rr": 1.5, "need_target": True, "max_hold": 5,
+             "max_w": 0.20, "max_n": 8, "max_new_day": 3, "max_open_risk": 0.05, "day_loss_halt": 0.02}
+HARD = {"conv_risk": 0.02, "max_stop": 0.07, "max_w": 0.35, "max_n": 12, "max_new_day": 10, "max_open_risk": 0.08, "day_loss_halt": 0.05, "max_hold": 20}   # 넘지 못하는 선 (손절 −7%는 형 원칙)
+
+
+def R_(S):
+    r = {**AGENT_DEF, **(S.get("rules") or {})}
+    return r
+
+
+def agent_check(S, sym, usd, px, stop, conv, target, hold):
+    r = R_(S); eq = equity(S)
+    if conv not in (1, 2, 3, 4, 5):
+        return "확신 점수(--conv 1~5)가 필요해요"
+    if hold is None or not 0 <= hold <= r["max_hold"]:
+        return f"보유 기한(--hold 0~{r['max_hold']}거래일, 0=당일 청산)이 필요해요"
+    if stop < px * (1 - r["max_stop"]) - 0.01:
+        return f"손절이 산 가격의 -{r['max_stop']:.0%}보다 멀어요 (손절 ${stop} < ${px * (1 - r['max_stop']):.2f})"
+    if r["need_target"] and (not target or (target - px) < r["min_rr"] * (px - stop) - 0.01):
+        return f"익절가 최소 {r['min_rr']}R (손절 폭 ${px - stop:.2f} → 익절 ${px + r['min_rr'] * (px - stop):.2f} 이상)"
+    held = S["pos"].get(sym, {}).get("sh", 0) * px
+    if held + usd > eq * r["max_w"] + 1:
+        return f"한 종목 최대 {r['max_w']:.0%} 초과"
+    names = set(S["pos"]) | {o["sym"] for o in S["orders"] if o["side"] == "buy"}
+    if sym not in names and len(names) >= r["max_n"]:
+        return f"최대 {r['max_n']}종목 초과"
+    if any(o["sym"] == sym and o["side"] == "buy" for o in S["orders"]):
+        return "같은 종목 매수 주문이 이미 대기 중"
+    risk = usd * (px - stop) / px
+    lim = r["conv_risk"][conv - 1]
+    if risk > eq * lim + 1:
+        return f"확신 {conv} → 손절 시 손실 한도 계좌 {lim:.2%}(${eq * lim:,.0f}) 초과 (지금 ${risk:,.0f})"
+    open_risk = sum(max(0, p["sh"] * (S["px"].get(t, p["avg"]) - (p.get("stop") or 0))) for t, p in S["pos"].items()) + \
+        sum(o["usd"] * max(0, 1 - (o.get("stop") or 0) / max(o.get("px") or px, 1e-9)) for o in S["orders"] if o["side"] == "buy")
+    if open_risk + risk > eq * r["max_open_risk"] + 1:
+        return f"열린 위험 합계(모든 손절이 동시에 걸릴 때 손실) ${open_risk + risk:,.0f} > 계좌 {r['max_open_risk']:.0%}"
+    from zoneinfo import ZoneInfo
+    d_ny = now().astimezone(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+    n_new = sum(1 for j in S["journal"] if j.get("k") == "order" and j.get("side") == "buy" and j.get("d_ny") == d_ny)
+    if n_new >= r["max_new_day"]:
+        return f"오늘 새 매수 {n_new}번 — 하루 최대 {r['max_new_day']}번"
+    e0 = next((e for d, e in reversed(S["eq"]) if d < d_ny), None)
+    if e0 and eq / e0 - 1 <= -r["day_loss_halt"]:
+        return f"오늘 계좌 {eq / e0 - 1:+.1%} — 하루 -{r['day_loss_halt']:.0%} 넘게 잃어 오늘은 새 매수 중단"
+    return None
+
+
+def cmd_rules(S, a):
+    r = R_(S); new = dict(S.get("rules") or {})
+    for kv in a.set or []:
+        k, _, v = kv.partition("=")
+        if k not in AGENT_DEF:
+            sys.exit(f"없는 규칙: {k} (가능: {', '.join(AGENT_DEF)})")
+        v = json.loads(v)
+        h = HARD.get(k)
+        if k == "conv_risk":
+            if len(v) != 5 or max(v) > h or min(v) <= 0: sys.exit(f"conv_risk는 5개, 각각 0~{h}")
+        elif h is not None and v > h:
+            sys.exit(f"{k} {v} — 넘지 못하는 선 {h}")
+        new[k] = v
+    if a.set:
+        old = {k: r[k] for k in new if r.get(k) != new[k]}
+        S["rules"] = new
+        say(S, "claude", f"규칙 변경: " + " · ".join(f"{k} {old.get(k)}→{new[k]}" for k in old) + f" — {a.why}")
+        S.setdefault("rules_log", []).append({"at": now().astimezone(KST).strftime("%Y-%m-%d %H:%M"), "set": a.set, "why": a.why})
+    print(json.dumps(R_(S), ensure_ascii=False))
 if ACCT == "agent":
     STATE = ROOT / "data/us/agent_paper_state.json"
     VIEW = ROOT / "data/us/agent_paper.json"
@@ -82,6 +150,10 @@ def check(S, sym, side, usd, px, stop, conv=None, target=None, hold=None):
     """Risk 규칙 검사 → 문제 있으면 이유(문자열), 없으면 None"""
     if side != "buy":
         return None if sym in S["pos"] else "보유하지 않은 종목"
+    if ACCT == "agent" and (stop is None or stop >= px):
+        return "매수에는 산 가격보다 낮은 손절가가 꼭 있어야 해요"
+    if ACCT == "agent":
+        return "시장 급락으로 신규 매수 중단 중" if S.get("halt") else agent_check(S, sym, usd, px, stop, conv, target, hold)
     if S.get("halt"):
         return "시장 급락으로 신규 매수 중단 중"
     if stop is None:
@@ -124,7 +196,8 @@ def place(S, sym, side, usd=0, typ="market", px=None, stop=None, target=None, da
     o = {"id": S["seq"], "sym": sym, "side": side, "type": typ, "px": px, "usd": usd, "pct": pct, "stop": stop, "target": target,
          "why": why, "at": now().isoformat(), "exp": (now() + timedelta(days=days)).isoformat(), "src": src, "score": score, "sig": sig, "conv": conv, "hold": hold}
     S["orders"].append(o)
-    log(S, "order", why, sym=sym, side=side, detail=desc(o))
+    from zoneinfo import ZoneInfo
+    log(S, "order", why, sym=sym, side=side, detail=desc(o), d_ny=now().astimezone(ZoneInfo("America/New_York")).strftime("%Y-%m-%d"))
     return o, None
 
 
@@ -339,9 +412,9 @@ def metrics(S):
             "payoff": (sum(w) / len(w)) / abs(sum(lo) / len(lo)) if w and lo and sum(lo) else None, "mdd": mdd, "cum": equity(S) / 10000 - 1, "by_src": by}
 
 
-AGENT_RULES = ("트레이딩 계좌(투자 아님) · 판단은 전부 Claude 에이전트 (장 열리고 약 50분 뒤 진입 판단 + 마감 1시간 전 점검) · 매수마다 확신 점수 1~5 → 손절 시 계좌 손실 한도 0.5/0.75/1/1.25/1.5% · "
-               "익절가 필수(최소 1.5R) · 보유 기한 필수(당일 청산 ~ 최대 5거래일, 기한 날 마감 10분 전 자동 청산) · "
-               "손절가 필수(산 가격의 최대 -7%) · 한 종목 최대 20% · 최대 8종목 · S&P500 -3%면 신규 매수 중단 · 손절·익절은 장중 5분봉으로 자동 체결 · "
+AGENT_RULES = ("트레이딩 계좌(투자 아님) · 판단·횟수·손절·익절·비중·리스크 규칙 전부 Claude 에이전트가 관리(바꿀 때 이유 기록) · 장 열리고 약 50분 뒤 진입 판단 + 마감 전 점검 · "
+               "매수마다 확신 점수 1~5 · 보유 기한(기한 날 마감 10분 전 자동 청산) · 넘지 못하는 선: 손절 −7% · 1회 손실 계좌 2% · 열린 위험 8% · 레버리지 없음 · "
+               "S&P500 -3%면 신규 매수 중단 · 손절·익절은 장중 5분봉으로 자동 체결 · "
                "본전 손절·추적 손절 같은 자동 관리는 없음(에이전트가 직접 손절을 옮김) · 수수료 0.1% + 체결 차이 0.05%")
 
 
@@ -357,7 +430,7 @@ def view(S):
            "chat": S.get("chat", [])[-300:], "adj": {"src": S.get("src_adj", {}), "sig": S.get("sig_adj", {})}, "adj_log": S.get("adj_log", [])[-30:][::-1], "review": S.get("review"), "agents": S.get("agents", {}), "halt": S.get("halt"), "cands": S.get("cands", []),
            "bench": (S["px"]["SPY"] / S["bench0"] - 1) if S.get("bench0") and S["px"].get("SPY") else None,
            "acct": ACCT,
-           "mode": S.get("mode"), "mode_why": S.get("mode_why"), "rules": AGENT_RULES if ACCT == "agent" else f"한 종목 최대 {MAX_W:.0%} · 최대 {MAX_N}종목 · 모든 매수에 손절가(산 가격의 최대 -7%) · 손절 시 손실 ≤ 계좌의 {MAX_RISK:.0%} · +1R이면 손절을 본전으로, +2R이면 +1R로 · 5거래일째 -0.5R 이하면 조기 정리 · +15%부터 고점 대비 -8% 추적 손절 · S&P500 -3%면 신규 매수 중단 · 수수료 0.1% + 체결 차이 0.05%"}
+           "mode": S.get("mode"), "mode_why": S.get("mode_why"), "rules": (AGENT_RULES + " · 지금 규칙: " + json.dumps(R_(S), ensure_ascii=False)) if ACCT == "agent" else f"한 종목 최대 {MAX_W:.0%} · 최대 {MAX_N}종목 · 모든 매수에 손절가(산 가격의 최대 -7%) · 손절 시 손실 ≤ 계좌의 {MAX_RISK:.0%} · +1R이면 손절을 본전으로, +2R이면 +1R로 · 5거래일째 -0.5R 이하면 조기 정리 · +15%부터 고점 대비 -8% 추적 손절 · S&P500 -3%면 신규 매수 중단 · 수수료 0.1% + 체결 차이 0.05%"}
     VIEW.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":"), default=str))
 
 
@@ -372,6 +445,7 @@ def main():
     m = sp.add_parser("modify"); m.add_argument("sym"); m.add_argument("--stop", type=float); m.add_argument("--target", type=float); m.add_argument("--why", required=True)
     c = sp.add_parser("cancel"); c.add_argument("id", type=int); c.add_argument("--why", required=True)
     n = sp.add_parser("note"); n.add_argument("text")
+    ru = sp.add_parser("rules"); ru.add_argument("--set", nargs="*"); ru.add_argument("--why", default="")
     y = sp.add_parser("say"); y.add_argument("who"); y.add_argument("text")
     a = ap.parse_args()
     S = load()
@@ -379,6 +453,9 @@ def main():
     elif a.cmd == "order": cmd_order(S, a)
     elif a.cmd == "modify": cmd_modify(S, a)
     elif a.cmd == "cancel": cmd_cancel(S, a)
+    elif a.cmd == "rules":
+        if a.set and not a.why: sys.exit("규칙을 바꿀 땐 --why 필수")
+        cmd_rules(S, a)
     elif a.cmd == "note": log(S, "note", a.text); say(S, "claude", a.text)
     elif a.cmd == "say": say(S, a.who, a.text)
     save(S)
