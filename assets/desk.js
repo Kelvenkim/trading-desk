@@ -269,7 +269,7 @@ const DeskUI = (() => {
           <h5>진입 이유</h5><ul>${(j.why_in || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
           ${(j.partial || []).map((x) => `<h5>부분 익절</h5><p class="small">${tm(x.at)} · ${x.px} · ${esc(x.why)} · ${x.pnl >= 0 ? "+" : ""}$${x.pnl}</p>`).join("")}
           ${j.exit != null ? `<h5>${j.R > 0 ? "익절" : "손절"} 이유</h5><p class="small">${tm(j.out_at)} · ${j.exit} · ${esc(j.why_out)} · ${j.pnl >= 0 ? "+" : ""}$${j.pnl} · ${j.bars}봉 보유 · 최대 유리 +${j.mfe}% / 최대 불리 −${j.mae}%</p>
-          <h5>피드백</h5><ul>${(j.feedback || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+          <h5>피드백</h5><ul>${(j.feedback || []).concat(((SM.charts || {})[`${j.tag === "AMD" ? "amd" : j.tag === "오더블록" ? "ob" : SM.acct === "amd" ? "amd" : "ob"}:${j.sym}|${String(j.in_at || "").slice(0, 16).replace("T", " ")}`] || {}).fb || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
         </div></details>`).join("")}
       ${(O && O.skips && O.skips.length) ? `<details class="ob-j"><summary><span class="ob-j-t"><b>진입 안 한 자리 ${O.skips.length}개</b> <span class="muted small">구간에 안 닿음 · 무효화 · 손익비 부족</span></span></summary><div class="ob-j-b"><ul>${O.skips.slice(-30).reverse().map((x) => `<li class="small">${esc(COINNM[x.sym] || x.sym)} ${esc(x.side)} ${x.entry} — ${esc(x.why)}</li>`).join("")}</ul></div></details>` : ""}`;
   }

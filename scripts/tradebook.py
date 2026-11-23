@@ -181,9 +181,15 @@ def build_html(a=None, b=None):
     out.append("<table><tr><th>계좌</th><th class='num'>지금</th><th class='num'>시작 대비</th><th class='num'>이번 기간</th><th class='num'>이번 기간 매매</th></tr>" + rows + "</table>")
     # 2) 계좌별 기록지 (+ 매매 차트: scripts/trade_charts.py)
     SEEN = set()
+    CH = j("charts/index.json") or {}
     for name, evs, sks in allev:
         if not evs and not sks:
             continue
+        for x in evs:                                     # 끝난 매매마다 자동 피드백 (scripts/trade_charts.py) 붙이기
+            kd, sy, ti = x.get("ck") or (None, None, None)
+            c = CH.get(f"{kd}:{sy}|{str(ti)[:16].replace('T', ' ')}") if kd else None
+            if c and x["kind"] == "판 것" and c.get("fb"):
+                x["fb"] = list(x.get("fb") or []) + [f"자동 리뷰: {t_}" for t_ in c["fb"]]
         h = f"<h3>{e(name)}</h3><table><tr><th>시각</th><th>구분</th><th>종목</th><th class='num'>가격</th><th class='num'>결과</th><th>이유</th></tr>"
         for x in evs:
             res = (f"{x['R']:+.2f}R" if x.get("R") is not None else pct(x.get("pl"))) if x["kind"] == "판 것" else (x.get("res") or "")
@@ -193,7 +199,6 @@ def build_html(a=None, b=None):
                   f"<td class='num {c}'>{e(res)}{' · $' + format(x['usd'], ',.0f') if x.get('usd') is not None else ''}</td><td class='sm'>{e(x['why'])}"
                   + ("".join(f"<div class='fb'>💬 {e(fb)}</div>" for fb in x.get("fb") or []) if x.get("fb") else "") + "</td></tr>")
         h += "</table>" if evs else "</table><p class='sm'>산 것·판 것 없음</p>"
-        CH = j("charts/index.json") or {}
         pics = []
         for x in evs:
             kd, sy, ti = x.get("ck") or (None, None, None)
@@ -208,6 +213,21 @@ def build_html(a=None, b=None):
         out.append(h)
     if not any(evs or sks for _, evs, sks in allev):
         out.append("<p>이번 기간엔 어느 계좌도 사고판 게 없어요.</p>")
+    # 2-1) 종합 피드백 (11/23 형: 하나하나 피드백 → 데이터 쌓이면 종합으로) — 공식별 끝난 실제 매매 30번↑부터
+    agg = []
+    for kd, nm in (("ob", "오더블록"), ("amd", "AMD"), ("tr", "추세 눌림"), ("ma", "50일선"), ("ma10", "50일선 10배")):
+        rs = [v for k_, v in CH.items() if k_.startswith(kd + ":") and v.get("done") and v.get("R") is not None]
+        if len(rs) >= 30:
+            R_ = [v["R"] for v in rs]; fbs = [t_ for v in rs for t_ in v.get("fb", [])]
+            cnt = lambda key: sum(1 for t_ in fbs if key in t_)
+            agg.append(f"<li><b>{nm}</b> 실제 {len(R_)}번 · 승률 {sum(r > 0 for r in R_) / len(R_):.0%} · 평균 {sum(R_) / len(R_):+.2f}R · "
+                       f"1R 넘게 갔다가 손절 {cnt('1R 넘게 갔다가')}번 · 손절 뒤 목표 도달 {cnt('손절이 좁았던')}번 · 정리 뒤 2R↑ 더 감 {cnt('더 길게')}번</li>")
+        else:
+            n_ = len(rs)
+            if n_:
+                agg.append(f"<li>{nm}: 끝난 실제 매매 {n_}/30번 — 30번이 되면 개별 피드백을 모아 종합 피드백으로 바꿔요</li>")
+    if agg:
+        out.append("<h3>종합 피드백</h3><ul class='sm'>" + "".join(agg) + "</ul>")
     # 3) 공식 점검이 바꾼 것 + 확실한 자리 데이터
     K = j("coach.json") or {}
     ch = [x for x in K.get("log", []) if inwin(x.get("at"), a, b)]

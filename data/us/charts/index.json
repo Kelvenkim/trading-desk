@@ -1,137 +1,202 @@
 {
 "ob:BTC-USD|2026-11-22 12:00": {
 "png": "data/us/charts/BTCUSD_202611221200_ob.png",
-"sig": "bb4b2ca8",
+"sig": "v2bb4b2ca8",
 "kind": "ob",
 "accts": [
 "coin_ob.json",
 "lev10_ob.json",
 "ob_paper.json"
-]
+],
+"fb": [
+"보유 3봉 동안 가장 유리했을 때 +1.9R · 가장 불리했을 때 −0.1R",
+"정리 뒤 24봉 안에 진입가 기준 +2.5R까지 더 감 → 나머지를 더 길게 가져가는 방법(추적 손절)을 시험할 거리",
+"RSI(14) 60.6 → 2년 시험 같은 칸 평균 -0.12R (789번)",
+"200EMA에서 떨어진 정도(%, 진입 방향 기준) 4.08 → 2년 시험 같은 칸 평균 -0.01R (790번)",
+"손절 폭(%) 0.43 → 2년 시험 같은 칸 평균 -0.14R (790번)"
+],
+"R": 0.42,
+"done": true
 },
 "ob:ETH-USD|2026-11-22 12:00": {
 "png": "data/us/charts/ETHUSD_202611221200_ob.png",
-"sig": "ff8a2efd",
+"sig": "v2ff8a2efd",
 "kind": "ob",
 "accts": [
 "coin_ob.json",
 "ob_paper.json"
-]
+],
+"fb": [
+"보유 2봉 동안 가장 유리했을 때 +0.7R · 가장 불리했을 때 −0.6R",
+"RSI(14) 61.7 → 2년 시험 같은 칸 평균 -0.12R (789번)",
+"200EMA에서 떨어진 정도(%, 진입 방향 기준) 4.31 → 2년 시험 같은 칸 평균 -0.01R (790번)",
+"손절 폭(%) 0.864 → 2년 시험 같은 칸 평균 -0.12R (789번)"
+],
+"R": -0.05,
+"done": true
 },
 "ob:SOL-USD|2026-11-22 16:00": {
 "png": "data/us/charts/SOLUSD_202611221600_ob.png",
-"sig": "0d8f6ff6",
+"sig": "v20d8f6ff6",
 "kind": "ob",
 "accts": [
 "ob_paper.json"
-]
+],
+"fb": [],
+"R": null,
+"done": false
 },
 "amd:ETH-USD|2026-11-22 13:00": {
 "png": "data/us/charts/ETHUSD_202611221300_amd.png",
-"sig": "b8962ec6",
+"sig": "v2b8962ec6",
 "kind": "amd",
 "accts": [
 "amd_paper.json",
 "coin_amd.json"
-]
+],
+"fb": [],
+"R": null,
+"done": false
 },
 "amd:SOL-USD|2026-11-22 14:00": {
 "png": "data/us/charts/SOLUSD_202611221400_amd.png",
-"sig": "7e65883d",
+"sig": "v27e65883d",
 "kind": "amd",
 "accts": [
 "amd_paper.json"
-]
+],
+"fb": [],
+"R": null,
+"done": false
 },
 "tr:BTC-USD|2026-11-22 02:00": {
 "png": "data/us/charts/BTCUSD_202611220200_tr.png",
-"sig": "10b974aa",
+"sig": "v210b974aa",
 "kind": "tr",
 "accts": [
 "trend10.json"
-]
+],
+"fb": [],
+"R": -1.07,
+"done": true
 },
 "tr:ETH-USD|2026-11-22 03:00": {
 "png": "data/us/charts/ETHUSD_202611220300_tr.png",
-"sig": "25408691",
+"sig": "v225408691",
 "kind": "tr",
 "accts": [
 "trend10.json"
-]
+],
+"fb": [],
+"R": -1.06,
+"done": true
 },
 "tr:SOL-USD|2026-11-22 03:00": {
 "png": "data/us/charts/SOLUSD_202611220300_tr.png",
-"sig": "8f44d7ae",
+"sig": "v28f44d7ae",
 "kind": "tr",
 "accts": [
 "trend10.json"
-]
+],
+"fb": [],
+"R": -1.06,
+"done": true
 },
 "tr:SOL-USD|2026-11-22 20:00": {
 "png": "data/us/charts/SOLUSD_202611222000_tr.png",
-"sig": "7d10770d",
+"sig": "v27d10770d",
 "kind": "tr",
 "accts": [
 "trend10.json"
-]
+],
+"fb": [],
+"R": null,
+"done": false
 },
 "ma:BTC-USD|2026-11-15": {
 "png": "data/us/charts/BTCUSD_202611150000_ma.png",
-"sig": "3f138424",
+"sig": "v23f138424",
 "kind": "ma",
 "accts": [
 "crypto_paper.json"
-]
+],
+"fb": [
+"보유 6봉 동안 가장 유리했을 때 +2.2R · 가장 불리했을 때 −0.0R"
+],
+"R": null,
+"done": true
 },
 "ma:ETH-USD|2026-11-15": {
 "png": "data/us/charts/ETHUSD_202611150000_ma.png",
-"sig": "1c4c8c28",
+"sig": "v21c4c8c28",
 "kind": "ma",
 "accts": [
 "crypto_paper.json"
-]
+],
+"fb": [
+"보유 6봉 동안 가장 유리했을 때 +2.3R · 가장 불리했을 때 −0.3R"
+],
+"R": null,
+"done": true
 },
 "ma:BTC-USD|2026-11-22": {
 "png": "data/us/charts/BTCUSD_202611220000_ma.png",
-"sig": "6a47b9ef",
+"sig": "v26a47b9ef",
 "kind": "ma",
 "accts": [
 "crypto_paper.json",
 "crypto_part_coin.json"
-]
+],
+"fb": [],
+"R": null,
+"done": false
 },
 "ma:ETH-USD|2026-11-22": {
 "png": "data/us/charts/ETHUSD_202611220000_ma.png",
-"sig": "6a47b9ef",
+"sig": "v26a47b9ef",
 "kind": "ma",
 "accts": [
 "crypto_paper.json",
 "crypto_part_coin.json"
-]
+],
+"fb": [],
+"R": null,
+"done": false
 },
 "ma10:BTC-USD|2026-11-15": {
 "png": "data/us/charts/BTCUSD_202611150000_ma10.png",
-"sig": "8b6ac1d2",
+"sig": "v28b6ac1d2",
 "kind": "ma10",
 "accts": [
 "crypto_lev.json"
-]
+],
+"fb": [
+"보유 6봉 동안 가장 유리했을 때 +2.2R · 가장 불리했을 때 −0.0R"
+],
+"R": null,
+"done": true
 },
 "ma10:BTC-USD|2026-11-21": {
 "png": "data/us/charts/BTCUSD_202611210000_ma10.png",
-"sig": "aa77f173",
+"sig": "v2aa77f173",
 "kind": "ma10",
 "accts": [
 "crypto_lev.json"
-]
+],
+"fb": [],
+"R": null,
+"done": true
 },
 "ma10:BTC-USD|2026-11-22": {
 "png": "data/us/charts/BTCUSD_202611220000_ma10.png",
-"sig": "18882ebd",
+"sig": "v218882ebd",
 "kind": "ma10",
 "accts": [
 "crypto_lev.json",
 "crypto_part_lev.json"
-]
+],
+"fb": [],
+"R": null,
+"done": true
 }
 }
