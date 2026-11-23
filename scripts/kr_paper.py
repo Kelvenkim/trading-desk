@@ -1,6 +1,6 @@
 """
 한국 주식 모의 계좌 (11/23 형: "미국이랑 한국 같이 운영해")
-가상 1,000만 원 · 코스피·코스닥 300종목(data/rank/universe.json) · 일봉 · 장 마감 뒤 하루 한 번 (.github/workflows/kr.yml, 15:50 한국 시간 + 예비)
+가상 1,000만 원 · 코스피·코스닥 시총 1조~10조 보통주 (11/23 형 기준 300억~10조 중 시험에서 통한 구간 — research/kr2/bt_cap.py) · 일봉 · 장 마감 뒤 하루 한 번 (.github/workflows/kr.yml, 15:50 한국 시간 + 예비)
 
 규칙 고른 과정 (research/kr/bt.py, 2015~2026 한국 300종목, 비용·거래세 포함):
   미국 주식 계좌 규칙 그대로(점수 0.6↑ 눌림 매수) → 연 −3.6% · 최대 낙폭 −66% (코스피 그냥 보유 +7.8% · −48%) → 탈락
@@ -45,10 +45,39 @@ def won(x):
     return f"{x:,.0f}원"
 
 
+CAP_LO, CAP_HI = 10_000, 100_000     # 억 원 (11/23 형: 300억~10조로 매매 → 시험에서 3,000억 아래는 이 규칙이 연 −19~−21%라 1조~10조로)
+
+
+def universe():
+    """네이버 증권 시가총액 목록에서 보통주(ETF·스팩·우선주 제외) 시총 1조~10조 — 매일 다시 받음 (실패하면 지난 목록)"""
+    import re, requests
+    f = ROOT / "data/kr/universe.json"
+    out = []
+    try:
+        for mk in ("KOSPI", "KOSDAQ"):
+            for p in range(1, 40):
+                d = requests.get(f"https://m.stock.naver.com/api/stocks/marketValue/{mk}?page={p}&pageSize=100", headers={"User-Agent": "Mozilla/5.0"}, timeout=15).json()
+                st = d.get("stocks") or []
+                for x in st:
+                    try:
+                        cap = float(str(x.get("marketValue")).replace(",", ""))
+                    except ValueError:
+                        continue
+                    if x.get("stockEndType") == "stock" and CAP_LO <= cap <= CAP_HI and "스팩" not in x["stockName"] and not re.search(r"(우|우B|우C|\(전환\))$", x["stockName"]):
+                        out.append([x["itemCode"], x["stockName"], mk, cap])
+                if len(st) < 100 or (st and float(str(st[-1].get("marketValue", "0")).replace(",", "") or 0) < CAP_LO):
+                    break
+        if len(out) > 100:
+            f.parent.mkdir(parents=True, exist_ok=True); f.write_text(json.dumps(out, ensure_ascii=False))
+    except Exception as e:
+        print("종목 목록 실패, 지난 목록 사용", e)
+    return json.loads(f.read_text())
+
+
 def load_data():
     import yfinance as yf
-    U = json.loads((ROOT / "data/rank/universe.json").read_text())
-    tk = {c + (".KS" if m == "KOSPI" else ".KQ"): n for c, n, m in U}
+    U = universe()
+    tk = {c + (".KS" if m == "KOSPI" else ".KQ"): n for c, n, m, *_ in U}
     P = yf.download(list(tk) + ["^KS11"], period="3y", auto_adjust=True, group_by="ticker", progress=False, threads=True)
     W = lambda k: pd.DataFrame({t: P[t][k] for t in tk if t in P.columns.get_level_values(0)})
     O, H, L, C, V = W("Open"), W("High"), W("Low"), W("Close"), W("Volume")
@@ -76,8 +105,8 @@ def run():
              "last": str(days[-2].date()), "gate": GATE,
              "rule": ("주도주 돌파: 52주 신고가 첫 돌파 + 거래량 50일 평균 1.5배↑ + 상대강도 80↑ + 코스피 200일선 위 → 다음 날 시가 · 손절 −7% · RS 70↓+50일선 이탈 매도 · 한 번 손절 시 계좌 −2%" if GATE else
                       "주도주 돌파(시장 필터 없음): 52주 신고가 첫 돌파 + 거래량 1.5배↑ + 상대강도 80↑ → 다음 날 시가 · 코스피 200일선 아래면 크기 절반·하루 1종목 · 손절 −7% · RS 70↓+50일선 이탈 매도")}
-        say(S, "claude", "── 한국 주식 계좌 개설 · 가상 1,000만 원 · 코스피·코스닥 300종목 · " + ("주도주 돌파 (코스피 200일선 위에서만)" if GATE else "주도주 돌파 (시장 필터 없음 — 11/23 형: 따로 바로 시작)") + " ──")
-        say(S, "analyst", "같은 규칙 시험(2015~, 코스피 +7.8%): " + ("주도주 돌파+코스피 200일선 위만 → 연 +19.9%·최대 낙폭 −38%." if GATE else "시장 필터 없이 → 연 +15.0%·최대 낙폭 −51% (필터 있는 계좌보다 낙폭 큼, 하락장에선 크기 절반).") + " 지금 종목으로 과거를 시험해서 실제는 더 나쁠 수 있어요.")
+        say(S, "claude", "── 한국 주식 계좌 개설 · 가상 1,000만 원 · 코스피·코스닥 시총 1조~10조 · " + ("주도주 돌파 (코스피 200일선 위에서만)" if GATE else "주도주 돌파 (시장 필터 없음 — 11/23 형: 따로 바로 시작)") + " ──")
+        say(S, "analyst", "같은 규칙 시험(2015~, 코스피 +7.8%): " + ("시총 1조~10조에서 주도주 돌파+코스피 200일선 위만 → 연 +15.0%·최대 낙폭 −40%. (시총 300억~3,000억은 같은 규칙이 연 −19%라 뺌)" if GATE else "시총 1조~10조에서 시장 필터 없이 → 연 +4.8%·최대 낙폭 −44% (필터 있는 쪽보다 약함, 하락장에선 크기 절반).") + " 지금 종목으로 과거를 시험해서 실제는 더 나쁠 수 있어요.")
     last = pd.Timestamp(S["last"])
     for d in [x for x in days if x > last]:
         i = C.index.get_loc(d); ds = str(d.date())
