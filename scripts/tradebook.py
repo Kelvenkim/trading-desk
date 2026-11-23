@@ -78,6 +78,7 @@ def inwin(t, a, b):
 ACCTS = [
     ("미국 주식 (스윙)", [("", "ai_paper.json")], "stock"),
     ("한국 주식 (주도주 돌파, 원)", [("", "../kr/kr_paper.json")], "kr"),
+    ("한국 주식 필터 없음 (원)", [("", "../kr/kr_all.json")], "kr"),
     ("데이트레이딩", [("", "day_desk.json")], "day"),
     ("코인 (AMD·오더블록·50일선 3칸)", [("AMD", "coin_amd.json"), ("오더블록", "coin_ob.json"), ("50일선", "crypto_part_coin.json")], "coin"),
     ("코인 10배 (AMD·오더블록·50일선 3칸)", [("AMD", "lev10.json"), ("오더블록", "lev10_ob.json"), ("50일선", "crypto_part_lev.json")], "coin"),
