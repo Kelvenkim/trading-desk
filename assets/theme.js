@@ -85,7 +85,7 @@ const ThemeUI = (() => {
     const heads = (r.heads || []).map((h) => `<li>${h.pol ? `<span class="tag pol">정책</span>` : `<span class="tag">사업</span>`}
       <a href="${esc(h.u)}" target="_blank" rel="noopener">${esc(h.t)}</a> <span class="sub">${esc(h.name)} · ${esc(h.o || "")} ${h.d ? h.d.slice(4, 6) + "/" + h.d.slice(6, 8) : ""}</span></li>`).join("");
     const parts = Object.entries(T.parts).map(([p, d]) => `<div class="pbar"><span class="pn">${d.name}</span><span class="pt"><i style="width:${r.parts[p] / d.max * 100}%;background:${PCOL[p]}"></i></span><span class="pv"><b>${r.parts[p].toFixed(0)}</b>/${d.max}</span></div>`).join("");
-    const stocks = r.stocks.slice(0, 25).map((s) => `<tr data-sym="${s.code}">
+    const stocks = r.stocks.map((s) => `<tr data-sym="${s.code}">
       <td><b>${esc(s.ko || s.code)}</b> <span class="sub">${esc(s.code)}</span></td>
       <td class="small">${s.n ? `${REC[s.rec] || s.rec || "—"} <span class="sub">${s.n}명</span>` : "—"}</td>
       <td class="r ${cls(s.r3)}">${pct(s.r3)}</td><td class="r">${s.up != null ? pct(s.up, 0) : "—"}</td>
