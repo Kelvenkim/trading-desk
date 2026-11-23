@@ -144,6 +144,7 @@ const DeskUI = (() => {
     const CX = mergeAcct(await getj("data/us/coin_amd.json"), await getj("data/us/coin_ob.json"), await getj("data/us/crypto_part_coin.json"));
     const partTxt = (X) => X.parts.map(([nm, P]) => `${nm} 칸 ${usd(P.eq_now ?? P.cash, 0)}`).join(" · ") + (X.ma ? ` · 50일선 칸 ${usd(X.ma.eq_now, 0)}` : "");
     const Q = Q0;
+    SM.charts = (await getj("data/us/charts/index.json")) || {};
     getj("data/us/coach.json").then(renderCoach);                                       // 10배 단타 (추세 눌림, 11/22 새로 시작 — 예전 평균 회귀 단타는 접음)
     // 1) 계좌 탭 (토스증권처럼 위에 계좌, 고르면 아래가 그 계좌로 바뀜)
     const cards = {};
@@ -190,7 +191,7 @@ const DeskUI = (() => {
     rows.sort((a, b) => (b.pl ?? -9) - (a.pl ?? -9));
     $("#sm-pos-sub").textContent = rows.length ? `${rows.length}개 · 수익률은 산 가격 대비 (수수료 전)` : "";
     $("#sm-pos").innerHTML = rows.map((r, ri) => `<tr class="open" data-ri="${ri}">
-      <td><button class="tt-sym" data-sym="${esc(r.sym)}"><b>${esc(r.nm || r.sym)}${sideTxt(r.side)}</b><span class="muted">${esc(r.nm ? r.sym : nameOf(r.sym))} · ${md(r.since)} 매수</span></button></td>
+      <td><button class="tt-sym" data-sym="${esc(r.sym)}"><b>${esc(r.nm || r.sym)}${sideTxt(r.side)}</b><span class="muted">${esc(r.nm ? r.sym : nameOf(r.sym))} · ${md(r.since)} 매수</span></button>${chartBtn(r)}</td>
       <td class="num">${px$(r.entry)} → <b class="nowpx">${px$(r.now)}</b></td>
       <td class="num pl ${cls(r.pl)}">${pct(r.pl, 1)}</td>
       <td class="num hide-sm">${r.stop ? px$(r.stop) : "—"}<span class="s">${r.stopLbl ? r.stopLbl : r.target ? "목표 " + px$(r.target) : ""}</span></td>
@@ -233,6 +234,15 @@ const DeskUI = (() => {
     });
     $("#sm-pos-sub").textContent += " · 코인은 지금 가격(실시간)";
   }
+  // 매매 차트 (scripts/trade_charts.py → data/us/charts/index.json, 11/22 형: "여기서 오더블록이 나와서 매수" 식으로 보여줘)
+  const chartOf = (kind, sym, t) => { const x = (SM.charts || {})[`${kind}:${sym}|${String(t || "").slice(0, 16).replace("T", " ")}`]; return x ? x.png : null; };
+  const kindOfRow = (r) => {
+    const w = r.why || "";
+    if (r.k === "ob") return "ob"; if (r.k === "amd") return "amd"; if (r.k === "tr10") return "tr"; if (r.k === "c50") return "ma"; if (r.k === "l50") return "ma10";
+    if (r.k === "coin" || r.k === "lev") return w.startsWith("[AMD]") ? "amd" : w.startsWith("[오더블록]") ? "ob" : w.startsWith("[50일선]") ? (r.k === "lev" ? "ma10" : "ma") : null;
+    return null;
+  };
+  const chartBtn = (r) => { const k = kindOfRow(r); const png = k && chartOf(k, r.sym, r.din || r.since); return png ? `<a class="ch-btn" href="${esc(png)}" data-fm-view="${esc(png)}" data-fm-title="${esc((r.nm || r.sym) + " 매매 차트")}">📈 차트</a>` : ""; };
   const COINNM = { "BTC-USD": "비트코인", "ETH-USD": "이더리움", "SOL-USD": "솔라나" };
   function renderJournal(O) {                          // 오더블록 매매일지: 진입 이유 · 손절/익절 이유 · 피드백
     const el = $("#ob-journal"); if (!el) return;
@@ -247,6 +257,7 @@ const DeskUI = (() => {
           <span class="ob-j-t"><b>${j.tag ? `<span class="sm-tag">${esc(j.tag)}</span> ` : ""}${esc(COINNM[j.sym] || j.sym)} ${esc(j.side)}</b> <span class="muted small">${tm(j.in_at)} 진입</span></span>
           <span class="ob-j-r ${j.exit == null ? "" : j.R > 0 ? "up" : "down"}">${j.exit == null ? "보유 중" : `${j.R >= 0 ? "+" : ""}${j.R}R`}</span></summary>
         <div class="ob-j-b">
+          ${(() => { const png = chartOf(j.tag === "AMD" ? "amd" : j.tag === "오더블록" ? "ob" : SM.acct === "amd" ? "amd" : "ob", j.sym, j.in_at); return png ? `<a href="${esc(png)}" data-fm-view="${esc(png)}" data-fm-title="${esc((COINNM[j.sym] || j.sym) + " " + j.side + " 매매 차트")}"><img class="tr-chart" src="${esc(png)}" alt="매매 차트" loading="lazy"></a>` : ""; })()}
           <p class="small">진입 ${j.fill} · 손절 ${j.stop} (${j.risk_pct}%) · 목표 ${j.target} · $${Math.round(j.size).toLocaleString()}어치${j.mtf ? " · <b>4시간 OB 겹침</b>" : ""}</p>
           <h5>진입 이유</h5><ul>${(j.why_in || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
           ${(j.partial || []).map((x) => `<h5>부분 익절</h5><p class="small">${tm(x.at)} · ${x.px} · ${esc(x.why)} · ${x.pnl >= 0 ? "+" : ""}$${x.pnl}</p>`).join("")}
@@ -260,7 +271,7 @@ const DeskUI = (() => {
     const done = all.filter((r) => !r.open);
     $("#sm-log-sub").textContent = done.length ? `끝난 매매 ${done.length}번 · 이긴 것 ${done.filter((r) => r.pl > 0).length}번` : "끝난 매매 아직 없음";
     $("#sm-log").innerHTML = L.map((r) => `<tr class="${r.open ? "open" : ""}"><td class="small hide-sm">${md(r.d)}</td>
-      <td><button class="tt-sym" data-sym="${esc(r.sym)}"><b>${esc(r.nm || r.sym)}${sideTxt(r.side)}</b><span class="muted">${esc(r.nm ? r.sym : nameOf(r.sym))}</span></button></td>
+      <td><button class="tt-sym" data-sym="${esc(r.sym)}"><b>${esc(r.nm || r.sym)}${sideTxt(r.side)}</b><span class="muted">${esc(r.nm ? r.sym : nameOf(r.sym))}</span></button>${chartBtn(r)}</td>
       <td class="num">${r.open ? `${px$(r.a)} → <span class="muted">보유 중</span>` : `${px$(r.a)} → ${px$(r.b)}`}<span class="s">${r.open ? md(r.din) + " 매수" : md(r.din) + " 매수 · " + md(r.d) + " 매도"}</span></td>
       <td class="num pl ${cls(r.pl)}">${pct(r.pl, 1)}${r.open ? `<span class="s">평가</span>` : ""}</td>
       <td class="hide-sm"><span class="why" title="${esc(r.why || "")}">${esc(r.why || "")}</span></td></tr>`).join("")

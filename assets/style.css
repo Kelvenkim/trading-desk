@@ -1316,3 +1316,6 @@ body.chart-full .center.full { left: calc(max(8px, env(safe-area-inset-left)) + 
 .ck-tbl tr.ok td { background: rgba(47,163,107,.10); }
 .ck-live { margin-top: 6px; }
 .ck-tbl .ck-res { text-align: center; white-space: nowrap; }
+/* 매매 차트 (11/22) */
+.ch-btn { display: inline-block; margin-left: 6px; font-size: 11px; color: var(--accent); white-space: nowrap; }
+.tr-chart { width: 100%; max-width: 720px; border-radius: 10px; display: block; margin: 4px 0 8px; cursor: zoom-in; }

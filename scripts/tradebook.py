@@ -111,23 +111,24 @@ def events(S, f, tag, a, b):
     """칸 하나의 산 것·판 것·진입 안 한 자리"""
     ev, skips = [], []
     pre = f"[{tag}] " if tag else ""
+    kind = "ob" if "ob" in f else "amd" if ("amd" in f or f == "lev10.json") else "tr" if f == "trend10.json" else "ma10" if ("crypto_lev" in f or "part_lev" in f) else "ma" if "crypto" in f else ""
     for J in (S.get("journal") or []):                                   # AMD·오더블록 일지
         if not isinstance(J, dict) or "in_at" not in J:
             continue
         nm = NM.get(J.get("sym"), J.get("sym"))
         if inwin(J.get("in_at"), a, b):
-            ev.append(dict(t=J["in_at"], kind="산 것", sym=nm, side=J.get("side"), px=J.get("fill"),
+            ev.append(dict(ck=(kind, J.get("sym"), J["in_at"]), t=J["in_at"], kind="산 것", sym=nm, side=J.get("side"), px=J.get("fill"),
                            res=f"손절 {J.get('stop')} · 목표 {J.get('target')}", why=pre + " / ".join(J.get("why_in") or []), fb=[]))
         if J.get("exit") is not None and inwin(J.get("out_at"), a, b):
-            ev.append(dict(t=J["out_at"], kind="판 것", sym=nm, side=J.get("side"), px=J.get("exit"), R=J.get("R"), usd=J.get("pnl"),
+            ev.append(dict(ck=(kind, J.get("sym"), J.get("in_at")), t=J["out_at"], kind="판 것", sym=nm, side=J.get("side"), px=J.get("exit"), R=J.get("R"), usd=J.get("pnl"),
                            why=pre + (J.get("why_out") or ""), fb=J.get("feedback") or []))
     for T in (S.get("trades") or []):                                    # 주식·추세·50일선 기록
         sym = T.get("sym") or ("BTC-USD" if "crypto_lev" in f or "part_lev" in f else "")
         nm = NM.get(sym, sym); side = "숏" if T.get("side", 1) < 0 else "롱"
         if inwin(T.get("in"), a, b) and f != "ai_paper.json":
-            ev.append(dict(t=T["in"], kind="산 것", sym=nm, side=side, px=T.get("entry"), why=pre + (T.get("entry_why") or ""), fb=[]))
+            ev.append(dict(ck=(kind, sym, T.get("in")), t=T["in"], kind="산 것", sym=nm, side=side, px=T.get("entry"), why=pre + (T.get("entry_why") or ""), fb=[]))
         if inwin(T.get("out"), a, b):
-            ev.append(dict(t=T["out"], kind="판 것", sym=nm, side=side, px=T.get("exit", T.get("px")), R=T.get("R"), pl=T.get("pl", T.get("acct")), usd=T.get("usd"),
+            ev.append(dict(ck=(kind, sym, T.get("in")), t=T["out"], kind="판 것", sym=nm, side=side, px=T.get("exit", T.get("px")), R=T.get("R"), pl=T.get("pl", T.get("acct")), usd=T.get("usd"),
                            why=pre + (T.get("why") or "") + (f" · 산 이유: {T['entry_why']}" if T.get("entry_why") and f == "ai_paper.json" else ""), fb=[]))
     pos = S.get("pos")                                                    # 기간 안에 새로 들어간 보유
     if isinstance(pos, dict) and pos and "side" in pos and "since" in pos:  # 10배 50일선 (포지션 하나)
@@ -135,12 +136,12 @@ def events(S, f, tag, a, b):
     if isinstance(pos, dict):
         for sym, p in pos.items():
             if isinstance(p, dict) and inwin(p.get("at") or p.get("since"), a, b) and not any(x["kind"] == "산 것" and x["sym"] == NM.get(sym, sym) for x in ev):
-                ev.append(dict(t=p.get("at") or p.get("since"), kind="산 것 (보유 중)", sym=NM.get(sym, sym), side="숏" if p.get("side", 1) < 0 else "롱",
+                ev.append(dict(ck=(kind, sym, p.get("at") or p.get("since")), t=p.get("at") or p.get("since"), kind="산 것 (보유 중)", sym=NM.get(sym, sym), side="숏" if p.get("side", 1) < 0 else "롱",
                                px=p.get("fill", p.get("entry")), res=f"손절 {round(p['stop'], 2) if p.get('stop') else '—'}", why=pre + (p.get("why") or ""), fb=[]))
     elif isinstance(pos, list):
         for p in pos:
             if inwin(p.get("since"), a, b):
-                ev.append(dict(t=p["since"], kind="산 것 (보유 중)", sym=p.get("name") or p.get("sym"), side="숏" if p.get("side", 1) < 0 else "롱",
+                ev.append(dict(ck=(kind, p.get("sym"), p.get("since")), t=p["since"], kind="산 것 (보유 중)", sym=p.get("name") or p.get("sym"), side="숏" if p.get("side", 1) < 0 else "롱",
                                px=p.get("entry", p.get("avg")), why=pre + (p.get("why") or ("50일선 " + ("아래 → 숏" if p.get("side", 1) < 0 else "위 → 롱"))), fb=[]))
     for s in (S.get("skips") or []):
         if inwin(s.get("at"), a, b):
@@ -176,7 +177,8 @@ def build_html(a=None, b=None):
         rows += (f"<tr><td>{e(name)}</td><td class='num'>${eq:,.0f}</td><td class='num {cls(eq / base - 1)}'>{pct(eq / base - 1, 2)}</td>"
                  f"<td class='num {cls(eq / e0 - 1 if e0 else None)}'>{pct(eq / e0 - 1 if e0 else None, 2)}</td><td class='num'>산 것 {sum(1 for x in evs if x['kind'] != '판 것')} · 판 것 {len(done)}</td></tr>")
     out.append("<table><tr><th>계좌</th><th class='num'>지금</th><th class='num'>시작 대비</th><th class='num'>이번 기간</th><th class='num'>이번 기간 매매</th></tr>" + rows + "</table>")
-    # 2) 계좌별 기록지
+    # 2) 계좌별 기록지 (+ 매매 차트: scripts/trade_charts.py)
+    SEEN = set()
     for name, evs, sks in allev:
         if not evs and not sks:
             continue
@@ -189,6 +191,16 @@ def build_html(a=None, b=None):
                   f"<td class='num {c}'>{e(res)}{' · $' + format(x['usd'], ',.0f') if x.get('usd') is not None else ''}</td><td class='sm'>{e(x['why'])}"
                   + ("".join(f"<div class='fb'>💬 {e(fb)}</div>" for fb in x.get("fb") or []) if x.get("fb") else "") + "</td></tr>")
         h += "</table>" if evs else "</table><p class='sm'>산 것·판 것 없음</p>"
+        CH = j("charts/index.json") or {}
+        pics = []
+        for x in evs:
+            kd, sy, ti = x.get("ck") or (None, None, None)
+            c = CH.get(f"{kd}:{sy}|{str(ti)[:16].replace('T', ' ')}") if kd else None
+            if c and c["png"] not in SEEN and c["png"] not in pics:
+                pics.append(c["png"])
+        SEEN.update(pics)
+        if pics:
+            h += "<div class='cap'>매매 차트 — 어디서 왜 사고 팔았는지</div><div class='tcharts'>" + "".join(f"<img src='{(ROOT / p_).resolve().as_uri()}'>" for p_ in pics[:8]) + "</div>"
         if sks:
             h += f"<div class='cap'>진입 안 한 자리 {len(sks)}개</div><ul class='sm'>" + "".join(f"<li>{kst(s['t'])} {e(s['sym'])} {e(s['side'])} — {e(s['why'])}</li>" for s in sks[-15:]) + "</ul>"
         out.append(h)
@@ -209,7 +221,8 @@ def build_html(a=None, b=None):
     return "".join(out)
 
 
-CSS = ".fb { margin-top: 3px; color: #c9ccff; font-size: 8.4px; }"
+CSS = """.fb { margin-top: 3px; color: #c9ccff; font-size: 8.4px; }
+.tcharts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 4px 0 8px; } .tcharts img { width: 100%; border-radius: 8px; break-inside: avoid; }"""
 
 if __name__ == "__main__":
     a, b = window()
