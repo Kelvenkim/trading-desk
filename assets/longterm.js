@@ -9,7 +9,7 @@ const LongUI = (() => {
   const tag = (k) => `<span class="lt-k ${KIND[k] || ""}">${esc(k)}</span>`;
   const item = ([t, k, src]) => `<li>${tag(k)} ${esc(t)}${src ? ` <a href="${esc(src)}" target="_blank" rel="noopener" class="lt-src">출처</a>` : ""}</li>`;
   const NECK = { "매우 강함": "n5", "강함": "n4", "보통": "n3", "약함": "n2", "단순 테마": "n1", "모름": "n0" };
-  let I = null, R = null, cur = null, inited = false;
+  let I = null, R = null, cur = null, inited = false, TH = new Map();
 
   const FORMULAS = [
     ["장기 손익비 (기댓값)", "G×pG + L×pL", "잘 풀리면 G, 안 풀리면 L, 확률 pG. 이상적인 자리 = 상방 4~5배 · 하방 반토막(−50%) 이내", "형 공식 (11/19)"],
@@ -26,6 +26,7 @@ const LongUI = (() => {
       document.querySelectorAll(".lt-tab").forEach((b) => b.addEventListener("click", () => pane(b.dataset.lt)));
       $("#lt-root").addEventListener("click", (e) => {
         const c = e.target.closest("[data-co]"); if (c) { openCo(c.dataset.co); return; }
+        const sy = e.target.closest("#lt-body [data-sym]"); if (sy) { App.openChart(sy.dataset.sym); return; }
         const ind = e.target.closest("[data-ind]"); if (ind) { load(ind.dataset.ind); ind.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" }); return; }
         const mo = e.target.closest("[data-more]"); if (mo) { const el = $("#lt-sum"); el.classList.toggle("clamp"); mo.textContent = el.classList.contains("clamp") ? "더 보기" : "접기"; return; }
       });
@@ -37,16 +38,18 @@ const LongUI = (() => {
     }
     try { I = await (await fetch("data/us/longterm/index.json?t=" + Date.now())).json(); } catch (_) { $("#lt-body").innerHTML = `<p class="muted">아직 리서치가 없어요.</p>`; return; }
     let themes = [];
-    try { themes = (await (await fetch("data/us/theme.json?t=" + Date.now())).json()).rows.map((r) => ({ key: r.key, name: r.name })); } catch (_) {}
+    try { themes = (await (await fetch("data/us/theme.json?t=" + Date.now())).json()).rows; } catch (_) {}
+    TH = new Map(themes.map((r) => [r.key, r]));         // 11/23 형: 리서치와 테마 점수를 한 화면으로 — 테마 점수 순으로 정렬, 고르면 전체 종목까지
     const done = new Map(I.industries.map((x) => [x.key, x]));
-    const all = [...I.industries, ...themes.filter((t) => !done.has(t.key))];
+    const sc = (k) => (TH.get(k) || {}).score ?? -1;
+    const all = [...I.industries, ...themes.filter((t) => !done.has(t.key))].sort((a, b) => sc(b.key) - sc(a.key));
     $("#lt-progress").textContent = `장기 테마 ${themes.length || all.length}개 중 ${I.industries.length}개 완료`;
     const VC = { "우호": "v-good", "중립": "v-mid", "비우호": "v-bad" };
     $("#lt-inds").innerHTML = all.map((x) => done.has(x.key)
-      ? `<button class="lt-ind" data-ind="${esc(x.key)}"><i class="lt-vd ${VC[x.verdict] || ""}"></i>${esc(x.name)}</button>`
+      ? `<button class="lt-ind" data-ind="${esc(x.key)}"><i class="lt-vd ${VC[x.verdict] || ""}"></i>${esc(x.name)}${TH.get(x.key) ? ` <span class="lt-sc">${Math.round(TH.get(x.key).score)}</span>` : ""}</button>`
       : `<button class="lt-ind todo" disabled>${esc(x.name)} · 예정</button>`).join("");
     $("#lt-formulas").innerHTML = FORMULAS.map(([n, f, w, s]) => `<li><b>${esc(n)}</b> <code>${esc(f)}</code> <span class="lt-k ${s.startsWith("검증") ? "lt-f" : "lt-e"}">${esc(s)}</span><span class="muted small">${esc(w)}</span></li>`).join("");
-    if (!R && I.industries[0]) load((I.industries.find((x) => x.key === "defense") || I.industries[0]).key);   // 처음엔 방산·우주
+    if (!R && I.industries[0]) load(([...I.industries].sort((x, y) => sc(y.key) - sc(x.key))[0]).key);   // 처음엔 테마 점수 1위
   }
 
   async function load(key) {
@@ -64,14 +67,24 @@ const LongUI = (() => {
     const sec = (title, sub, body) => `<details class="lt-acc"><summary><b>${title}</b><span class="muted small">${sub}</span></summary><div class="lt-acc-b">${body}</div></details>`;
     const order = ["핵심", "관찰", "병목", "투기", "부적합"];
     const cos = [...R.companies].sort((x, y) => order.findIndex((o) => x.cls.includes(o)) - order.findIndex((o) => y.cls.includes(o)));
+    const T_ = TH.get(key), pp = (v) => v == null ? "—" : `<b class="${v >= 0 ? "up" : "down"}">${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)}%p</b>`;
+    const resSet = new Set(R.companies.map((c) => c.t));
+    const thLine = T_ ? `<div class="lt-thline"><span>테마 점수 <b>${Math.round(T_.score)}</b>/100 · ${T_.rank}위 · <b>${esc(T_.status || "")}</b></span><span>S&P500 대비 3개월 ${pp(T_.r3)} · 6개월 ${pp(T_.r6)}</span></div>` : "";
+    const allTbl = T_ && T_.stocks ? `<h4 class="lt-h">테마 전체 종목 ${T_.stocks.length}개 <span class="muted small">3개월 수익률 순 · <span class="lt-rs">리서치</span> = 위 카드에 분석 있음</span></h4>
+      <div class="tbl-wrap"><table class="tt-tbl lt-all"><thead><tr><th>종목</th><th class="num">3개월</th><th class="num hide-sm">월가 목표 여력</th><th></th></tr></thead><tbody>${[...T_.stocks].sort((a, b) => (b.r3 ?? -9) - (a.r3 ?? -9)).map((s) => `<tr>
+        <td><b>${esc(s.ko || s.name || s.code)}</b> <span class="muted small">${esc(s.code)}</span>${resSet.has(s.code) ? ` <span class="lt-rs">리서치</span>` : ""}</td>
+        <td class="num ${s.r3 >= 0 ? "up" : "down"}">${pct(s.r3)}</td><td class="num hide-sm">${s.up != null ? pct(s.up) : "—"}</td>
+        <td class="num"><button class="btn small" data-sym="${esc(s.code)}">차트</button></td></tr>`).join("")}</tbody></table></div>` : "";
     $("#lt-body").innerHTML = `
       <div class="lt-hero">
         <div class="lt-hero-top"><h3>${esc(R.name)}</h3><span class="lt-verdict ${VC[M.verdict] || ""}">매크로 ${esc(M.verdict)}</span></div>
         <p class="lt-sum clamp" id="lt-sum">${esc(R.summary)}</p>
         <div class="lt-hero-foot"><button class="lt-more" data-more>더 보기</button><span class="muted small">${esc(R.asof)} 리서치 · 숫자 ${esc((R.metrics_at || "").slice(5, 10).replace("-", "/"))}</span><a class="lt-pdf sm" href="${pdf}" target="_blank" rel="noopener">산업 PDF</a></div>
       </div>
-      <h4 class="lt-h">회사 ${R.companies.length}곳 <span class="muted small">눌러서 소개·검증·시나리오 보기</span></h4>
+      ${thLine}
+      <h4 class="lt-h">리서치한 회사 ${R.companies.length}곳 <span class="muted small">눌러서 소개·검증·시나리오 보기</span></h4>
       <div class="lt-cards">${cos.map(card).join("")}</div>
+      ${allTbl}
       <h4 class="lt-h">자세히 보기 <span class="muted small">7단계 리서치 원문</span></h4>
       ${sec("매크로 환경", esc(M.verdict_why), `
         <div class="lt-2"><div><h5>우호 요인</h5><ul class="lt-ul">${M.good.map(item).join("")}</ul></div><div><h5>비우호 요인</h5><ul class="lt-ul">${M.bad.map(item).join("")}</ul></div>
@@ -161,9 +174,8 @@ const LongUI = (() => {
     $("#lt-evout").innerHTML = `<p>기댓값 <b class="${ev > 0 ? "up" : "down"}">${pct(ev)}</b> = (${pct(G)} × ${Math.round(pg * 100)}%) + (${pct(L)} × ${Math.round((1 - pg) * 100)}%) · 손익비 <b>${ratio ? ratio.toFixed(1) + " : 1" : "—"}</b> · 본전 확률 <b>${Math.round(be * 100)}%</b></p>
       <p class="small ${ideal ? "up" : "muted"}">${ideal ? "이상적 자리: 상방 4배↑ · 하방 반토막 이내" : `이상적 기준(상방 4~5배 · 하방 −50% 이내)과 비교: 상방 ${(1 + G).toFixed(1)}배 · 하방 ${pct(L)}`}</p>`;
   }
-  function pane(k) {
-    document.querySelectorAll(".lt-tab").forEach((b) => b.classList.toggle("on", b.dataset.lt === k));
-    document.querySelectorAll(".lt-pane").forEach((p) => (p.hidden = p.dataset.pane !== k));
+  function pane(k) {                                 // 11/23: 탭 없앰 — 'th'는 아래 접힌 테마 순위 칸을 펼침
+    if (k === "th") { const d = document.querySelector(".lt-thall"); if (d) { d.open = true; d.scrollIntoView({ behavior: "smooth" }); } }
   }
   async function openTicker(key, t) {               // 차트 화면에서 '장기 리서치' 바로가기
     await onShow();                                  // 버튼(닫기·용어) 연결이 안 된 채 열리는 문제 방지

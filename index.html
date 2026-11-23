@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="assets/style.css?v=8639bdc7" />
+  <link rel="stylesheet" href="assets/style.css?v=993b2275" />
   <script src="https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -200,8 +200,7 @@
     <!-- ================= 장기 테마 ================= -->
     <section id="tab-theme" class="panel">
       <div class="rk-head"><h2>장기 투자 <span class="muted small" id="th-date"></span></h2>
-        <p class="muted small th-intro">산업을 고르면 회사별 판단이 나와요. 세부 근거는 아래 '자세히 보기'에 접어 뒀어요.</p></div>
-      <div class="lt-tabs"><button class="lt-tab on" data-lt="res">산업·종목 리서치</button><button class="lt-tab" data-lt="th">테마 점수</button></div>
+        <p class="muted small th-intro">테마(산업)는 지금 주가 추세가 강한 순서예요. 고르면 테마 점수 → 리서치한 핵심 회사 → 테마 전체 종목 순서로 나와요.</p></div>
       <div id="lt-root" class="lt-pane" data-pane="res">
         <div class="lt-inds" id="lt-inds"></div>
         <div class="box" id="lt-body"><p class="muted">불러오는 중…</p></div>
@@ -221,7 +220,7 @@
         <details class="box lt-frame"><summary><b>우리가 검증한 공식</b> <span class="muted small">모든 회사에 자동 적용</span></summary><ul class="lt-forms" id="lt-formulas"></ul>
           <p class="hint">'검증' = 과거 데이터로 앞·뒤 기간 모두 확인한 것. 과거 성적이 미래를 보장하지 않아요.</p></details>
       </div>
-      <div class="lt-pane" data-pane="th" hidden>
+      <details class="lt-pane lt-thall box" data-pane="th"><summary><b>테마 순위 전체 · 점수 근거 · 과거 검증 · 추천 종목</b> <span class="muted small">테마 지수 차트와 뉴스도 여기</span></summary>
       <div class="rk-head"><p class="muted small th-intro">종목보다 먼저 "어떤 기술·트렌드·정책 이야기에 올라탈지"를 보는 곳이에요. 3개월~1년 관점이에요. 테마를 누르면 이야기·근거·지수 차트·종목·내 판단이 펼쳐져요.</p></div>
       <div class="box trust" id="th-trust"></div>
       <div class="box" id="th-macro"></div>
@@ -234,7 +233,7 @@
             <p class="hint">매달 '주가 추세 점수' 상위 3개 테마를 골랐을 때 그 뒤 성적이에요. 지금 테마 구성으로 과거를 계산해서 실제보다 좋게 나왔을 수 있어요. 테마 점수가 높다고 오른다는 보장은 없어요.</p></div>
         </div>
       </div>
-      </div>
+      </details>
     </section>
 
     <!-- ================= AI 트레이딩 데스크 ================= -->
@@ -722,7 +721,7 @@
   <script src="assets/levels.js?v=dfcb1e20"></script>
   <script src="assets/rank.js?v=b67267f1"></script>
   <script src="assets/theme.js?v=3d106f21"></script>
-  <script src="assets/longterm.js?v=95057627"></script>
+  <script src="assets/longterm.js?v=e734c9e5"></script>
   <script src="assets/news.js?v=8195726c"></script>
   <script src="assets/home.js?v=b6ddf735"></script>
   <script src="assets/company.js?v=89c6430f"></script>
