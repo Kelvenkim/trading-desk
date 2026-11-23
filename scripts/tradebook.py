@@ -76,7 +76,8 @@ def inwin(t, a, b):
 
 # ---- 계좌 목록: (이름, [(칸 이름, 파일)], 종류) ----
 ACCTS = [
-    ("주식 (스윙)", [("", "ai_paper.json")], "stock"),
+    ("미국 주식 (스윙)", [("", "ai_paper.json")], "stock"),
+    ("한국 주식 (주도주 돌파, 원)", [("", "../kr/kr_paper.json")], "kr"),
     ("데이트레이딩", [("", "day_desk.json")], "day"),
     ("코인 (AMD·오더블록·50일선 3칸)", [("AMD", "coin_amd.json"), ("오더블록", "coin_ob.json"), ("50일선", "crypto_part_coin.json")], "coin"),
     ("코인 10배 (AMD·오더블록·50일선 3칸)", [("AMD", "lev10.json"), ("오더블록", "lev10_ob.json"), ("50일선", "crypto_part_lev.json")], "coin"),
@@ -166,7 +167,7 @@ def build_html(a=None, b=None):
             rows += f"<tr><td>{e(name)}</td><td colspan=4 class='muted'>아직 시작 전</td></tr>"; continue
         eq = sum(eq_of(S, f) or 0 for _, f, S in Ss if S)
         e0 = sum((eq_at(S, a) or (eq_of(S, f) or 0)) for _, f, S in Ss if S)
-        base = 10000.0
+        base = 10_000_000.0 if kind == "kr" else 10000.0
         evs, sks = [], []
         for tag, f, S in Ss:
             if S:
@@ -174,7 +175,7 @@ def build_html(a=None, b=None):
         evs.sort(key=lambda x: str(ts(x["t"]))); sks.sort(key=lambda x: str(ts(x["t"])))
         allev.append((name, evs, sks))
         done = [x for x in evs if x["kind"] == "판 것"]
-        rows += (f"<tr><td>{e(name)}</td><td class='num'>${eq:,.0f}</td><td class='num {cls(eq / base - 1)}'>{pct(eq / base - 1, 2)}</td>"
+        rows += (f"<tr><td>{e(name)}</td><td class='num'>{f'{eq:,.0f}원' if kind == 'kr' else f'${eq:,.0f}'}</td><td class='num {cls(eq / base - 1)}'>{pct(eq / base - 1, 2)}</td>"
                  f"<td class='num {cls(eq / e0 - 1 if e0 else None)}'>{pct(eq / e0 - 1 if e0 else None, 2)}</td><td class='num'>산 것 {sum(1 for x in evs if x['kind'] != '판 것')} · 판 것 {len(done)}</td></tr>")
     out.append("<table><tr><th>계좌</th><th class='num'>지금</th><th class='num'>시작 대비</th><th class='num'>이번 기간</th><th class='num'>이번 기간 매매</th></tr>" + rows + "</table>")
     # 2) 계좌별 기록지 (+ 매매 차트: scripts/trade_charts.py)

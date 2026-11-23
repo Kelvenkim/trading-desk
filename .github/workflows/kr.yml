@@ -1,0 +1,36 @@
+name: 한국 주식 모의 계좌
+
+on:
+  schedule:
+    - cron: "50 6 * * 1-5"    # 15:50 한국 시간 (장 마감 15:30 뒤)
+    - cron: "20 8 * * 1-5"    # 예비 (GitHub 예약이 빠질 때) — 이미 처리한 날은 건너뜀
+    - cron: "40 11 * * 1-5"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  kr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: 한국 주식 계좌 (주도주 돌파)
+        run: python scripts/kr_paper.py
+      - name: 저장
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/kr/kr_paper.json
+          git diff --cached --quiet && exit 0
+          git commit -m "한국 주식 계좌 갱신"
+          for i in 1 2 3; do git pull --rebase -X theirs origin main && git push && break; sleep 5; done

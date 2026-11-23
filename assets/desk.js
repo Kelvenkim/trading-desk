@@ -18,7 +18,8 @@ const DeskUI = (() => {
 
   // ---------- 한눈에 보기: 계좌 성적 · 지금 보유 · 사고 판 기록 ----------
   const ACC = {                                        // 이름, 색, 설명, 펼칠 상세, 종류 — 탭 순서도 이 순서 (11/21 사용자 지정)
-    ai: ["주식", "#2fa36b", "주식 · 며칠~몇 주 보유", "more-ai", "stock"],
+    ai: ["주식", "#2fa36b", "미국 주식 · 며칠~몇 주 보유", "more-ai", "stock"],
+    kr: ["한국 주식", "#ffb020", "코스피·코스닥 300종목 · 주도주 신고가 돌파(거래량 1.5배·상대강도 80↑) · 코스피 200일선 위에서만 새로 삼 · 손절 −7% · 가상 1,000만 원 (11/23 시작)", "", "stock"],
     coin: ["코인", "#9b6bd8", "BTC·ETH · AMD + 오더블록 + 50일선, 돈 1/3씩 · 레버리지 없음 · 한 번 손절 시 계좌 −1%(AMD)/−0.25%(오더블록)", "", "coin"],
     lev: ["코인 10배", "#d86bb4", "BTC · AMD + 오더블록 + 50일선, 돈 1/3씩 · 한 번 손절 시 계좌 −2%(AMD)/−0.5%(오더블록) · 노출 최대 10배", "", "coin"],
     day: ["데이트레이딩", "#e5484d", "주식 · 그날 사서 그날 팔기", "more-day", "stock"],
@@ -63,6 +64,7 @@ const DeskUI = (() => {
   const tag = (k) => `<span class="sm-tag" style="--c:${ACC[k][1]}">${ACC[k][0]}</span>`;
   const sideTxt = (sd) => sd < 0 ? `<span class="sm-side down">숏</span>` : "";
   const px$ = (v) => !has(v) ? "—" : usd(v, v >= 1000 ? 0 : 2);
+  const pxr = (r, v) => r && r.cur === "KRW" ? (!has(v) ? "—" : Math.round(v).toLocaleString() + "원") : px$(v);
 
   async function renderReports() {
     const el = $("#rp-list"); if (!el) return;
@@ -130,7 +132,7 @@ const DeskUI = (() => {
   async function renderSummary() {
     renderReports(); renderFormulas();
     const [A, D, C, L, Q0] = await Promise.all(["data/us/ai_paper.json", "data/us/day_desk.json", "data/us/crypto_paper.json", "data/us/crypto_lev.json", "data/us/trend10.json"].map(getj));
-    const O = await getj("data/us/ob_paper.json"), M = await getj("data/us/amd_paper.json");
+    const O = await getj("data/us/ob_paper.json"), M = await getj("data/us/amd_paper.json"), KR = await getj("data/kr/kr_paper.json");
     // 11/22: 코인·코인 10배는 AMD 칸 + 오더블록 칸(돈을 반씩)을 합쳐서 한 계좌로 보여줌
     // 11/22 저녁: + 50일선 칸(MA_) — 계좌 돈을 AMD·오더블록·50일선 1/3씩
     const mergeAcct = (A_, B_, MA_) => {
@@ -154,6 +156,7 @@ const DeskUI = (() => {
     else if (C) card("coin", C.eq_now, 10000, C.start, `같은 기간 비트코인 ${pct(C.btc_ret, 1)}`);
     if (LV && LV.eq && LV.eq.length) card("lev", LV.eq_now ?? LV.cash, 10000, LV.start, `끝난 매매 ${LV.n_trades || 0}번${LV.parts ? ` · ${partTxt(LV)}` : ""}`);
     else if (L) card("lev", L.eq_now, 10000, L.start, `강제 청산 ${L.liq_n}번`);
+    if (KR) card("kr", KR.eq_now, KR.cash0, KR.start, `보유 ${(KR.view_pos || []).length}종목 · 같은 기간 코스피 ${pct(KR.bench, 2)} · 코스피 ${Math.round(KR.kospi).toLocaleString()} ${KR.kospi > KR.kospi200 ? "> 200일선 (매수 가능)" : "< 200일선 " + Math.round(KR.kospi200).toLocaleString() + " → 새 매수 안 함"}`);
     if (C) card("c50", C.eq_now, 10000, C.start, `규칙 ${C.rule_txt || "50일선"} · 같은 기간 비트코인 ${pct(C.btc_ret, 1)}`);
     if (L) card("l50", L.eq_now, 10000, L.start, `강제 청산 ${L.liq_n}번 · 같은 기간 비트코인 ${pct(L.btc_ret, 1)}`);
     if (D && D.eq && D.eq.length) card("day", D.eq[D.eq.length - 1][1], 10000, D.start, `매매 ${(D.trades || []).length}번`); else cards.day = { k: "day", off: "시작 전", extra: "월요일(11/23) 미국장부터 시작" };
@@ -164,10 +167,10 @@ const DeskUI = (() => {
     $("#sm-accts").innerHTML = Object.keys(ACC).map((k) => { const c = cards[k] || { off: "—" };
       return `<button class="acct-tab ${k === SM.acct ? "on" : ""}" data-acct="${k}" style="--c:${ACC[k][1]}"><span class="nm">${ACC[k][0]}</span><span class="ret ${c.off ? "muted" : cls(c.r)}">${c.off ? c.off : pct(c.r, 2)}</span></button>`; }).join("");
     { const c = cards[SM.acct] || { off: "—" }, [nm, col, how, more] = ACC[SM.acct];
-      const chatSrc = SM.acct === "tr10" && Q ? Q.chat : SM.acct === "ob" && O ? O.chat : SM.acct === "amd" && M ? M.chat : SM.acct === "lev" && LV ? LV.chat : SM.acct === "coin" && CX ? CX.chat : SM.acct === "c50" && C ? C.chat : SM.acct === "l50" && L ? L.chat : null;
+      const chatSrc = SM.acct === "tr10" && Q ? Q.chat : SM.acct === "ob" && O ? O.chat : SM.acct === "amd" && M ? M.chat : SM.acct === "lev" && LV ? LV.chat : SM.acct === "coin" && CX ? CX.chat : SM.acct === "kr" && KR ? KR.chat : SM.acct === "c50" && C ? C.chat : SM.acct === "l50" && L ? L.chat : null;
       $("#sm-hero").innerHTML = `<div class="hero-top" style="--c:${col}"><div><span class="nm">${nm}</span><span class="how">${how}</span></div>
         <span class="ret ${c.off ? "" : cls(c.r)}">${c.off ? c.off : pct(c.r, 2)}</span></div>
-        <div class="hero-sub">${c.off ? "" : `<b>${usd(c.eq, 0)}</b> · 가상 $10,000 · ${md(c.start)}부터`}${c.extra ? ` · ${c.extra}` : ""}</div>
+        <div class="hero-sub">${c.off ? "" : SM.acct === "kr" ? `<b>${Math.round(c.eq).toLocaleString()}원</b> · 가상 1,000만 원 · ${md(c.start)}부터` : `<b>${usd(c.eq, 0)}</b> · 가상 $10,000 · ${md(c.start)}부터`}${c.extra ? ` · ${c.extra}` : ""}</div>
         ${more ? `<button class="link-btn hero-more" data-open="${more}">대화방·규칙 자세히 ↓</button>` : ""}
         ${chatSrc && chatSrc.length ? `<ul class="hero-chat">${chatSrc.slice(-6).reverse().map((m) => `<li><span class="muted small">${new Date(m.at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}</span> ${esc(m.text)}</li>`).join("")}</ul>` : ""}`;
       document.querySelectorAll("#tab-desk .dk-more").forEach((d) => { d.hidden = d.id !== more; });
@@ -175,6 +178,7 @@ const DeskUI = (() => {
     // 2) 지금 들고 있는 것
     let rows = [];
     if (A) for (const p of A.pos) rows.push({ k: "ai", sym: p.sym, side: 1, since: p.since, entry: p.avg, now: p.px, pl: p.pl, stop: p.stop, target: p.target, why: p.why });
+    if (KR) for (const p of KR.view_pos || []) rows.push({ k: "kr", cur: "KRW", sym: p.sym, nm: p.name, side: 1, since: p.since, entry: p.entry, now: p.px, pl: p.pl, stop: p.stop, stopLbl: p.sell_next ? "내일 시가 매도 예약" : "손절 −7%", target: null, why: p.why });
     if (D && D.pos) for (const [sym, p] of Object.entries(D.pos)) rows.push({ k: "day", sym, side: 1, since: D.today && D.today.day, entry: p.entry, now: null, pl: null, stop: p.stop, target: p.target, why: (p.sig || []).join(" · ") });
     if (C) for (const p of C.pos) rows.push({ k: "c50", sym: p.sym, nm: p.name, side: p.side, since: p.since, entry: p.entry, now: p.now, pl: p.pl, stop: null, target: null, why: "50일선 " + (p.side < 0 ? "아래 → 숏" : "위 → 롱") + " (종가 기준, 50일선 반대로 넘으면 정리)" });
     for (const [k, X] of [["lev", LV], ["coin", CX]]) if (X && X.parts) for (const [nm, P] of X.parts) for (const [sym, p] of Object.entries(P.pos || {})) { const now = (P.px || {})[sym], J = (P.journal || [])[p.jid] || {}, e = p.fill ?? p.entry; rows.push({ k, sym, nm: COINNM[sym] || sym, side: p.side, since: (p.at || "").slice(0, 16).replace("T", " "), entry: e, now, pl: now ? p.side * (now / e - 1) : null, stop: p.stop, stopLbl: nm === "AMD" ? "조작 꼬리 끝" : p.be ? "본전 손절" : "오더블록 꼬리 끝", target: p.target ?? (p.be ? null : p.wave), why: `[${nm}] ` + (J.why_in || []).join(" · ") }); }
@@ -192,9 +196,9 @@ const DeskUI = (() => {
     $("#sm-pos-sub").textContent = rows.length ? `${rows.length}개 · 수익률은 산 가격 대비 (수수료 전)` : "";
     $("#sm-pos").innerHTML = rows.map((r, ri) => `<tr class="open" data-ri="${ri}">
       <td><button class="tt-sym" data-sym="${esc(r.sym)}"><b>${esc(r.nm || r.sym)}${sideTxt(r.side)}</b><span class="muted">${esc(r.nm ? r.sym : nameOf(r.sym))} · ${md(r.since)} 매수</span></button>${chartBtn(r)}</td>
-      <td class="num">${px$(r.entry)} → <b class="nowpx">${px$(r.now)}</b></td>
+      <td class="num">${pxr(r, r.entry)} → <b class="nowpx">${pxr(r, r.now)}</b></td>
       <td class="num pl ${cls(r.pl)}">${pct(r.pl, 1)}</td>
-      <td class="num hide-sm">${r.stop ? px$(r.stop) : "—"}<span class="s">${r.stopLbl ? r.stopLbl : r.target ? "목표 " + px$(r.target) : ""}</span></td>
+      <td class="num hide-sm">${r.stop ? pxr(r, r.stop) : "—"}<span class="s">${r.stopLbl ? r.stopLbl : r.target ? "목표 " + px$(r.target) : ""}</span></td>
       <td class="hide-sm"><span class="why" title="${esc(r.why || "")}">${esc(r.why || "")}</span></td></tr>`).join("")
       || `<tr class="empty-row"><td colspan="5">지금 들고 있는 것 없음</td></tr>`;
     liveCoin(rows);
@@ -202,6 +206,7 @@ const DeskUI = (() => {
     // 3) 사고 판 기록 (끝난 것 + 들고 있는 것의 매수)
     const log = [];
     if (A) for (const t of A.trades) log.push({ k: "ai", d: t.out, sym: t.sym, side: 1, a: t.avg, b: t.px, din: t.in, pl: t.pl, why: `팜: ${t.why} · 산 이유: ${t.entry_why || ""}` });
+    if (KR) for (const t of KR.trades || []) log.push({ k: "kr", cur: "KRW", d: t.out, sym: t.sym, nm: t.name, side: 1, a: t.entry, b: t.exit, din: t.in, pl: t.pl, why: `팜: ${t.why} · 산 이유: ${t.entry_why || ""}` });
     if (D) for (const t of D.trades || []) log.push({ k: "day", d: t.day, sym: t.sym, side: 1, a: t.entry, b: t.exit, din: t.day, pl: t.pl, why: t.why });
     if (C) for (const t of C.trades || []) log.push({ k: "c50", d: t.out, sym: t.sym, nm: t.sym.startsWith("BTC") ? "비트코인" : "이더리움", side: t.side, a: t.entry, b: t.exit, din: t.in, pl: t.pl, why: (t.why || "50일선 반대로 넘어가서 정리") });
     if (L) for (const t of L.trades || []) log.push({ k: "l50", d: t.out, sym: "BTC-USD", nm: "비트코인", side: t.side, a: t.entry, b: t.exit, din: t.in, pl: t.pl, why: (t.liq ? "💥 강제 청산 (증거금 전부 손실)" : t.why || "50일선 반대로 넘어가서 정리") });
@@ -272,7 +277,7 @@ const DeskUI = (() => {
     $("#sm-log-sub").textContent = done.length ? `끝난 매매 ${done.length}번 · 이긴 것 ${done.filter((r) => r.pl > 0).length}번` : "끝난 매매 아직 없음";
     $("#sm-log").innerHTML = L.map((r) => `<tr class="${r.open ? "open" : ""}"><td class="small hide-sm">${md(r.d)}</td>
       <td><button class="tt-sym" data-sym="${esc(r.sym)}"><b>${esc(r.nm || r.sym)}${sideTxt(r.side)}</b><span class="muted">${esc(r.nm ? r.sym : nameOf(r.sym))}</span></button>${chartBtn(r)}</td>
-      <td class="num">${r.open ? `${px$(r.a)} → <span class="muted">보유 중</span>` : `${px$(r.a)} → ${px$(r.b)}`}<span class="s">${r.open ? md(r.din) + " 매수" : md(r.din) + " 매수 · " + md(r.d) + " 매도"}</span></td>
+      <td class="num">${r.open ? `${pxr(r, r.a)} → <span class="muted">보유 중</span>` : `${pxr(r, r.a)} → ${pxr(r, r.b)}`}<span class="s">${r.open ? md(r.din) + " 매수" : md(r.din) + " 매수 · " + md(r.d) + " 매도"}</span></td>
       <td class="num pl ${cls(r.pl)}">${pct(r.pl, 1)}${r.open ? `<span class="s">평가</span>` : ""}</td>
       <td class="hide-sm"><span class="why" title="${esc(r.why || "")}">${esc(r.why || "")}</span></td></tr>`).join("")
       || `<tr class="empty-row"><td colspan="5">기록 없음</td></tr>`;
