@@ -77,6 +77,7 @@ def inwin(t, a, b):
 # ---- 계좌 목록: (이름, [(칸 이름, 파일)], 종류) ----
 ACCTS = [
     ("미국 주식 (스윙)", [("", "ai_paper.json")], "stock"),
+    ("AI 에이전트 (미국 주식)", [("", "agent_paper.json")], "stock"),
     ("한국 주식 (주도주 돌파, 원)", [("", "../kr/kr_paper.json")], "kr"),
     ("한국 주식 필터 없음 (원)", [("", "../kr/kr_all.json")], "kr"),
     ("데이트레이딩", [("", "day_desk.json")], "day"),

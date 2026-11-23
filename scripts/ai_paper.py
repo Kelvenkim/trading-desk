@@ -14,7 +14,7 @@ AI 모의 트레이딩 (Claude가 가상 $10,000로 스스로 판단해서 매�
   python scripts/ai_paper.py cancel ID --why "이유"
   python scripts/ai_paper.py note "오늘의 판단 요약"
 """
-import argparse, json, math, sys, time
+import argparse, json, math, os, sys, time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -26,6 +26,15 @@ FEE, SLIP = 0.001, 0.0005
 MAX_W, MAX_N, MAX_RISK = 0.20, 8, 0.02
 TRAIL_ON, TRAIL = 0.15, 0.08       # +15% 넘으면 고점 대비 -8% 추적 손절
 HALT_DROP = -0.03                  # SPY가 전날 종가 대비 -3%면 새 매수 중단
+# 11/23 형: "진짜 AI 에이전트 매매" → 같은 체결 엔진, 따로 계좌 (PAPER_ACCT=agent)
+#   판단은 전부 Claude 에이전트(예약 실행, 매일 미국장 열리고 약 50분 뒤) · 자동 관리 규칙(본전 손절·조기 정리·약세 익절·추적 손절)은 끔 → 판단 자체를 시험
+#   대신 매수마다 확신 점수(1~5)가 필수, 손절 시 계좌 손실 한도가 확신에 따라 0.5%~1.5% (형 장기 과제 ① 확실한 자리엔 큰 금액 — 데이터 쌓기)
+ACCT = os.environ.get("PAPER_ACCT", "ai")
+AUTO_MGMT = ACCT != "agent"
+CONV_RISK = {1: 0.005, 2: 0.0075, 3: 0.01, 4: 0.0125, 5: 0.015}
+if ACCT == "agent":
+    STATE = ROOT / "data/us/agent_paper_state.json"
+    VIEW = ROOT / "data/us/agent_paper.json"
 
 
 def now():
@@ -66,7 +75,7 @@ def last_price(sym):
     return float(h["Close"].iloc[-1]) if len(h) else None
 
 
-def check(S, sym, side, usd, px, stop):
+def check(S, sym, side, usd, px, stop, conv=None):
     """Risk 규칙 검사 → 문제 있으면 이유(문자열), 없으면 None"""
     if side != "buy":
         return None if sym in S["pos"] else "보유하지 않은 종목"
@@ -85,31 +94,38 @@ def check(S, sym, side, usd, px, stop):
         return f"최대 {MAX_N}종목 초과"
     if any(o["sym"] == sym and o["side"] == "buy" for o in S["orders"]):
         return "같은 종목 매수 주문이 이미 대기 중 (중복 방지)"
+    if ACCT == "agent" and stop < px * 0.93 - 0.01:
+        return f"손절이 산 가격의 -7%보다 멀어요 (손절 ${stop} < ${px * 0.93:.2f})"
     risk = usd * (px - stop) / px
+    if ACCT == "agent":
+        if conv not in CONV_RISK:
+            return "에이전트 계좌는 매수마다 확신 점수(--conv 1~5)가 필요해요"
+        if risk > eq * CONV_RISK[conv] + 1:
+            return f"확신 {conv} → 손절 시 손실 한도 계좌 {CONV_RISK[conv]:.2%}(${eq * CONV_RISK[conv]:,.0f}) 초과 (지금 ${risk:,.0f})"
     if risk > eq * MAX_RISK + 1:
         return f"손절 시 손실 ${risk:,.0f} > 한도 ${eq * MAX_RISK:,.0f} (계좌 {MAX_RISK:.0%})"
     return None
 
 
-def place(S, sym, side, usd=0, typ="market", px=None, stop=None, target=None, days=2, why="", pct=None, src=None, score=None, ref=None, sig=None):
+def place(S, sym, side, usd=0, typ="market", px=None, stop=None, target=None, days=2, why="", pct=None, src=None, score=None, ref=None, sig=None, conv=None):
     sym = sym.upper()
     ref = px or ref or S["px"].get(sym) or (last_price(sym) if side == "buy" else None)
-    bad = check(S, sym, side, usd, ref, stop)
+    bad = check(S, sym, side, usd, ref, stop, conv)
     if bad:
         return None, bad
     S["seq"] += 1
     o = {"id": S["seq"], "sym": sym, "side": side, "type": typ, "px": px, "usd": usd, "pct": pct, "stop": stop, "target": target,
-         "why": why, "at": now().isoformat(), "exp": (now() + timedelta(days=days)).isoformat(), "src": src, "score": score, "sig": sig}
+         "why": why, "at": now().isoformat(), "exp": (now() + timedelta(days=days)).isoformat(), "src": src, "score": score, "sig": sig, "conv": conv}
     S["orders"].append(o)
     log(S, "order", why, sym=sym, side=side, detail=desc(o))
     return o, None
 
 
 def cmd_order(S, a):
-    o, bad = place(S, a.sym, a.side, a.usd, a.type, a.px, a.stop, a.target, a.days, a.why, a.pct, src="Claude 직접")
+    o, bad = place(S, a.sym, a.side, a.usd, a.type, a.px, a.stop, a.target, a.days, a.why, a.pct, src="AI 에이전트" if ACCT == "agent" else "Claude 직접", conv=a.conv)
     if bad:
         sys.exit("규칙 위반: " + bad)
-    say(S, "claude", f"직접 주문: {desc(o)} — {a.why}")
+    say(S, "claude", f"{'' if ACCT == 'agent' else '직접 '}주문: {desc(o)}{f' · 확신 {a.conv}/5' if a.conv else ''} — {a.why}")
     print("주문:", desc(o))
 
 
@@ -169,7 +185,7 @@ def fill_buy(S, o, t, px):
     if p:
         p["avg"] = (p["avg"] * p["sh"] + px * sh) / (p["sh"] + sh); p["sh"] += sh
     else:
-        p = S["pos"][o["sym"]] = {"sh": sh, "avg": px, "since": t.isoformat(), "why": o["why"], "src": o.get("src") or "Claude 직접", "score": o.get("score"), "sig": o.get("sig"), "stop0": o.get("stop"), "peak": px}
+        p = S["pos"][o["sym"]] = {"sh": sh, "avg": px, "since": t.isoformat(), "why": o["why"], "src": o.get("src") or "Claude 직접", "score": o.get("score"), "sig": o.get("sig"), "conv": o.get("conv"), "stop0": o.get("stop"), "peak": px}
     if o.get("stop"): p["stop"] = o["stop"]
     if o.get("target"): p["target"] = o["target"]
     log(S, "fill", f"매수 체결 ${px:,.2f} × {sh:.4f}주", sym=o["sym"], side="buy", t=t.isoformat())
@@ -186,7 +202,7 @@ def fill_sell(S, sym, t, px, frac, why):
     S["cash"] += sh * px * (1 - FEE)
     pl = px * (1 - FEE) / (p["avg"] * (1 + FEE)) - 1
     S["trades"].append({"sym": sym, "in": p["since"][:10], "out": t.astimezone(KST).strftime("%Y-%m-%d"), "avg": round(p["avg"], 2), "px": round(px, 2),
-                        "pl": round(pl, 4), "usd": round(sh * (px - p["avg"]), 2), "why": why, "entry_why": p.get("why"), "src": p.get("src"), "score": p.get("score"), "sig": p.get("sig"),
+                        "pl": round(pl, 4), "usd": round(sh * (px - p["avg"]), 2), "why": why, "entry_why": p.get("why"), "src": p.get("src"), "score": p.get("score"), "sig": p.get("sig"), "conv": p.get("conv"),
                         "stop_pl": round(p["stop0"] / p["avg"] - 1, 4) if p.get("stop0") else None})
     who = "risk" if ("손절" in why or "추적" in why) else "executor"
     say(S, who, f"{sym} {'전량' if frac >= 0.999 else f'{frac:.0%}'} 매도 — {why}. ${px:,.2f}, 손익 {pl * 100:+.1f}%.")
@@ -225,6 +241,8 @@ def cmd_fill(S):
                 fill_sell(S, s, t, min(o_, p["stop"]), 1, why)
             elif p.get("target") and h >= p["target"]:
                 fill_sell(S, s, t, max(o_, p["target"]), 1, "익절가 도달")
+            elif not AUTO_MGMT:
+                p["peak"] = max(p.get("peak", p["avg"]), h)
             else:
                 p["peak"] = max(p.get("peak", p["avg"]), h)
                 # 본전 손절: +1R(처음 손절 폭만큼 오름) → 손절을 본전+수수료로, +2R → 손절을 +1R로
@@ -287,7 +305,7 @@ def cmd_fill(S):
         S["eq"].append([day, e])
     if S.get("halt") and (now() - datetime.fromisoformat(S["halt"])).total_seconds() > 16 * 3600:
         S["halt"] = None
-    print(f"AI 계좌 ${e:,.2f} · 보유 {len(S['pos'])} · 대기 주문 {len(S['orders'])}")
+    print(f"{'에이전트' if ACCT == 'agent' else 'AI'} 계좌 ${e:,.2f} · 보유 {len(S['pos'])} · 대기 주문 {len(S['orders'])}")
 
 
 def metrics(S):
@@ -304,18 +322,24 @@ def metrics(S):
             "payoff": (sum(w) / len(w)) / abs(sum(lo) / len(lo)) if w and lo and sum(lo) else None, "mdd": mdd, "cum": equity(S) / 10000 - 1, "by_src": by}
 
 
+AGENT_RULES = ("판단은 전부 Claude 에이전트 (매일 미국장 열리고 약 50분 뒤 1번) · 매수마다 확신 점수 1~5 → 손절 시 계좌 손실 한도 0.5/0.75/1/1.25/1.5% · "
+               "손절가 필수(산 가격의 최대 -7%) · 한 종목 최대 20% · 최대 8종목 · S&P500 -3%면 신규 매수 중단 · 손절·익절은 장중 5분봉으로 자동 체결 · "
+               "본전 손절·추적 손절 같은 자동 관리는 없음(에이전트가 직접 손절을 옮김) · 수수료 0.1% + 체결 차이 0.05%")
+
+
 def view(S):
     e = equity(S)
     tr = S["trades"]; w = [x for x in tr if x["pl"] > 0]
     out = {"start": S["start"][:10], "cash0": 10000, "eq_now": round(e, 2), "cash": round(S["cash"], 2), "eq": S["eq"],
            "pos": [{"sym": t, "sh": round(p["sh"], 4), "avg": round(p["avg"], 2), "px": S["px"].get(t), "pl": (S["px"].get(t, p["avg"]) / p["avg"] - 1),
-                    "val": round(p["sh"] * S["px"].get(t, p["avg"]), 2), "stop": p.get("stop"), "target": p.get("target"), "since": p["since"][:10], "why": p.get("why"), "src": p.get("src")}
+                    "val": round(p["sh"] * S["px"].get(t, p["avg"]), 2), "stop": p.get("stop"), "target": p.get("target"), "since": p["since"][:10], "why": p.get("why"), "src": p.get("src"), "conv": p.get("conv")}
                    for t, p in S["pos"].items()],
            "orders": [{**o, "desc": desc(o)} for o in S["orders"]], "trades": tr[::-1][:100], "journal": S["journal"][::-1][:150],
            "stats": metrics(S),
            "chat": S.get("chat", [])[-300:], "adj": {"src": S.get("src_adj", {}), "sig": S.get("sig_adj", {})}, "adj_log": S.get("adj_log", [])[-30:][::-1], "review": S.get("review"), "agents": S.get("agents", {}), "halt": S.get("halt"), "cands": S.get("cands", []),
            "bench": (S["px"]["SPY"] / S["bench0"] - 1) if S.get("bench0") and S["px"].get("SPY") else None,
-           "mode": S.get("mode"), "mode_why": S.get("mode_why"), "rules": f"한 종목 최대 {MAX_W:.0%} · 최대 {MAX_N}종목 · 모든 매수에 손절가(산 가격의 최대 -7%) · 손절 시 손실 ≤ 계좌의 {MAX_RISK:.0%} · +1R이면 손절을 본전으로, +2R이면 +1R로 · 5거래일째 -0.5R 이하면 조기 정리 · +15%부터 고점 대비 -8% 추적 손절 · S&P500 -3%면 신규 매수 중단 · 수수료 0.1% + 체결 차이 0.05%"}
+           "acct": ACCT,
+           "mode": S.get("mode"), "mode_why": S.get("mode_why"), "rules": AGENT_RULES if ACCT == "agent" else f"한 종목 최대 {MAX_W:.0%} · 최대 {MAX_N}종목 · 모든 매수에 손절가(산 가격의 최대 -7%) · 손절 시 손실 ≤ 계좌의 {MAX_RISK:.0%} · +1R이면 손절을 본전으로, +2R이면 +1R로 · 5거래일째 -0.5R 이하면 조기 정리 · +15%부터 고점 대비 -8% 추적 손절 · S&P500 -3%면 신규 매수 중단 · 수수료 0.1% + 체결 차이 0.05%"}
     VIEW.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":"), default=str))
 
 
@@ -326,7 +350,7 @@ def main():
     o = sp.add_parser("order"); o.add_argument("sym"); o.add_argument("side", choices=["buy", "sell"])
     o.add_argument("--usd", type=float, default=0); o.add_argument("--pct", type=float); o.add_argument("--type", default="market", choices=["market", "limit", "stop"])
     o.add_argument("--px", type=float); o.add_argument("--stop", type=float); o.add_argument("--target", type=float); o.add_argument("--days", type=float, default=2)
-    o.add_argument("--why", required=True)
+    o.add_argument("--why", required=True); o.add_argument("--conv", type=int, choices=[1, 2, 3, 4, 5])
     m = sp.add_parser("modify"); m.add_argument("sym"); m.add_argument("--stop", type=float); m.add_argument("--target", type=float); m.add_argument("--why", required=True)
     c = sp.add_parser("cancel"); c.add_argument("id", type=int); c.add_argument("--why", required=True)
     n = sp.add_parser("note"); n.add_argument("text")

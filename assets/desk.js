@@ -19,6 +19,7 @@ const DeskUI = (() => {
   // ---------- 한눈에 보기: 계좌 성적 · 지금 보유 · 사고 판 기록 ----------
   const ACC = {                                        // 이름, 색, 설명, 펼칠 상세, 종류 — 탭 순서도 이 순서 (11/21 사용자 지정)
     ai: ["주식", "#2fa36b", "미국 주식 · 며칠~몇 주 보유", "more-ai", "stock"],
+    agent: ["AI 에이전트", "#5b8def", "미국 주식 · 공식 없이 Claude 에이전트가 매일 장 열리고 약 50분 뒤 뉴스(Massive)·차트·순위를 보고 직접 판단 · 매수마다 확신 1~5 → 손절 시 계좌 −0.5~−1.5% · 손절 최대 −7% (11/24 시작)", "", "stock"],
     kra: ["한국 주식 (필터 없음)", "#ff8a3d", "코스피·코스닥 시총 1조~10조 · 주도주 신고가 돌파 · 시장 필터 없이 항상 (코스피 200일선 아래면 크기 절반·하루 1종목) · 손절 −7% · 가상 1,000만 원 (11/23 시작)", "", "stock"],
     kr: ["한국 주식", "#ffb020", "코스피·코스닥 시총 1조~10조 · 주도주 신고가 돌파(거래량 1.5배·상대강도 80↑) · 코스피 200일선 위에서만 새로 삼 · 손절 −7% · 가상 1,000만 원 (11/23 시작)", "", "stock"],
     coin: ["코인", "#9b6bd8", "BTC·ETH · AMD + 오더블록 + 50일선, 돈 1/3씩 · 레버리지 없음 · 한 번 손절 시 계좌 −1%(AMD)/−0.25%(오더블록)", "", "coin"],
@@ -133,7 +134,7 @@ const DeskUI = (() => {
   async function renderSummary() {
     renderReports(); renderFormulas();
     const [A, D, C, L, Q0] = await Promise.all(["data/us/ai_paper.json", "data/us/day_desk.json", "data/us/crypto_paper.json", "data/us/crypto_lev.json", "data/us/trend10.json"].map(getj));
-    const O = await getj("data/us/ob_paper.json"), M = await getj("data/us/amd_paper.json"), KR = await getj("data/kr/kr_paper.json"), KRA = await getj("data/kr/kr_all.json");
+    const O = await getj("data/us/ob_paper.json"), M = await getj("data/us/amd_paper.json"), KR = await getj("data/kr/kr_paper.json"), KRA = await getj("data/kr/kr_all.json"), AG = await getj("data/us/agent_paper.json");
     // 11/22: 코인·코인 10배는 AMD 칸 + 오더블록 칸(돈을 반씩)을 합쳐서 한 계좌로 보여줌
     // 11/22 저녁: + 50일선 칸(MA_) — 계좌 돈을 AMD·오더블록·50일선 1/3씩
     const mergeAcct = (A_, B_, MA_) => {
@@ -153,6 +154,7 @@ const DeskUI = (() => {
     const cards = {};
     const card = (k, eq, base, start, extra) => (cards[k] = { k, eq, r: eq == null ? null : eq / base - 1, start, extra });
     if (A) card("ai", A.eq_now, A.cash0, A.start, `보유 ${A.pos.length}종목 · 같은 기간 S&P500 ${pct(A.bench, 2)} (${A.bench == null ? "—" : pct(A.eq_now / A.cash0 - 1 - A.bench, 1) + "p"})`);
+    if (AG) card("agent", AG.eq_now, AG.cash0, AG.start, `보유 ${AG.pos.length}종목 · 끝난 매매 ${AG.trades.length}번 · 같은 기간 S&P500 ${pct(AG.bench, 2)}`);
     if (CX) card("coin", CX.eq_now, 10000, "2026-11-14", `끝난 매매 ${CX.n_trades}번 · ${partTxt(CX)}`);
     else if (C) card("coin", C.eq_now, 10000, C.start, `같은 기간 비트코인 ${pct(C.btc_ret, 1)}`);
     if (LV && LV.eq && LV.eq.length) card("lev", LV.eq_now ?? LV.cash, 10000, LV.start, `끝난 매매 ${LV.n_trades || 0}번${LV.parts ? ` · ${partTxt(LV)}` : ""}`);
@@ -169,7 +171,7 @@ const DeskUI = (() => {
     $("#sm-accts").innerHTML = Object.keys(ACC).map((k) => { const c = cards[k] || { off: "—" };
       return `<button class="acct-tab ${k === SM.acct ? "on" : ""}" data-acct="${k}" style="--c:${ACC[k][1]}"><span class="nm">${ACC[k][0]}</span><span class="ret ${c.off ? "muted" : cls(c.r)}">${c.off ? c.off : pct(c.r, 2)}</span></button>`; }).join("");
     { const c = cards[SM.acct] || { off: "—" }, [nm, col, how, more] = ACC[SM.acct];
-      const chatSrc = SM.acct === "tr10" && Q ? Q.chat : SM.acct === "ob" && O ? O.chat : SM.acct === "amd" && M ? M.chat : SM.acct === "lev" && LV ? LV.chat : SM.acct === "coin" && CX ? CX.chat : SM.acct === "kr" && KR ? KR.chat : SM.acct === "kra" && KRA ? KRA.chat : SM.acct === "c50" && C ? C.chat : SM.acct === "l50" && L ? L.chat : null;
+      const chatSrc = SM.acct === "tr10" && Q ? Q.chat : SM.acct === "ob" && O ? O.chat : SM.acct === "amd" && M ? M.chat : SM.acct === "lev" && LV ? LV.chat : SM.acct === "coin" && CX ? CX.chat : SM.acct === "kr" && KR ? KR.chat : SM.acct === "agent" && AG ? AG.chat : SM.acct === "kra" && KRA ? KRA.chat : SM.acct === "c50" && C ? C.chat : SM.acct === "l50" && L ? L.chat : null;
       $("#sm-hero").innerHTML = `<div class="hero-top" style="--c:${col}"><div><span class="nm">${nm}</span><span class="how">${how}</span></div>
         <span class="ret ${c.off ? "" : cls(c.r)}">${c.off ? c.off : pct(c.r, 2)}</span></div>
         <div class="hero-sub">${c.off ? "" : (SM.acct === "kr" || SM.acct === "kra") ? `<b>${Math.round(c.eq).toLocaleString()}원</b> · 가상 1,000만 원 · ${md(c.start)}부터` : `<b>${usd(c.eq, 0)}</b> · 가상 $10,000 · ${md(c.start)}부터`}${c.extra ? ` · ${c.extra}` : ""}</div>
@@ -180,6 +182,7 @@ const DeskUI = (() => {
     // 2) 지금 들고 있는 것
     let rows = [];
     if (A) for (const p of A.pos) rows.push({ k: "ai", sym: p.sym, side: 1, since: p.since, entry: p.avg, now: p.px, pl: p.pl, stop: p.stop, target: p.target, why: p.why });
+    if (AG) for (const p of AG.pos) rows.push({ k: "agent", sym: p.sym, side: 1, since: p.since, entry: p.avg, now: p.px, pl: p.pl, stop: p.stop, target: p.target, why: (p.conv ? `확신 ${p.conv}/5 · ` : "") + (p.why || "") });
     for (const [kk, X] of [["kr", KR], ["kra", KRA]]) if (X) for (const p of X.view_pos || []) rows.push({ k: kk, cur: "KRW", sym: p.sym, nm: p.name, side: 1, since: p.since, entry: p.entry, now: p.px, pl: p.pl, stop: p.stop, stopLbl: p.sell_next ? "내일 시가 매도 예약" : "손절 −7%", target: null, why: p.why });
     if (D && D.pos) for (const [sym, p] of Object.entries(D.pos)) rows.push({ k: "day", sym, side: 1, since: D.today && D.today.day, entry: p.entry, now: null, pl: null, stop: p.stop, target: p.target, why: (p.sig || []).join(" · ") });
     if (C) for (const p of C.pos) rows.push({ k: "c50", sym: p.sym, nm: p.name, side: p.side, since: p.since, entry: p.entry, now: p.now, pl: p.pl, stop: null, target: null, why: "50일선 " + (p.side < 0 ? "아래 → 숏" : "위 → 롱") + " (종가 기준, 50일선 반대로 넘으면 정리)" });
@@ -204,9 +207,11 @@ const DeskUI = (() => {
       <td class="hide-sm"><span class="why" title="${esc(r.why || "")}">${esc(r.why || "")}</span></td></tr>`).join("")
       || `<tr class="empty-row"><td colspan="5">지금 들고 있는 것 없음</td></tr>`;
     liveCoin(rows);
-    $("#sm-orders").innerHTML = SM.acct === "ai" && A && A.orders.length ? `<div class="sm-orders">대기 주문: ${A.orders.map((o) => `<b>${esc(o.desc)}</b>`).join(" · ")}</div>` : "";
+    { const X = SM.acct === "ai" ? A : SM.acct === "agent" ? AG : null;
+      $("#sm-orders").innerHTML = X && X.orders.length ? `<div class="sm-orders">대기 주문: ${X.orders.map((o) => `<b>${esc(o.desc)}</b>`).join(" · ")}</div>` : ""; }
     // 3) 사고 판 기록 (끝난 것 + 들고 있는 것의 매수)
     const log = [];
+    if (AG) for (const t of AG.trades) log.push({ k: "agent", d: t.out, sym: t.sym, side: 1, a: t.avg, b: t.px, din: t.in, pl: t.pl, why: `팜: ${t.why} · 산 이유${t.conv ? ` (확신 ${t.conv}/5)` : ""}: ${t.entry_why || ""}` });
     if (A) for (const t of A.trades) log.push({ k: "ai", d: t.out, sym: t.sym, side: 1, a: t.avg, b: t.px, din: t.in, pl: t.pl, why: `팜: ${t.why} · 산 이유: ${t.entry_why || ""}` });
     for (const [kk, X] of [["kr", KR], ["kra", KRA]]) if (X) for (const t of X.trades || []) log.push({ k: kk, cur: "KRW", d: t.out, sym: t.sym, nm: t.name, side: 1, a: t.entry, b: t.exit, din: t.in, pl: t.pl, why: `팜: ${t.why} · 산 이유: ${t.entry_why || ""}` });
     if (D) for (const t of D.trades || []) log.push({ k: "day", d: t.day, sym: t.sym, side: 1, a: t.entry, b: t.exit, din: t.day, pl: t.pl, why: t.why });
