@@ -19,7 +19,7 @@ const DeskUI = (() => {
   // ---------- 한눈에 보기: 계좌 성적 · 지금 보유 · 사고 판 기록 ----------
   const ACC = {                                        // 이름, 색, 설명, 펼칠 상세, 종류 — 탭 순서도 이 순서 (11/21 사용자 지정)
     ai: ["주식", "#2fa36b", "미국 주식 · 며칠~몇 주 보유", "more-ai", "stock"],
-    agent: ["AI 에이전트", "#5b8def", "미국 주식 · 공식 없이 Claude 에이전트가 매일 장 열리고 약 50분 뒤 뉴스(Massive)·차트·순위를 보고 직접 판단 · 매수마다 확신 1~5 → 손절 시 계좌 −0.5~−1.5% · 손절 최대 −7% (11/24 시작)", "", "stock"],
+    agent: ["AI 에이전트", "#5b8def", "미국 주식 트레이딩(투자 아님) · 공식 없이 Claude 에이전트가 직접 판단 (장 열리고 50분 뒤 진입 + 마감 1시간 전 점검) · 당일 청산~최대 5거래일 · 익절 최소 1.5R · 확신 1~5 → 손절 시 계좌 −0.5~−1.5% · 손절 최대 −7% (11/24 시작)", "", "stock"],
     kra: ["한국 주식 (필터 없음)", "#ff8a3d", "코스피·코스닥 시총 1조~10조 · 주도주 신고가 돌파 · 시장 필터 없이 항상 (코스피 200일선 아래면 크기 절반·하루 1종목) · 손절 −7% · 가상 1,000만 원 (11/23 시작)", "", "stock"],
     kr: ["한국 주식", "#ffb020", "코스피·코스닥 시총 1조~10조 · 주도주 신고가 돌파(거래량 1.5배·상대강도 80↑) · 코스피 200일선 위에서만 새로 삼 · 손절 −7% · 가상 1,000만 원 (11/23 시작)", "", "stock"],
     coin: ["코인", "#9b6bd8", "BTC·ETH · AMD + 오더블록 + 50일선, 돈 1/3씩 · 레버리지 없음 · 한 번 손절 시 계좌 −1%(AMD)/−0.25%(오더블록)", "", "coin"],
@@ -182,7 +182,7 @@ const DeskUI = (() => {
     // 2) 지금 들고 있는 것
     let rows = [];
     if (A) for (const p of A.pos) rows.push({ k: "ai", sym: p.sym, side: 1, since: p.since, entry: p.avg, now: p.px, pl: p.pl, stop: p.stop, target: p.target, why: p.why });
-    if (AG) for (const p of AG.pos) rows.push({ k: "agent", sym: p.sym, side: 1, since: p.since, entry: p.avg, now: p.px, pl: p.pl, stop: p.stop, target: p.target, why: (p.conv ? `확신 ${p.conv}/5 · ` : "") + (p.why || "") });
+    if (AG) for (const p of AG.pos) rows.push({ k: "agent", sym: p.sym, side: 1, since: p.since, entry: p.avg, now: p.px, pl: p.pl, stop: p.stop, target: p.target, why: (p.conv ? `확신 ${p.conv}/5 · ` : "") + (p.exit_by ? `청산 기한 ${md(p.exit_by)} · ` : "") + (p.why || "") });
     for (const [kk, X] of [["kr", KR], ["kra", KRA]]) if (X) for (const p of X.view_pos || []) rows.push({ k: kk, cur: "KRW", sym: p.sym, nm: p.name, side: 1, since: p.since, entry: p.entry, now: p.px, pl: p.pl, stop: p.stop, stopLbl: p.sell_next ? "내일 시가 매도 예약" : "손절 −7%", target: null, why: p.why });
     if (D && D.pos) for (const [sym, p] of Object.entries(D.pos)) rows.push({ k: "day", sym, side: 1, since: D.today && D.today.day, entry: p.entry, now: null, pl: null, stop: p.stop, target: p.target, why: (p.sig || []).join(" · ") });
     if (C) for (const p of C.pos) rows.push({ k: "c50", sym: p.sym, nm: p.name, side: p.side, since: p.since, entry: p.entry, now: p.now, pl: p.pl, stop: null, target: null, why: "50일선 " + (p.side < 0 ? "아래 → 숏" : "위 → 롱") + " (종가 기준, 50일선 반대로 넘으면 정리)" });
