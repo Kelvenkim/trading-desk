@@ -4,7 +4,7 @@
   해설 마크다운은 '## 제목' 단위로 섹션을 나눔. 아래 이름의 섹션 뒤에 자동 표가 붙음:
     '시장' → 지수·자산 표 + 섹터 막대, 'AI 데스크' → 계좌·보유 표, '순위' → 채점 표, '모의 투자' → 3계좌 표
 """
-import json, re, sys
+import os, json, re, sys
 from datetime import date, timedelta
 from pathlib import Path
 import markdown
@@ -339,7 +339,11 @@ def build(note_path, tradebook=True):
     hdr = f"<div class='hdr'>K Trading Desk · {n}일차 {kind} 보고서 · {mday}</div>"
     # 11/22 형: 하루에 일어난 모든 매매·매매일지·피드백을 보고서에서 보게 → 매매 기록지 자동으로 붙임
     if tradebook:                                       # 예전 보고서를 새 모양으로 다시 만들 땐 끔 (python scripts/report_pdf.py <note> --no-book)
-        wa, wb = TB.window(save=True)
+        if os.environ.get("TB_A"):                      # 예전 보고서를 다시 만들 때: 그 보고서가 다룬 기간을 직접 지정
+            import pandas as _pd
+            wa, wb = _pd.Timestamp(os.environ["TB_A"]), _pd.Timestamp(os.environ["TB_B"])
+        else:
+            wa, wb = TB.window(save=True)
         secs.append(PS.sec("", "매매 기록지 — 이번 기간에 일어난 모든 매매", TB.build_html(wa, wb), "long"))
     body = f"""<section class="cover"><div class="brand">K TRADING DESK</div>
         <h1>{kind} 보고서</h1><div class="dayn">{n}일차 · 미국장 {mday.strftime('%Y년 %m월 %d일')} ({'월화수목금'[mday.weekday()]})</div>
