@@ -4641,17 +4641,17 @@
     "https://www.eenewseurope.com/en/hamamatsu-completes-e247m-acquisition-of-nkt-photonics"
    ],
    "m": {
-    "px": 1985.5,
+    "px": 1974.5,
     "cur": "JPY",
     "day": "2026-11-24",
-    "mcap": 572220375040,
-    "adv": 6266179005,
-    "ps": 2.351333,
+    "mcap": 569050202112,
+    "adv": 6335553722,
+    "ps": 2.3383062,
     "rev": 243360006144,
     "rev_g": 0.243,
-    "ma50": 2191.36,
-    "ma200": 2219.96,
-    "rsi": 43.9,
+    "ma50": 2191.14,
+    "ma200": 2219.91,
+    "rsi": 43.3,
     "hi52": 2947.7,
     "lo52": 1475.37,
     "mom121": 0.26522305202959595,
@@ -4882,7 +4882,7 @@
      ],
      [
       "2026-11-29",
-      1985.5
+      1974.5
      ]
     ],
     "formulas": [
@@ -5614,7 +5614,7 @@
     "rsi": 42.9,
     "hi52": 239.24,
     "lo52": 125.53,
-    "mom121": 0.17064565261274045,
+    "mom121": 0.17064575173493046,
     "wk": [
      [
       "2025-11-16",
@@ -6100,7 +6100,7 @@
   "https://www.stocktitan.net/articles/stock-market-today-live-november-18-2026",
   "https://www.whitehouse.gov/fact-sheets/2026/06/fact-sheet-president-donald-j-trump-ushers-in-the-next-frontier-of-quantum-innovation/"
  ],
- "metrics_at": "2026-11-24T05:37+00:00",
+ "metrics_at": "2026-11-24T06:57+00:00",
  "gloss": {
   "매출총이익률": "매출에서 매출원가를 뺀 비율(총마진). 제품 자체가 얼마나 남는 장사인지",
   "총마진": "매출총이익률과 같은 말. 매출 − 매출원가를 매출로 나눈 값",
