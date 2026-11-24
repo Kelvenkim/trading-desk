@@ -73,10 +73,20 @@ def market(P, C, uni, names, ko):
         rows = P.get(t) or []
         return pd.Series({r[0]: r[4] for r in rows}, dtype=float).sort_index()
     out = {"date": None, "assets": [], "sectors": [], "up": [], "down": []}
+    last_day = str(C.index[-1])[:10]
     for t, nm in ASSETS:
         s = series(t)
         if s.empty:
             continue
+        if s.index[-1] < last_day:                     # 11/24: 지수(VIX 등)는 야후에 늦게 들어올 때가 있음 → 한 번 더 받아 보고, 그래도 없으면 날짜로 표시
+            try:
+                import yfinance as yf
+                h = yf.Ticker(t).history(period="1mo", auto_adjust=True)["Close"].dropna()
+                h.index = [x.strftime("%Y-%m-%d") for x in h.index]
+                if len(h) and h.index[-1] >= last_day:
+                    s = pd.concat([s, h[h.index > s.index[-1]]]).sort_index(); s = s[~s.index.duplicated(keep="last")]
+            except Exception:
+                pass
         ytd = s[s.index >= f"{s.index[-1][:4]}-01-01"]
         out["assets"].append({"t": t, "name": nm, "last": s.iloc[-1], "d1": chg(s, 1), "m1": chg(s, 21),
                               "ytd": float(s.iloc[-1] / ytd.iloc[0] - 1) if len(ytd) > 1 else None, "spark": s.iloc[-60:].round(4).tolist(), "date": s.index[-1]})

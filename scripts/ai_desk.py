@@ -23,6 +23,23 @@ import ai_paper as AP
 NAMES = {"scout": "Scout", "filter": "Filter", "analyst": "Analyst", "risk": "Risk", "executor": "Executor", "logger": "Logger", "claude": "Claude"}
 
 
+def _vix(mk):
+    """11/24: market.json의 VIX가 S&P500보다 하루 늦으면(야후 지연) 옛 값을 쓰지 않고 지금 값을 다시 받음"""
+    a = next((a for a in mk.get("assets", []) if a["t"] == "^VIX"), None)
+    sp = next((a for a in mk.get("assets", []) if a["t"] == "^GSPC"), None)
+    if not a:
+        return None
+    if sp and a.get("date") and sp.get("date") and a["date"] < sp["date"] or (sp and not a.get("date")):
+        try:
+            import yfinance as yf
+            h = yf.Ticker("^VIX").history(period="5d")["Close"].dropna()
+            if len(h):
+                return float(h.iloc[-1])
+        except Exception:
+            pass
+    return a["last"]
+
+
 def j(p, d=None):
     try:
         return json.loads((D / p).read_text())
@@ -98,7 +115,7 @@ def run(P, day=None):
     try:
         g = [r[4] for r in P["^GSPC"][-200:]]
         ma50, ma200 = sum(g[-50:]) / 50, sum(g) / 200
-        vix_ = next((a["last"] for a in j("market.json", {}).get("assets", []) if a["t"] == "^VIX"), None)
+        vix_ = _vix(j("market.json", {}))
         mode = "약세" if (g[-1] < ma200 or (vix_ or 0) >= 28) else "불안" if (g[-1] < ma50 or (vix_ or 0) >= 20) else "강세"
         why = f"S&P500 {g[-1]:,.0f} · 50일선 {ma50:,.0f} · 200일선 {ma200:,.0f} · VIX {vix_ or 0:.1f}"
         rule = {"강세": "길게 들고 가기(목표 2.5R·본전 손절·추적 손절)", "불안": "길게 들고 가기(지금 방식 유지)", "약세": "+1R 오면 전량 익절"}[mode]
@@ -138,7 +155,7 @@ def run(P, day=None):
         (f". 거래량이 평소 3배 넘게 터진 건 {', '.join(nm(t) for t in surge[:4])}." if surge else ".") + " @Filter 넘길게요.")
 
     # ② Filter
-    vix = next((a["last"] for a in mk.get("assets", []) if a["t"] == "^VIX"), None)
+    vix = _vix(mk)
     regime_up = (rank.get("regime") or {}).get("up", True)
     kill, keep, I = {}, [], {}
     abnormal = vix is not None and vix >= 35
