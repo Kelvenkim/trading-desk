@@ -1390,7 +1390,7 @@
     "rsi": 44.5,
     "hi52": 324.64,
     "lo52": 202.9,
-    "mom121": -0.1090726866562799,
+    "mom121": -0.10907278284991995,
     "wk": [
      [
       "2025-11-16",
@@ -5128,9 +5128,9 @@
     "px": 289.63,
     "cur": "USD",
     "day": "2026-11-23",
-    "mcap": 49307987968,
+    "mcap": 49208139776,
     "adv": 511031487,
-    "ps": 6.889477,
+    "ps": 6.875526,
     "rev": 7157000192,
     "rev_g": 0.405,
     "ma50": 329.38,
@@ -6100,7 +6100,7 @@
   "https://www.stocktitan.net/articles/stock-market-today-live-november-18-2026",
   "https://www.whitehouse.gov/fact-sheets/2026/06/fact-sheet-president-donald-j-trump-ushers-in-the-next-frontier-of-quantum-innovation/"
  ],
- "metrics_at": "2026-11-24T11:38+00:00",
+ "metrics_at": "2026-11-24T14:16+00:00",
  "gloss": {
   "매출총이익률": "매출에서 매출원가를 뺀 비율(총마진). 제품 자체가 얼마나 남는 장사인지",
   "총마진": "매출총이익률과 같은 말. 매출 − 매출원가를 매출로 나눈 값",
