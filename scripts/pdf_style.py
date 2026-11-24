@@ -63,7 +63,8 @@ svg [stroke="#2b2d33"] { stroke: #dfe1e6 !important; } svg text[fill="#a3a7b1"],
 .risk { background: #fdeef0 !important; border-color: #e7a1a9 !important; color: #a3172a !important; }
 .fb { color: #2a2f9e !important; }
 img { filter: invert(1) hue-rotate(180deg); }      /* 매매 차트 그림(어두운 바탕 PNG)을 밝게 — 색은 비슷하게 유지 */
-.cover { margin: -10mm -11mm 0 !important; height: 297mm !important; border-radius: 0 !important; color: #fff; }
+.cover { margin: -10mm -11mm 0 !important; height: 285mm !important; border-radius: 0 0 18px 18px !important; color: #fff; }
+.sec > h2, h3, .ph, .ph b { color: #000 !important; } .cap { color: #454a55 !important; }
 .cover, .cover * { -webkit-print-color-adjust: exact; }
 .cover b, .cover strong { color: #fff; }
 .k.f { background: #e3f4ec; color: #13804f; } .k.e { background: #fbf0dc; color: #8a5a00; } .k.u { background: #eceef2; color: #454a55; }
