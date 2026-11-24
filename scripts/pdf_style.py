@@ -42,7 +42,38 @@ ul, ol { margin: 3px 0; padding-left: 15px; } li { margin: 3px 0; }
 """
 
 
+# 11/24 형: 흑백 프린터라 검은 바탕은 잉크가 너무 듦 → 인쇄용 흰 바탕 (표지만 원래 어두운 모양 유지)
+#   PDF_LIGHT=1 환경 변수로 켬. 사이트에 올리는 PDF는 그대로 어두운 바탕.
+LIGHT = """
+:root { --bg:#ffffff; --panel:#ffffff; --raised:#f4f5f7; --line:#c9ccd3; --text:#16181d; --muted:#454a55; --faint:#6b707c; --accent:#3d44c9; --up:#d42a3a; --down:#1c63c9; --ok:#13804f; --warn:#a86a00; }
+html, body { background: #fff !important; } body { color: #16181d; }
+b, strong { color: #000; }
+.sec { background: #fff; border: 1px solid #c9ccd3; }
+.box, blockquote { background: #f4f5f7 !important; }
+.hero { background: #fff; border: 1.5px solid #3d44c9; } .hero h1 { color: #000; } .hero .tk { color: #454a55; }
+.chip, .tag { background: #e9eafb; color: #2a2f9e; }
+.sc, .kpis div, .pcard { background: #f4f5f7 !important; border: 1px solid #dfe1e6; }
+td { border-bottom: 1px solid #e1e3e8; } th { color: #454a55; border-bottom: 1px solid #9ea3ad; }
+.hdr { color: #454a55 !important; border-bottom-color: #c9ccd3 !important; }
+.st { background: #e1e3e8 !important; } .st i.pos { background: #d42a3a !important; } .st i.neg { background: #1c63c9 !important; }
+.gd { stroke: #dfe1e6 !important; } .curve .ax { fill: #454a55 !important; } .curve .lg { fill: #333 !important; } .curve .pill { fill: #fff !important; }
+svg [fill="#eceef2"] { fill: #222 !important; } svg tspan[fill="#eceef2"] { fill: #222 !important; } svg [stroke="#eceef2"] { stroke: #222 !important; }
+svg [fill="#0f1013"], svg [fill="#18191d"], svg [fill="#202227"] { fill: #fff !important; }
+svg [stroke="#2b2d33"] { stroke: #dfe1e6 !important; } svg text[fill="#a3a7b1"], svg text[fill="#6f7480"] { fill: #454a55 !important; }
+.risk { background: #fdeef0 !important; border-color: #e7a1a9 !important; color: #a3172a !important; }
+.fb { color: #2a2f9e !important; }
+img { filter: invert(1) hue-rotate(180deg); }      /* 매매 차트 그림(어두운 바탕 PNG)을 밝게 — 색은 비슷하게 유지 */
+.cover { margin: -10mm -11mm 0 !important; height: 297mm !important; border-radius: 0 !important; color: #fff; }
+.cover, .cover * { -webkit-print-color-adjust: exact; }
+.cover b, .cover strong { color: #fff; }
+.k.f { background: #e3f4ec; color: #13804f; } .k.e { background: #fbf0dc; color: #8a5a00; } .k.u { background: #eceef2; color: #454a55; }
+"""
+
+
 def wrap(title, body, css=""):
+    import os
+    if os.environ.get("PDF_LIGHT"):
+        css = css + LIGHT
     """어두운 바탕이 종이 끝까지 가도록 @page 여백 0 + 위아래 여백은 표 머리·꼬리로 (모든 쪽에 반복)"""
     return (f"<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>{title}</title><style>{BASE}{css}</style></head><body>"
             f"<table class='pg'><thead><tr><td></td></tr></thead><tfoot><tr><td></td></tr></tfoot><tbody><tr><td>{body}</td></tr></tbody></table></body></html>")
