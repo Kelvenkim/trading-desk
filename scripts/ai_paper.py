@@ -35,6 +35,7 @@ CONV_RISK = {1: 0.005, 2: 0.0075, 3: 0.01, 4: 0.0125, 5: 0.015}
 # 11/23 형: "에이전트가 하는 건 투자가 아니라 트레이딩" → 매수마다 익절가(최소 1.5R)와 보유 기한(0=당일 청산 ~ 최대 5거래일) 필수,
 #   기한 날 뉴욕 15:50 봉에서 자동 청산
 MAX_HOLD, MIN_RR, EXIT_HM = 5, 1.5, (15, 50)
+HALF_DAYS = {"2026-11-27", "2026-12-24", "2027-11-26", "2027-12-24"}   # 미국 오후 1시 조기 마감 날 → 12:50에 청산
 # 11/23 형: "너가 직접 하는 매매니까 매매 횟수·손절·익절·비중·리스크 관리 다 너가 관리해"
 #   → 에이전트 계좌 규칙은 상태 파일의 rules(에이전트가 `rules --set` 으로 이유와 함께 바꿈). 코드는 안전 바닥만 지킴(HARD)
 AGENT_DEF = {"conv_risk": [0.005, 0.0075, 0.01, 0.0125, 0.015], "max_stop": 0.07, "min_rr": 1.5, "need_target": True, "max_hold": 5,
@@ -330,7 +331,7 @@ def cmd_fill(S):
                 p["peak"] = max(p.get("peak", p["avg"]), h)
                 from zoneinfo import ZoneInfo
                 tn = t.astimezone(ZoneInfo("America/New_York"))          # 서머타임 반영
-                if p.get("exit_by") and (tn.strftime("%Y-%m-%d") > p["exit_by"] or (tn.strftime("%Y-%m-%d") == p["exit_by"] and (tn.hour, tn.minute) >= EXIT_HM)):
+                if p.get("exit_by") and (tn.strftime("%Y-%m-%d") > p["exit_by"] or (tn.strftime("%Y-%m-%d") == p["exit_by"] and (tn.hour, tn.minute) >= ((12, 50) if p["exit_by"] in HALF_DAYS else EXIT_HM))):
                     fill_sell(S, s, t, o_, 1, "당일 청산 (장 마감 10분 전)" if p.get("hold") == 0 else f"보유 기한 {p.get('hold')}거래일 끝 — 장 마감 10분 전 청산")
                     continue
             else:
