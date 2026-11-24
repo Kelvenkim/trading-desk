@@ -118,7 +118,8 @@ def amd(d, F, rr=2.0, n=24, m=6.0, hold=48):
 
 
 # ---------------- 공식 2: 오더블록 완화판 (scripts/ob_paper.py CFG) ----------------
-def ob(d, F, minrr=0.0, need=("sweep",), stop_rule=1, hold=72, W=48, K=2.0, L=20):
+def ob(d, F, minrr=0.0, need=("sweep",), stop_rule=1, hold=72, W=48, K=2.0, L=20, exitm=0.0):
+    """exitm (11/24 형): 0 = 파동 고점에서 절반 익절 + 나머지 본전 손절(지금) · -1 = 파동 고점에서 전부 익절 · 양수 = 그 R배수 익절 하나로 끝(본전 손절 없음)"""
     o, h, l, c, v = (d[k].values for k in ("open", "high", "low", "close", "volume")); A = F["A"]
     body = np.abs(c - o); rng = h - l; bull = c > o; bear = c < o; N = len(c)
     obs = []
@@ -168,7 +169,10 @@ def ob(d, F, minrr=0.0, need=("sweep",), stop_rule=1, hold=72, W=48, K=2.0, L=20
             if hit:
                 px = c[k] if (stop_rule == 2 and not be) else ((min(o[k], stop) if s > 0 else max(o[k], stop)) if k > j else stop)
                 legs.append((rem, px)); rem = 0; break
-            if not be and ((s > 0 and h[k] >= wave) or (s < 0 and l[k] <= wave)):
+            tgt = wave if exitm <= 0 else fill + s * exitm * risk
+            if not be and ((s > 0 and h[k] >= tgt) or (s < 0 and l[k] <= tgt)):
+                if exitm != 0:
+                    legs.append((rem, max(o[k], tgt) if (s > 0 and k > j) else (min(o[k], tgt) if k > j else tgt))); rem = 0; break
                 legs.append((0.5, wave)); rem = 0.5; be = True; stop = fill; continue
             if k > j and be and (-s) in opp.get(k, ()):
                 legs.append((rem, c[k])); rem = 0; break
@@ -300,7 +304,7 @@ def live_check(name, files, bt_R):
 FORM = {   # 공식: (이름, 시뮬레이터, 하루 최소 거래, 실제 계좌 파일들)
     "amd": ("AMD (매집→조작→분산)", lambda d, F, P: amd(d, F, rr=P.get("rr", 2.0)), None,
             [("코인 AMD 계좌", ["data/us/amd_paper.json"]), ("코인·코인 10배의 AMD 칸", ["data/us/coin_amd.json", "data/us/lev10.json"])]),
-    "ob": ("오더블록 (완화판)", lambda d, F, P: ob(d, F, minrr=P.get("minrr", 0.0)), 3,
+    "ob": ("오더블록 (완화판)", lambda d, F, P: ob(d, F, minrr=P.get("minrr", 0.0), exitm=P.get("exit", 0.0)), 3,
            [("코인 오더블록 계좌", ["data/us/ob_paper.json"]), ("코인·코인 10배의 오더블록 칸", ["data/us/coin_ob.json", "data/us/lev10_ob.json"])]),
     "tr10": ("추세 눌림 (코인 10배 단타)", lambda d, F, P: trend(d, F, tr=P.get("tr", 5.0), sm=P.get("sm", 1.5)), None,
              [("코인 10배 단타 계좌", ["data/us/trend10.json"])]),
