@@ -2691,7 +2691,7 @@
     "rsi": 33.8,
     "hi52": 1060.41,
     "lo52": 510.45,
-    "mom121": 0.2681281411446532,
+    "mom121": 0.26812799933081366,
     "wk": [
      [
       "2025-11-16",
@@ -3634,7 +3634,7 @@
   "https://www.turbomachinerymag.com/view/ge-vernova-q3-2026-gas-power-backlog-122-gw-trench-acquisition",
   "https://www.turbomachinerymag.com/view/siemens-energy-fy2026-record-backlog-164-billion-gas-services-orders"
  ],
- "metrics_at": "2026-11-25T04:35+00:00",
+ "metrics_at": "2026-11-25T05:24+00:00",
  "gloss": {
   "매출총이익률": "매출에서 매출원가를 뺀 비율(총마진). 제품 자체가 얼마나 남는 장사인지",
   "총마진": "매출총이익률과 같은 말. 매출 − 매출원가를 매출로 나눈 값",
