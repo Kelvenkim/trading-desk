@@ -88,7 +88,7 @@ def run():
                 hit = l[k] <= p["stop"] if s > 0 else h[k] >= p["stop"]
                 if hit:
                     xp = min(o[k], p["stop"]) if s > 0 else max(o[k], p["stop"])
-                    close(S, sym, float(xp), "추적 손절" if p["trailed"] else "손절 (ATR×1.5)", tk)
+                    close(S, sym, float(xp), "추적 손절" if p["trailed"] else f"손절 (ATR×{CFG['sm']:g})", tk)
                 else:
                     p["best"] = float(max(p["best"], h[k]) if s > 0 else min(p["best"], l[k]))
                     trail = p["best"] - s * CFG["tr"] * A[k]
