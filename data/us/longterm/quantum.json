@@ -1269,7 +1269,7 @@
     "street": {
      "target": 71.15385,
      "n": 13,
-     "rec": "strong_buy",
+     "rec": "none",
      "short": null,
      "ev": 2041726592,
      "emp": 800,
@@ -4538,7 +4538,7 @@
      "ev": 41565089792,
      "emp": 51478,
      "insider": 0.04429,
-     "inst": 0.88185,
+     "inst": 0.8819,
      "next_rev": 2644924470,
      "next_eps": 2.40301,
      "earn": "2027-02-03"
@@ -4641,17 +4641,17 @@
     "https://www.eenewseurope.com/en/hamamatsu-completes-e247m-acquisition-of-nkt-photonics"
    ],
    "m": {
-    "px": 1987.5,
+    "px": 2007.5,
     "cur": "JPY",
     "day": "2026-11-27",
-    "mcap": 572796829696,
-    "adv": 6220044188,
-    "ps": 2.3537016,
+    "mcap": 578560786432,
+    "adv": 6300144700,
+    "ps": 2.3773866,
     "rev": 243360006144,
     "rev_g": 0.243,
-    "ma50": 2172.49,
-    "ma200": 2223.46,
-    "rsi": 46.3,
+    "ma50": 2172.89,
+    "ma200": 2223.56,
+    "rsi": 47.2,
     "hi52": 2947.7,
     "lo52": 1475.37,
     "mom121": 0.3203001073864391,
@@ -4882,14 +4882,14 @@
      ],
      [
       "2026-11-29",
-      1987.5
+      2007.5
      ]
     ],
     "formulas": [
      {
       "k": "trend200",
       "ok": false,
-      "t": "200일선 아래 (-11%)",
+      "t": "200일선 아래 (-10%)",
       "why": "S&P500 2000~: 200일선 위에서만 보유하면 최대 낙폭 −57% → −26% (수익은 줄어듦)"
      },
      {
@@ -5022,7 +5022,7 @@
      "ev": 534413312000,
      "emp": null,
      "insider": 0.028299998,
-     "inst": 0.38704,
+     "inst": 0.38661,
      "next_rev": 65141600000,
      "next_eps": null,
      "earn": "2027-02-04"
@@ -5498,7 +5498,7 @@
      "ev": 45293531136,
      "emp": null,
      "insider": 0.00638,
-     "inst": 0.92658997,
+     "inst": 0.92660004,
      "next_rev": 1976808810,
      "next_eps": 3.65652,
      "earn": "2027-02-23"
@@ -6100,7 +6100,7 @@
   "https://www.stocktitan.net/articles/stock-market-today-live-november-18-2026",
   "https://www.whitehouse.gov/fact-sheets/2026/06/fact-sheet-president-donald-j-trump-ushers-in-the-next-frontier-of-quantum-innovation/"
  ],
- "metrics_at": "2026-11-27T04:58+00:00",
+ "metrics_at": "2026-11-27T10:09+00:00",
  "gloss": {
   "매출총이익률": "매출에서 매출원가를 뺀 비율(총마진). 제품 자체가 얼마나 남는 장사인지",
   "총마진": "매출총이익률과 같은 말. 매출 − 매출원가를 매출로 나눈 값",
