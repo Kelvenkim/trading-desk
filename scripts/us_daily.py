@@ -494,7 +494,10 @@ def main(force=False):
                      "parts": {k: float(O.loc[c, k]) for k in ("trend", "flow", "safe")}, "spark": [float(x) for x in C[c].iloc[-60:].ffill().tolist()]})
     dump(SNAP / f"{day}.json", {"date": day, "made": NOW.strftime("%Y-%m-%d %H:%M"),
                                 "stocks": {c: {"c": float(C.loc[d, c]), "t": float(TP[c]), "th": float(TH[c]), "m": (float(MOM[c]) if pd.notna(MOM.get(c)) else None),
-                                               "o": float(O.loc[c, "total"]), "k": prim.get(c), "n": names.get(c)} for c in uni}})
+                                               "o": float(O.loc[c, "total"]), "k": prim.get(c), "n": names.get(c),
+                                               # 11/28 형 가설: 우리 점수 5개 항목 중 뭐가 맞추는지 실제로 쌓아서 보기
+                                               "op": {k: round(float(O.loc[c, k]), 1) for k in ("trend", "earn", "news", "flow", "safe") if k in O.columns}}
+                                    for c in uni}})
     live = json.loads((OUT / "rank_live.json").read_text()) if (OUT / "rank_live.json").exists() else []
     grade(C, Op, live); dump(OUT / "rank_live.json", live)
     rep = summarize(live); rep["track"] = track(C, Op)
